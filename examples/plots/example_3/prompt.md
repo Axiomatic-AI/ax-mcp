@@ -1,0 +1,1 @@
+Extract the data from examples/plots/example_3/plot.png and then directly analyze the plot image. At 193.50 THz, what are the relative intensities of the two signals, and what’s their difference? Use the extracted data to justify your response.

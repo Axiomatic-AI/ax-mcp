@@ -1,0 +1,20 @@
+{
+    "editor.formatOnSave": true,
+    "[python]": {
+      "editor.defaultFormatter": "charliermarsh.ruff",
+      "editor.codeActionsOnSave": {
+        "source.fixAll": "explicit",
+        "source.organizeImports": "explicit"
+      }
+    },
+    "python.testing.pytestArgs": [
+      "${workspaceFolder}/api/tests"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true,
+    "python.testing.autoTestDiscoverOnSaveEnabled": true,
+    "makefile.configureOnOpen": false,
+    "flake8.args": [
+      "--max-line-length=150"
+    ]
+  }

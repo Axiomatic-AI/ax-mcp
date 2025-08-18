@@ -1,0 +1,102 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "axiomatic-mcp"
+version = "0.1.1"
+description = "Modular MCP servers for Axiomatic_AI"
+authors = [{name = "Axiomatic Team", email = "developers@axiomatic-ai.com"}]
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+keywords = ["mcp", "axiomatic", "ai", "fastmcp"]
+urls = {Homepage = "https://github.com/Axiomatic-AI/ax-mcp", Issues = "https://github.com/Axiomatic-AI/ax-mcp/issues"}
+dependencies = [
+    "fastmcp>=0.1.0",
+    "pydantic>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "httpx>=0.25.0",
+    "gdsfactory>=9.7.0",
+    "cspdk>=1.0.1",
+    "kfactory>=1.7.3",
+    "klayout>=0.30.2",
+    "iklayout>=0.0.8",
+    "ipympl>=0.9.7",
+    "klujax>=0.4.3",
+    "sax>=0.14.5",
+    "plotly>=6.1.2",
+    "nbformat>=5.10.4",
+    "debugpy>=1.8.0",
+    "numpy>=1.21.0",
+    "scikit-learn>=1.0.0",
+    "pandas>=1.3.0",
+    "moesifasgi>=1.1.5",
+]
+
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+    "debugpy>=1.8.0"
+]
+lean = [
+    "leanclient==0.1.14",
+]
+pic = [
+    "gdsfactory>=9.7.0",
+    "cspdk>=1.0.1",
+    "kfactory>=1.7.3",
+    "klayout>=0.30.2",
+    "iklayout>=0.0.8",
+    "ipympl>=0.9.7",
+    "klujax>=0.4.3",
+    "sax>=0.14.5",
+    "plotly>=6.1.2",
+    "numpy>=1.21.0",
+    "pandas>=1.3.0",
+    "scikit-learn>=1.0.0"
+]
+
+[project.scripts]
+axiomatic-pic = "axiomatic_mcp.servers.pic:main"
+axiomatic-documents = "axiomatic_mcp.servers.documents:main"
+axiomatic-plots = "axiomatic_mcp.servers.plots:main"
+axiomatic-equations = "axiomatic_mcp.servers.equations:main"
+axiomatic-axmodelfitter = "axiomatic_mcp.servers.axmodelfitter:main"
+axiomatic-annotations = "axiomatic_mcp.servers.annotations:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["axiomatic_mcp*"]
+
+[tool.black]
+line-length = 150
+target-version = ["py310", "py311", "py312"]
+
+[tool.ruff]
+line-length = 150
+target-version = "py310"
+select = ["E", "F", "I", "N", "UP", "B", "C4", "PTH", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+
+[tool.setuptools.package-data]
+"axiomatic_mcp" = ["templates/*.template"]
+

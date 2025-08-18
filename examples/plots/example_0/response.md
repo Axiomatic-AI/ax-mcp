@@ -1,0 +1,427 @@
+Extracted plot data saved to: /Users/bryanpyo/Documents/ax-mcp/examples/plots/example_0/plot_data.json
+
+```json
+{
+  "series_points": [
+    {
+      "series_unique_id": 0,
+      "points": [
+        {
+          "x_value": 1313.0,
+          "y_value": -23.688
+        },
+        {
+          "x_value": 1305.2,
+          "y_value": -7.9805
+        },
+        {
+          "x_value": 1311.6,
+          "y_value": -8.8696
+        },
+        {
+          "x_value": 1312.6,
+          "y_value": -23.095
+        },
+        {
+          "x_value": 1309.5,
+          "y_value": -15.093
+        },
+        {
+          "x_value": 1306.1,
+          "y_value": -11.981
+        },
+        {
+          "x_value": 1300.5,
+          "y_value": -10.302
+        },
+        {
+          "x_value": 1305.1,
+          "y_value": -22.798
+        },
+        {
+          "x_value": 1301.6,
+          "y_value": -17.958
+        },
+        {
+          "x_value": 1306.1,
+          "y_value": -20.477
+        },
+        {
+          "x_value": 1311.6,
+          "y_value": -16.279
+        },
+        {
+          "x_value": 1306.2,
+          "y_value": -21.86
+        },
+        {
+          "x_value": 1301.4,
+          "y_value": -18.551
+        },
+        {
+          "x_value": 1300.4,
+          "y_value": -18.304
+        },
+        {
+          "x_value": 1304.9,
+          "y_value": -25.169
+        },
+        {
+          "x_value": 1316.7,
+          "y_value": -2.1027
+        },
+        {
+          "x_value": 1308.5,
+          "y_value": -18.501
+        },
+        {
+          "x_value": 1300.6,
+          "y_value": -22.65
+        },
+        {
+          "x_value": 1304.0,
+          "y_value": -16.032
+        },
+        {
+          "x_value": 1316.5,
+          "y_value": -18.205
+        },
+        {
+          "x_value": 1315.2,
+          "y_value": -6.4493
+        },
+        {
+          "x_value": 1309.7,
+          "y_value": -11.636
+        },
+        {
+          "x_value": 1316.8,
+          "y_value": -21.811
+        },
+        {
+          "x_value": 1315.1,
+          "y_value": -18.847
+        },
+        {
+          "x_value": 1313.8,
+          "y_value": -23.885
+        },
+        {
+          "x_value": 1307.1,
+          "y_value": -16.328
+        },
+        {
+          "x_value": 1315.5,
+          "y_value": -24.972
+        },
+        {
+          "x_value": 1318.5,
+          "y_value": -20.279
+        },
+        {
+          "x_value": 1317.4,
+          "y_value": -18.353
+        },
+        {
+          "x_value": 1305.9,
+          "y_value": -14.649
+        },
+        {
+          "x_value": 1308.1,
+          "y_value": -24.527
+        },
+        {
+          "x_value": 1308.2,
+          "y_value": -17.168
+        },
+        {
+          "x_value": 1308.8,
+          "y_value": -25.663
+        },
+        {
+          "x_value": 1300.5,
+          "y_value": -17.711
+        },
+        {
+          "x_value": 1306.7,
+          "y_value": -26.009
+        },
+        {
+          "x_value": 1303.8,
+          "y_value": -13.414
+        },
+        {
+          "x_value": 1314.1,
+          "y_value": -23.638
+        },
+        {
+          "x_value": 1302.5,
+          "y_value": -20.131
+        },
+        {
+          "x_value": 1319.8,
+          "y_value": -22.947
+        },
+        {
+          "x_value": 1305.9,
+          "y_value": -19.588
+        },
+        {
+          "x_value": 1315.3,
+          "y_value": -18.551
+        },
+        {
+          "x_value": 1317.3,
+          "y_value": -10.302
+        },
+        {
+          "x_value": 1317.2,
+          "y_value": -22.65
+        },
+        {
+          "x_value": 1305.2,
+          "y_value": -12.92
+        },
+        {
+          "x_value": 1315.1,
+          "y_value": -23.49
+        },
+        {
+          "x_value": 1312.4,
+          "y_value": -25.466
+        },
+        {
+          "x_value": 1316.5,
+          "y_value": -22.749
+        },
+        {
+          "x_value": 1310.9,
+          "y_value": -19.736
+        },
+        {
+          "x_value": 1302.7,
+          "y_value": -17.217
+        },
+        {
+          "x_value": 1302.7,
+          "y_value": -19.637
+        },
+        {
+          "x_value": 1312.9,
+          "y_value": -11.29
+        },
+        {
+          "x_value": 1309.5,
+          "y_value": -21.909
+        },
+        {
+          "x_value": 1307.2,
+          "y_value": -20.922
+        },
+        {
+          "x_value": 1300.8,
+          "y_value": -24.972
+        },
+        {
+          "x_value": 1309.3,
+          "y_value": -24.972
+        },
+        {
+          "x_value": 1307.1,
+          "y_value": -21.02
+        },
+        {
+          "x_value": 1311.8,
+          "y_value": -21.168
+        },
+        {
+          "x_value": 1306.0,
+          "y_value": -7.1902
+        },
+        {
+          "x_value": 1311.0,
+          "y_value": -18.353
+        },
+        {
+          "x_value": 1314.3,
+          "y_value": -24.972
+        },
+        {
+          "x_value": 1314.1,
+          "y_value": -17.662
+        },
+        {
+          "x_value": 1312.1,
+          "y_value": -25.861
+        },
+        {
+          "x_value": 1319.5,
+          "y_value": -20.922
+        },
+        {
+          "x_value": 1300.5,
+          "y_value": -20.181
+        },
+        {
+          "x_value": 1306.1,
+          "y_value": -9.4623
+        },
+        {
+          "x_value": 1305.0,
+          "y_value": -25.515
+        },
+        {
+          "x_value": 1300.5,
+          "y_value": -15.241
+        },
+        {
+          "x_value": 1311.0,
+          "y_value": -6.9433
+        },
+        {
+          "x_value": 1300.3,
+          "y_value": -20.724
+        },
+        {
+          "x_value": 1302.6,
+          "y_value": -17.711
+        },
+        {
+          "x_value": 1315.2,
+          "y_value": -11.389
+        },
+        {
+          "x_value": 1319.5,
+          "y_value": -24.379
+        },
+        {
+          "x_value": 1318.6,
+          "y_value": -6.4987
+        },
+        {
+          "x_value": 1301.9,
+          "y_value": -25.169
+        },
+        {
+          "x_value": 1308.2,
+          "y_value": -14.698
+        },
+        {
+          "x_value": 1316.6,
+          "y_value": -13.216
+        },
+        {
+          "x_value": 1315.3,
+          "y_value": -6.5975
+        },
+        {
+          "x_value": 1311.2,
+          "y_value": -24.231
+        },
+        {
+          "x_value": 1313.7,
+          "y_value": -23.589
+        },
+        {
+          "x_value": 1306.0,
+          "y_value": -12.228
+        },
+        {
+          "x_value": 1310.9,
+          "y_value": -12.278
+        },
+        {
+          "x_value": 1307.3,
+          "y_value": -23.391
+        },
+        {
+          "x_value": 1306.1,
+          "y_value": -22.947
+        },
+        {
+          "x_value": 1310.2,
+          "y_value": -26.503
+        },
+        {
+          "x_value": 1303.8,
+          "y_value": -18.353
+        },
+        {
+          "x_value": 1302.5,
+          "y_value": -24.181
+        },
+        {
+          "x_value": 1309.5,
+          "y_value": -10.104
+        },
+        {
+          "x_value": 1304.0,
+          "y_value": -11.092
+        },
+        {
+          "x_value": 1311.6,
+          "y_value": -18.156
+        },
+        {
+          "x_value": 1302.3,
+          "y_value": -24.972
+        },
+        {
+          "x_value": 1316.7,
+          "y_value": -7.1408
+        },
+        {
+          "x_value": 1303.9,
+          "y_value": -8.4745
+        },
+        {
+          "x_value": 1311.1,
+          "y_value": -23.292
+        },
+        {
+          "x_value": 1317.3,
+          "y_value": -15.291
+        },
+        {
+          "x_value": 1309.7,
+          "y_value": -14.105
+        },
+        {
+          "x_value": 1300.5,
+          "y_value": -22.848
+        },
+        {
+          "x_value": 1317.8,
+          "y_value": -25.614
+        },
+        {
+          "x_value": 1316.6,
+          "y_value": -17.81
+        },
+        {
+          "x_value": 1304.2,
+          "y_value": -23.441
+        },
+        {
+          "x_value": 1317.5,
+          "y_value": -20.823
+        }
+      ]
+    }
+  ]
+}
+```
+
+⏺ Looking at the extracted data, I need to find the transmission value closest to 1315 nm. I can see there are several data points near 1315 nm:
+
+- 1315.1 nm: -18.847 dB
+- 1315.1 nm: -23.49 dB
+- 1315.2 nm: -6.4493 dB
+- 1315.2 nm: -11.389 dB
+- 1315.3 nm: -18.551 dB
+- 1315.3 nm: -6.5975 dB
+- 1315.5 nm: -24.972 dB
+
+The closest data points to exactly 1315 nm are at 1315.1 nm and 1315.2 nm. The transmission values range from approximately -6.4 to -6.6 dB at the closest wavelengths to 1315 nm.
+
+Approximately -6.5 dB

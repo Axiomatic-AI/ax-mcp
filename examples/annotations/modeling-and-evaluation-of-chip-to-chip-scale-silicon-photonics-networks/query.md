@@ -1,0 +1,1 @@
+Provide accurate annotations for the paper about modeling and evaluation of chip to chip scale silicon photonics networks. Specifically, we are interested in the governing effects of the ring resonator wdm links presented in figure 3. The goal is to reproduce the results of the plots in figure 4.

@@ -1,0 +1,46 @@
+{
+  "mcpServers": {
+    "axiomatic-equations": {
+      "command": "uvx",
+      "args": ["--from", "axiomatic-mcp", "axiomatic-equations"],
+      "env": {
+        "AXIOMATIC_API_KEY": ""
+      }
+    },
+    "axiomatic-documents": {
+      "command": "uvx",
+      "args": ["--from", "axiomatic-mcp", "axiomatic-documents"],
+      "env": {
+        "AXIOMATIC_API_KEY": ""
+      }
+    },
+    "axiomatic-annotations": {
+      "command": "uvx",
+      "args": ["--from", "axiomatic-mcp", "axiomatic-annotations"],
+      "env": {
+        "AXIOMATIC_API_KEY": ""
+      }
+    },
+    "axiomatic-axmodelfitter": {
+      "command": "uvx",
+      "args": ["--from", "axiomatic-mcp", "axiomatic-axmodelfitter"],
+      "env": {
+        "AXIOMATIC_API_KEY": ""
+      }
+    },
+    "axiomatic-plots": {
+      "command": "uvx",
+      "args": ["--from", "axiomatic-mcp", "axiomatic-plots"],
+      "env": {
+        "AXIOMATIC_API_KEY": ""
+      }
+    },
+    "axiomatic-pic": {
+      "command": "uvx",
+      "args": ["--from", "axiomatic-mcp", "axiomatic-pic"],
+      "env": {
+        "AXIOMATIC_API_KEY": ""
+      }
+    }
+  }
+}

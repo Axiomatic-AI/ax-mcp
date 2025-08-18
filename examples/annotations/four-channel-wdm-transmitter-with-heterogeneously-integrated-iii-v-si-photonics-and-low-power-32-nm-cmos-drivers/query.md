@@ -1,0 +1,1 @@
+Provide accurate annotations for the paper about four channel wdm transmitter with heterogeneously integrated iii-v si photonics and low power 32 nm cmos drivers. Specifically, we are interested in the governing effects and equations of the system presented and relevant information to reproduce figure 2b.

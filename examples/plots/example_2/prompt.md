@@ -1,0 +1,1 @@
+Extract the data from examples/plots/example_2/plot.png and then directly analyze the plot image. What optical signal-to-noise ratio (OSNR) is required for each modulation format (2ASK, 4ASK, 8ASK) to achieve a bit-error rate (BER) of 10^-3? Use the extracted data to justify your response.

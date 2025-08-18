@@ -1,0 +1,1 @@
+Extract the data from examples/plots/example_1/plot.png and then directly analyze the plot image. What is the difference in total power with thermal adjustment between with guard rings and without guard rings at 40 degrees Celsius? Use the extracted data when giving the final answer.
