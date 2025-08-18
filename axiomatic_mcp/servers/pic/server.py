@@ -31,5 +31,5 @@ async def design(
     if existing_code:
         data["code"] = existing_code
 
-    response = AxiomaticAPIClient().post("/pic/circuit/refine", json=data)
+    response = AxiomaticAPIClient().post("/pic/circuit/refine", data=data)
     return response["code"]

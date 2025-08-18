@@ -55,6 +55,20 @@ make install-dev
 }
 ```
 
+**For Documents:**
+
+```json
+{
+  "axiomatic-documents": {
+    "command": "python",
+    "args": ["-m", "axiomatic_mcp.servers.documents"],
+    "env": {
+      "AXIOMATIC_API_KEY": "your-api-key-here"
+    }
+  }
+}
+```
+
 ### Project Structure
 
 ```

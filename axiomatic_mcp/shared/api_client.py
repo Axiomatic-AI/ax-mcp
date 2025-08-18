@@ -3,8 +3,8 @@ from typing import Any
 
 import httpx
 
-API_URL = "https://api.axiomatic-ai.com"
-TIMEOUT = 30.0
+API_URL = "http://localhost:8000"
+TIMEOUT = 1000
 
 
 class AxiomaticAPIClient:
@@ -17,7 +17,6 @@ class AxiomaticAPIClient:
             base_url=API_URL,
             timeout=TIMEOUT,
             headers={
-                "Content-Type": "application/json",
                 "X-API-Key": api_key,
             },
         )
@@ -34,9 +33,10 @@ class AxiomaticAPIClient:
     def post(
         self,
         endpoint: str,
-        json: dict[str, Any] | None = None,
+        data: dict[str, Any] | None = None,
+        files: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        response = self.client.post(endpoint, json=json)
+        response = self.client.post(endpoint, files=files, data=data) if files else self.client.post(endpoint, json=data)
         response.raise_for_status()
         return response.json()
 
