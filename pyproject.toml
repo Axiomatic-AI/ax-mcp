@@ -8,7 +8,20 @@ version = "1.0.0"
 description = "Modular MCP servers for Axiomatic_AI"
 authors = [{name = "Axiomatic Team", email = "developers@axiomatic.ai"}]
 readme = "README.md"
+license = {text = "MIT"}
 requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+keywords = ["mcp", "axiomatic", "ai", "fastmcp"]
+urls = {Homepage = "https://github.com/axiomatic/ax-mcp", Issues = "https://github.com/axiomatic/ax-mcp/issues"}
 dependencies = [
     "fastmcp>=0.1.0",
     "pydantic>=2.0.0",

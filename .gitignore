@@ -7,6 +7,26 @@ dist/
 *.tsbuildinfo
 config.json
 
-__pycache__
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+build/
+develop-eggs/
+.eggs/
+wheels/
+*.whl
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# OS
 .DS_Store
-*.egg-info

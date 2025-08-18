@@ -118,3 +118,20 @@ Install only the domain servers you need. Each server runs independently, so you
 
 1. Verify your API key is set correctly
 2. Check internet connection
+
+## Release Process
+
+### Setup (One-time)
+
+1. Configure PyPI trusted publishing at pypi.org → Account settings → Publishing
+2. Add GitHub Actions as trusted publisher for `axiomatic/ax-mcp` 
+3. Create `pypi` and `test-pypi` environments in GitHub repo settings
+
+### Publishing a Release
+
+1. Update version in `pyproject.toml`
+2. Commit and push changes
+3. Create a GitHub release with tag `vX.Y.Z`
+4. GitHub Actions automatically publishes to PyPI
+
+The package is available at: https://pypi.org/project/axiomatic-mcp/
