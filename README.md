@@ -48,7 +48,7 @@ pip install -e .
 {
   "axiomatic-pic": {
     "command": "python",
-    "args": ["-m", "axiomatic_mcp.domains.pic"],
+    "args": ["-m", "axiomatic_mcp.servers.pic"],
     "env": {
       "AXIOMATIC_API_KEY": "your-api-key-here"
     }

@@ -1,19 +1,18 @@
 """PIC (Photonic Integrated Circuit) domain MCP server."""
 
-from typing import Annotated, Optional
+from typing import Annotated
+
 from fastmcp import FastMCP
 
-
-from ...shared import (
-    AxiomaticAPIClient,
-)
+from ...shared import AxiomaticAPIClient
 
 mcp = FastMCP(
     name="Axiomatic PIC Designer",
-    description="MCP server that aids in the design of photonic integrated circuits",
-    instructions="This server provides tools to design, optimize, and simulate photonic integrated circuits.",
+    instructions="""This server provides tools to design, optimize,
+    and simulate photonic integrated circuits.""",
     version="0.0.1",
 )
+
 
 @mcp.tool(
     name="design_circuit",
@@ -22,7 +21,9 @@ mcp = FastMCP(
 )
 async def design(
     query: Annotated[str, "The query to design the circuit"],
-    existing_code: Annotated[Optional[str], "Existing code to use as a reference and to refine with the query"] = None
+    existing_code: Annotated[
+        str | None, "Existing code to use as a reference to refine"
+    ] = None,
 ) -> Annotated[str, "The code for the designed circuit"]:
     """Design a photonic integrated circuit."""
     data = {
