@@ -121,12 +121,6 @@ Install only the domain servers you need. Each server runs independently, so you
 
 ## Release Process
 
-### Setup (One-time)
-
-1. Configure PyPI trusted publishing at pypi.org → Account settings → Publishing
-2. Add GitHub Actions as trusted publisher for `axiomatic/ax-mcp` 
-3. Create `pypi` and `test-pypi` environments in GitHub repo settings
-
 ### Publishing a Release
 
 1. Update version in `pyproject.toml`
