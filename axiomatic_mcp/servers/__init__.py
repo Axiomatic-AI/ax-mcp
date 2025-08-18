@@ -2,7 +2,6 @@
 
 from .pic.server import mcp as pic_mcp
 
-
 servers = [
     pic_mcp,
 ]
