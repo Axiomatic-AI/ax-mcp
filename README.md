@@ -24,6 +24,20 @@ You can install each domain server independently based on your needs. These can 
 }
 ```
 
+**For Documents:**
+
+```json
+{
+  "axiomatic-documents": {
+    "command": "uvx",
+    "args": ["--from", "axiomatic-mcp", "axiomatic-documents"],
+    "env": {
+      "AXIOMATIC_API_KEY": "your-api-key-here"
+    }
+  }
+}
+```
+
 ## Development
 
 1. Clone the repository:
