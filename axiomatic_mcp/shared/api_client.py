@@ -36,9 +36,9 @@ class AxiomaticAPIClient:
     def post(
         self,
         endpoint: str,
-        data: dict[str, Any] | None = None,
+        json: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        response = self.client.post(endpoint, json=data)
+        response = self.client.post(endpoint, json=json)
         response.raise_for_status()
         return response.json()
 

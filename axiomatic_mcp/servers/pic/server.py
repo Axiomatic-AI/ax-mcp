@@ -28,7 +28,10 @@ async def design(
     """Design a photonic integrated circuit."""
     data = {
         "query": query,
-        "code": existing_code,
     }
-    response = AxiomaticAPIClient().post("/pic/circuit/refine", data=data)
+
+    if existing_code:
+        data["code"] = existing_code
+
+    response = AxiomaticAPIClient().post("/pic/circuit/refine", json=data)
     return response["code"]
