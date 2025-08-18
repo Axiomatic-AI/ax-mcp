@@ -6,13 +6,9 @@ MCP (Model Context Protocol) server for the Axiomatic_AI platform, built with Fa
 - **Axiomatic API integration**: Connects to Axiomatic AI's API for various tooling
 - **Simple configuration**: Easy setup with API key environment variable
 
-## Installation for Cursor
+## Installation
 
-You can install each domain server independently based on your needs.
-
-### Usage
-
-Use uvx to run servers without installing:
+You can install each domain server independently based on your needs. These can be installed in many MCP clients such as cursor or claude.
 
 **For PIC Domain:**
 ```json
