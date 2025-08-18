@@ -38,7 +38,7 @@ cd ax-mcp
 
 2. Install in development mode:
 ```bash
-pip install -e .
+make install-dev
 ```
 
 3. Add servers to Cursor using Python module paths:
@@ -55,9 +55,6 @@ pip install -e .
   }
 }
 ```
-
-
-## Development
 
 ### Project Structure
 
