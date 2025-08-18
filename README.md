@@ -84,7 +84,7 @@ ax-mcp/
 1. Create server directory:
 
 ```bash
-mkdir axiomatic_mcp/server/my_domain
+mkdir axiomatic_mcp/servers/my_domain
 ```
 
 2. Create `__init__.py`:
