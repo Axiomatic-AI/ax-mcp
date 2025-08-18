@@ -1,5 +1,5 @@
+from .server import plot_parser_server
+
 def main():
     """Main entry point for the plot_parser server."""
-    from .server import mcp
-
-    mcp.run(transport="stdio")
+    plot_parser_server.run(transport="stdio")

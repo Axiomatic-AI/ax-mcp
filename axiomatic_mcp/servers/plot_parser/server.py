@@ -7,14 +7,14 @@ from fastmcp import FastMCP
 
 from ...shared import AxiomaticAPIClient
 
-mcp = FastMCP(
+plot_parser_server = FastMCP(
     name="Plot Parser Server",
     instructions="""This server hosts tools to parse and understand images of plots""",
     version="0.0.1",
 )
 
 
-@mcp.tool(
+@plot_parser_server.tool(
     name="extract_data_from_plot_image",
     description="Extracts data from an image of a plot",
     tags=["plot", "filesystem", "analyze"],
