@@ -3,7 +3,7 @@ from typing import Any
 
 import httpx
 
-API_URL = "http://localhost:8000"
+API_URL = "https://api.axiomatic-ai.com"
 TIMEOUT = 1000
 
 
