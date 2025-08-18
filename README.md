@@ -79,12 +79,12 @@ ax-mcp/
 ├── pyproject.toml           # Python package configuration
 ```
 
-### Adding a New Domain
+### Adding a New Server
 
-1. Create domain directory:
+1. Create server directory:
 
 ```bash
-mkdir axiomatic_mcp/domains/my_domain
+mkdir axiomatic_mcp/server/my_domain
 ```
 
 2. Create `__init__.py`:
@@ -97,23 +97,42 @@ def main():
     server.run()
 ```
 
+2. Create `__main__.py`:
+
+```python
+from . import main
+
+if __name__ == "__main__":
+    main()
+```
+
 3. Implement server in `server.py`:
 
 ```python
-from axiomatic_mcp.shared import BaseServer, BaseConfig
+from fastmcp import FastMCP
 
-class MyDomainServer(BaseServer):
-    def setup_tools(self):
-        @self.mcp.tool()
-        def my_tool(param: str) -> dict:
-            return {"result": "success"}
+mcp = FastMCP(
+    name="NAME",
+    instructions="""GIVE NICE INSTRUCTIONS""",
+    version="0.0.1",
+)
+
+@mcp.tool(
+    name="tool_name",
+    description="DESCRIPTION",
+    tags=["TAG"],
+)
+def my_tool():
+  pass
+
+# Add more tools as needed
 ```
 
 4. Add entry point to `pyproject.toml`:
 
 ```toml
 [project.scripts]
-axiomatic-mydomain = "axiomatic_mcp.domains.my_domain:main"
+axiomatic-mydomain = "axiomatic_mcp.servers.my_domain:main"
 ```
 
 ## Troubleshooting
