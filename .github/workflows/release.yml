@@ -7,8 +7,8 @@ on:
     inputs:
       test_pypi:
         description: 'Publish to Test PyPI'
-        required: false
-        default: false
+        required: true
+        default: true
         type: boolean
 
 jobs:
