@@ -5,8 +5,8 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "axiomatic-mcp"
 version = "1.0.0"
-description = "Modular MCP servers for Axiomatic"
-authors = [{name = "Axiomatic Team", email = "team@axiomatic.ai"}]
+description = "Modular MCP servers for Axiomatic_AI"
+authors = [{name = "Axiomatic Team", email = "developers@axiomatic.ai"}]
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -25,9 +25,7 @@ dev = [
 ]
 
 [project.scripts]
-axiomatic-pic = "axiomatic_mcp.domains.pic:main"
-axiomatic-electronics = "axiomatic_mcp.domains.electronics:main"
-axiomatic-quantum = "axiomatic_mcp.domains.quantum:main"
+axiomatic-pic = "axiomatic_mcp.servers.pic:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

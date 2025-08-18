@@ -1,9 +1,0 @@
-{
-  "log_level": "info",
-  "max_retries": 3,
-  "timeout": 30000,
-  "api_url": "https://api.axiomatic.ai",
-  "api_key": "your-api-key-here",
-  "default_wavelength": 1550.0,
-  "default_material": "silicon"
-}
