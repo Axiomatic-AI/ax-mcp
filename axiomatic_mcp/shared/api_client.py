@@ -11,9 +11,7 @@ class AxiomaticAPIClient:
     def __init__(self):
         api_key = os.getenv("AXIOMATIC_API_KEY")
         if not api_key:
-            raise ValueError(
-                "AXIOMATIC_API_KEY environment variable is not set"
-            )
+            raise ValueError("AXIOMATIC_API_KEY environment variable is not set")
 
         self.client = httpx.Client(
             base_url=API_URL,

@@ -21,9 +21,7 @@ mcp = FastMCP(
 )
 async def design(
     query: Annotated[str, "The query to design the circuit"],
-    existing_code: Annotated[
-        str | None, "Existing code to use as a reference to refine"
-    ] = None,
+    existing_code: Annotated[str | None, "Existing code to use as a reference to refine"] = None,
 ) -> Annotated[str, "The code for the designed circuit"]:
     """Design a photonic integrated circuit."""
     data = {
