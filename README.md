@@ -11,6 +11,7 @@ MCP (Model Context Protocol) server for the Axiomatic_AI platform, built with Fa
 You can install each domain server independently based on your needs. These can be installed in many MCP clients such as cursor or claude.
 
 **For PIC Domain:**
+
 ```json
 {
   "axiomatic-pic": {
@@ -23,16 +24,17 @@ You can install each domain server independently based on your needs. These can 
 }
 ```
 
-
 ## Development
 
 1. Clone the repository:
+
 ```bash
 git clone https://github.com/axiomatic/ax-mcp.git
 cd ax-mcp
 ```
 
 2. Install in development mode:
+
 ```bash
 make install-dev
 ```
@@ -40,6 +42,7 @@ make install-dev
 3. Add servers to Cursor using Python module paths:
 
 **For PIC Domain:**
+
 ```json
 {
   "axiomatic-pic": {
@@ -65,11 +68,13 @@ ax-mcp/
 ### Adding a New Domain
 
 1. Create domain directory:
+
 ```bash
 mkdir axiomatic_mcp/domains/my_domain
 ```
 
 2. Create `__init__.py`:
+
 ```python
 from .server import MyDomainServer
 
@@ -79,6 +84,7 @@ def main():
 ```
 
 3. Implement server in `server.py`:
+
 ```python
 from axiomatic_mcp.shared import BaseServer, BaseConfig
 
@@ -90,6 +96,7 @@ class MyDomainServer(BaseServer):
 ```
 
 4. Add entry point to `pyproject.toml`:
+
 ```toml
 [project.scripts]
 axiomatic-mydomain = "axiomatic_mcp.domains.my_domain:main"
@@ -116,9 +123,11 @@ Install only the domain servers you need. Each server runs independently, so you
 
 ### Publishing a Release
 
+1. Create a new release branch
 1. Update version in `pyproject.toml`
-2. Commit and push changes
-3. Create a GitHub release with tag `vX.Y.Z`
-4. GitHub Actions automatically publishes to PyPI
+1. Commit and push changes
+1. Create a pull request titled "Release: YOUR FEATURE(s)". Include detailed description of what's included in the release.
+1. Create a GitHub release with tag `vX.Y.Z`
+1. GitHub Actions automatically publishes to PyPI
 
 The package is available at: https://pypi.org/project/axiomatic-mcp/
