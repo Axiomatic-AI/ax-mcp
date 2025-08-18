@@ -6,3 +6,7 @@ dist/
 .DS_Store
 *.tsbuildinfo
 config.json
+
+__pycache__
+.DS_Store
+*.egg-info
