@@ -12,20 +12,20 @@ from pydantic import BaseModel
 from ...shared import AxiomaticAPIClient
 
 
-class ExtractedSeries(BaseModel):
+class SeriesPoints(BaseModel):
     """Extracted series from a plot"""
 
     id: int
     points: list[tuple[float, float]]
 
 
-class PlotData(BaseModel):
-    """New plot parser output for v2, will replace old PlotParserOutput"""
+class SeriesPointsData(BaseModel):
+    """A list of points from each series in a plot"""
 
-    extracted_series: list[ExtractedSeries]
+    series_points: list[SeriesPoints]
 
 
-def process_plot_parser_output(response_json, max_points: int = 100, sig_figs: int = 5) -> PlotData:
+def process_plot_parser_output(response_json, max_points: int = 100, sig_figs: int = 5) -> SeriesPointsData:
     extracted_series_list = []
 
     for extracted_series in response_json["extracted_series"]:
@@ -40,10 +40,10 @@ def process_plot_parser_output(response_json, max_points: int = 100, sig_figs: i
             y_val = float(format(point["value_y"], f".{sig_figs}g"))
             condensed_points_list.append((x_val, y_val))
 
-        series = ExtractedSeries(id=extracted_series["id"], points=condensed_points_list)
+        series = SeriesPoints(id=extracted_series["id"], points=condensed_points_list)
         extracted_series_list.append(series)
 
-    return PlotData(extracted_series=extracted_series_list)
+    return SeriesPointsData(series_points=extracted_series_list)
 
 
 PLOTS_SERVER_INSTRUCTIONS = """This server hosts tools for extracting numerical data from plot images. 
@@ -63,15 +63,15 @@ plots = FastMCP(
 )
 async def extract_data_from_plot_image(
     plot_path: Annotated[
-        Path, "The absolute path to the image file of the plot to analyze. Supports common image formats: PNG, JPEG/JPG, GIF, BMP, TIFF, WebP"
+        Path, "The absolute path to the image file of the plot to analyze. Supports common image formats: PNG, JPEG/JPG, BMP, TIFF, WebP"
     ],
     max_number_points_per_series: Annotated[
         int,
         "Maximum points returned per series. Uses random sampling if plot contains more points than limit",
     ] = 100,
-) -> Annotated[PlotData, "Extracted plot data containing series and points from the plot image"]:
-    if not plot_path.exists():
-        raise FileNotFoundError(f"Image not found: {plot_path}")
+) -> Annotated[SeriesPointsData, "Extracted plot data containing series and points from the plot image"]:
+    if not plot_path.is_file():
+        raise FileNotFoundError(f"Image not found or is not a regular file: {plot_path}")
 
     supported_extensions = {".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif", ".webp"}
     file_extension = plot_path.suffix.lower()
