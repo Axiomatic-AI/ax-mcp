@@ -73,7 +73,7 @@ async def extract_data_from_plot_image(
     if not plot_path.exists():
         raise FileNotFoundError(f"Image not found: {plot_path}")
 
-    supported_extensions = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".tif", ".webp"}
+    supported_extensions = {".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif", ".webp"}
     file_extension = plot_path.suffix.lower()
     if file_extension not in supported_extensions:
         raise ToolError(f"Unsupported image format: {file_extension}. Supported formats: {', '.join(supported_extensions)}")
