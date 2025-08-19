@@ -7,8 +7,10 @@ from fastmcp import FastMCP
 
 mcp = FastMCP(
     name="Autoformalizer",
-    instructions="""This server provides tools to convert natural language mathematical 
-    statements into formal Lean theorem statements with sorry placeholders.""",
+    instructions="""The Autoformalizer server provides tools to transform natural language
+        mathematical statements into Lean 4 theorem statements. Each generated theorem
+        is returned in valid Lean syntax, with hypotheses formalized as parameters
+        and the proof body replaced by a `sorry` placeholder.""",
     version="0.0.1",
 )
 
@@ -23,12 +25,16 @@ class AutoformalizerServer:
 
 @mcp.tool(
     name="formalize_statement",
-    description="Convert natural language mathematical statement to Lean theorem with sorry",
+    description="""
+                Translate a natural language mathematical statement into a Lean 4 theorem 
+                declaration. The theorem is syntactically valid Lean, uses a descriptive snake_case name, 
+                introduces hypotheses as parameters, and ends with `:= by sorry` to mark the missing proof.
+                """,
     tags=["lean", "formalization", "mathematics"],
 )
 async def formalize_statement(
-    query: Annotated[str, "Natural language mathematical statement to formalize"],
-) -> Annotated[str, "Lean theorem statement with sorry placeholder"]:
+    query: Annotated[str, "A natural language mathematical statement to formalize into Lean syntax"],
+) -> Annotated[str, "The corresponding Lean 4 theorem statement ending with `:= by sorry`"]:
     """Convert natural language mathematical statement to Lean theorem."""
     
     # Get OpenAI API key from environment
