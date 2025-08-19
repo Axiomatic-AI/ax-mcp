@@ -3,6 +3,8 @@
 from typing import Annotated
 
 from fastmcp import FastMCP
+from fastmcp.tools.tool import ToolResult
+from mcp.types import TextContent
 
 from ...shared import AxiomaticAPIClient
 
@@ -16,13 +18,13 @@ mcp = FastMCP(
 
 @mcp.tool(
     name="design_circuit",
-    description="Design a photonic integrated circuit",
+    description="Design a photonic integrated circuit and optionally create a Python file",
     tags=["design", "gfsfactory"],
 )
 async def design(
     query: Annotated[str, "The query to design the circuit"],
     existing_code: Annotated[str | None, "Existing code to use as a reference to refine"] = None,
-) -> Annotated[str, "The code for the designed circuit"]:
+) -> ToolResult:
     """Design a photonic integrated circuit."""
     data = {
         "query": query,
@@ -32,4 +34,15 @@ async def design(
         data["code"] = existing_code
 
     response = AxiomaticAPIClient().post("/pic/circuit/refine", data=data)
-    return response["code"]
+    code: str = response["code"]
+
+    file_name = "circuit.py"
+
+    return ToolResult(
+        content=[TextContent(type="text", text=f"Generated photonic circuit design for: {file_name}\n\n```python\n{code}\n```")],
+        structured_content={
+            "suggestions": [
+                {"type": "create_file", "path": file_name, "content": code, "description": f"Create {file_name} with the generated circuit design"}
+            ]
+        },
+    )
