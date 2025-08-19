@@ -1,10 +1,12 @@
 """Plot Parser MCP server"""
 
+import mimetypes
 import random
 from pathlib import Path
 from typing import Annotated
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from pydantic import BaseModel
 
 from ...shared import AxiomaticAPIClient
@@ -60,13 +62,24 @@ plots = FastMCP(
     tags={"plot", "filesystem", "analyze"},
 )
 async def extract_data_from_plot_image(
-    plot_path: Annotated[Path, "The absolute path to the image file of the plot to analyze"],
+    plot_path: Annotated[
+        Path, "The absolute path to the image file of the plot to analyze. Supports common image formats: PNG, JPEG/JPG, GIF, BMP, TIFF, WebP"
+    ],
 ) -> Annotated[PlotData, "Extracted plot data containing series and points from the plot image"]:
     if not plot_path.exists():
         raise FileNotFoundError(f"Image not found: {plot_path}")
 
+    supported_extensions = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".tif", ".webp"}
+    file_extension = plot_path.suffix.lower()
+    if file_extension not in supported_extensions:
+        raise ToolError(f"Unsupported image format: {file_extension}. Supported formats: {', '.join(supported_extensions)}")
+
+    mime_type, _ = mimetypes.guess_type(str(plot_path))
+    if not mime_type or not mime_type.startswith("image/"):
+        mime_type = "image/png"  # fallback
+
     with Path.open(plot_path, "rb") as f:
-        files = {"plot_img": ("plot.png", f, "image/png")}
+        files = {"plot_img": (plot_path.name, f, mime_type)}
         params = {"get_img_coords": True, "v2": True}
         response = AxiomaticAPIClient().post("/document/plot/points", files=files, params=params)
 
