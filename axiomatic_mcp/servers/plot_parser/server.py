@@ -39,9 +39,9 @@ plot_parser_server = FastMCP(
 )
 async def extract_data_from_plot_image(
     plot_path: Annotated[Path, "The absolute path to the image file of the plot to analyze"],
-) -> Annotated[str, "A string of markdown text of the analyzed document"]:
+) -> Annotated[str, "A string representing a set of points from each series in the plot"]:
     if not plot_path.exists():
-        raise FileNotFoundError(f"Document not found: {plot_path}")
+        raise FileNotFoundError(f"Image not found: {plot_path}")
 
     with Path.open(plot_path, "rb") as f:
         files = {"plot_img": ("plot.png", f, "image/png")}
