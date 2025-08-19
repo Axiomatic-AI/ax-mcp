@@ -65,6 +65,10 @@ async def extract_data_from_plot_image(
     plot_path: Annotated[
         Path, "The absolute path to the image file of the plot to analyze. Supports common image formats: PNG, JPEG/JPG, GIF, BMP, TIFF, WebP"
     ],
+    max_number_points_per_series: Annotated[
+        int,
+        "Maximum points returned per series. Uses random sampling if plot contains more points than limit",
+    ] = 100,
 ) -> Annotated[PlotData, "Extracted plot data containing series and points from the plot image"]:
     if not plot_path.exists():
         raise FileNotFoundError(f"Image not found: {plot_path}")
@@ -83,4 +87,4 @@ async def extract_data_from_plot_image(
         params = {"get_img_coords": True, "v2": True}
         response = AxiomaticAPIClient().post("/document/plot/points", files=files, params=params)
 
-    return process_plot_parser_output(response)
+    return process_plot_parser_output(response, max_points=max_number_points_per_series)
