@@ -1,4 +1,4 @@
-"""Documents MCP server for filesystem document operations."""
+"""Plot Parser MCP server"""
 
 import random
 from pathlib import Path
@@ -13,7 +13,10 @@ def process_plot_parser_output(response_json, max_points: int = 100, sig_figs: i
     condensed_response = []
 
     for extracted_series in response_json["extracted_series"]:
-        all_extracted_points = extracted_series["points"]
+        all_extracted_points = extracted_series.get("points") or []
+        if not all_extracted_points:
+            continue
+
         selected_points = random.sample(all_extracted_points, min(max_points, len(all_extracted_points)))
         condensed_points_list = []
         for point in selected_points:
