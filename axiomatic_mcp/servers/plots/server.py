@@ -25,14 +25,14 @@ def process_plot_parser_output(response_json, max_points: int = 100, sig_figs: i
     return str(condensed_response)
 
 
-plot_parser_server = FastMCP(
-    name="Plot Parser Server",
+plots = FastMCP(
+    name="Axiomatic plots tools server",
     instructions="""This server hosts tools to parse and understand images of plots""",
     version="0.0.1",
 )
 
 
-@plot_parser_server.tool(
+@plots.tool(
     name="extract_data_from_plot_image",
     description="Extracts data from an image of a plot",
     tags={"plot", "filesystem", "analyze"},
