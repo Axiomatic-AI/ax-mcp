@@ -149,6 +149,8 @@ def my_tool():
 axiomatic-mydomain = "axiomatic_mcp.servers.my_domain:main"
 ```
 
+5. Update README.md with instructions on installing your server.
+
 ## Troubleshooting
 
 ### Server not appearing in Cursor
