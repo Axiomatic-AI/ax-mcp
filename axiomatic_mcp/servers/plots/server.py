@@ -80,7 +80,7 @@ async def extract_data_from_plot_image(
 
     mime_type, _ = mimetypes.guess_type(str(plot_path))
     if not mime_type or not mime_type.startswith("image/"):
-        mime_type = "image/png"  # fallback
+        mime_type = "application/octet-stream"
 
     with Path.open(plot_path, "rb") as f:
         files = {"plot_img": (plot_path.name, f, mime_type)}
