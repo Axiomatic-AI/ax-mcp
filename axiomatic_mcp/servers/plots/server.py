@@ -85,6 +85,16 @@ async def extract_data_from_plot_image(
     with Path.open(plot_path, "rb") as f:
         files = {"plot_img": (plot_path.name, f, mime_type)}
         params = {"get_img_coords": True, "v2": True}
-        response = AxiomaticAPIClient().post("/document/plot/points", files=files, params=params)
+
+        try:
+            response = AxiomaticAPIClient().post("/document/plot/points", files=files, params=params)
+        except Exception as e:
+            raise ToolError(f"Failed to analyze plot image: {e!s}") from e
+
+        if not isinstance(response, dict):
+            raise ToolError("Upstream service returned non-JSON response")
+
+        if "extracted_series" not in response:
+            raise ToolError("Upstream service returned unexpected response format")
 
     return process_plot_parser_output(response, max_points=max_number_points_per_series)
