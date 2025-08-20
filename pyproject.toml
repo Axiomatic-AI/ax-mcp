@@ -41,6 +41,7 @@ dev = [
 axiomatic-pic = "axiomatic_mcp.servers.pic:main"
 axiomatic-documents = "axiomatic_mcp.servers.documents:main"
 axiomatic-autoformalizer = "axiomatic_mcp.servers.autoformalizer:main"
+axiomatic-statement-negation = "axiomatic_mcp.servers.statement_negation:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
