@@ -69,9 +69,7 @@ plots = FastMCP(
     tags={"plot", "filesystem", "analyze"},
 )
 async def extract_data_from_plot_image(
-    plot_path: Annotated[
-        Path, "The absolute path to the image file of the plot to analyze. Supports common image formats: PNG, JPEG/JPG, BMP, TIFF, WebP"
-    ],
+    plot_path: Annotated[Path, "The absolute path to the image file of the plot to analyze. Supports only PNG for now"],
     max_number_points_per_series: Annotated[
         int,
         "Maximum points returned per series. Uses random sampling if plot contains more points than limit",
@@ -80,7 +78,8 @@ async def extract_data_from_plot_image(
     if not plot_path.is_file():
         raise FileNotFoundError(f"Image not found or is not a regular file: {plot_path}")
 
-    supported_extensions = {".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif", ".webp"}
+    # supported_extensions = {".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif", ".webp"}
+    supported_extensions = {".png"}
     file_extension = plot_path.suffix.lower()
     if file_extension not in supported_extensions:
         raise ValidationError(f"Unsupported image format: {file_extension}. Supported formats: {', '.join(supported_extensions)}")
