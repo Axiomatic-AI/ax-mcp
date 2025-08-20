@@ -44,6 +44,22 @@ You can install each domain server independently based on your needs. These can 
 }
 ```
 
+**For Plots:**
+
+[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=axiomatic-plots&config=eyJjb21tYW5kIjoidXZ4IC0tZnJvbSBheGlvbWF0aWMtbWNwIGF4aW9tYXRpYy1wbG90cyIsImVudiI6eyJBWElPTUFUSUNfQVBJX0tFWSI6InlvdXItYXBpLWtleS1oZXJlIn19)
+
+```json
+{
+  "axiomatic-plots": {
+    "command": "uvx",
+    "args": ["--from", "axiomatic-mcp", "axiomatic-plots"],
+    "env": {
+      "AXIOMATIC_API_KEY": "your-api-key-here"
+    }
+  }
+}
+```
+
 ## Development
 
 1. Clone the repository:
@@ -82,6 +98,20 @@ make install-dev
   "axiomatic-documents": {
     "command": "python",
     "args": ["-m", "axiomatic_mcp.servers.documents"],
+    "env": {
+      "AXIOMATIC_API_KEY": "your-api-key-here"
+    }
+  }
+}
+```
+
+**For Plots:**
+
+```json
+{
+  "axiomatic-plots": {
+    "command": "python",
+    "args": ["-m", "axiomatic_mcp.servers.plots"],
     "env": {
       "AXIOMATIC_API_KEY": "your-api-key-here"
     }
