@@ -1,5 +1,6 @@
 """Plot Parser MCP server"""
 
+import math
 import mimetypes
 import random
 from pathlib import Path
@@ -33,23 +34,44 @@ class SeriesPointsData(BaseModel):
 
 
 def process_plot_parser_output(response_json, max_points: int = 100, sig_figs: int = 5) -> SeriesPointsData:
-    extracted_series_list = []
+    extracted_series_list: list[SeriesPoints] = []
 
-    for extracted_series in response_json["extracted_series"]:
+    series_array = (response_json or {}).get("extracted_series") or []
+    for idx, extracted_series in enumerate(series_array):
         all_extracted_points = extracted_series.get("points") or []
         if not all_extracted_points:
             continue
 
-        selected_points = random.sample(all_extracted_points, min(max_points, len(all_extracted_points)))
-        condensed_points_list = []
+        sample_size = min(max_points, len(all_extracted_points))
+        selected_points = random.sample(all_extracted_points, sample_size)
+
+        condensed_points_list: list[Point] = []
         for point in selected_points:
-            x_val = float(format(point["value_x"], f".{sig_figs}g"))
-            y_val = float(format(point["value_y"], f".{sig_figs}g"))
+            x_raw = point.get("value_x")
+            y_raw = point.get("value_y")
+            if x_raw is None or y_raw is None:
+                continue
+            try:
+                x_num = float(x_raw)
+                y_num = float(y_raw)
+            except (TypeError, ValueError):
+                continue
+            if not math.isfinite(x_num) or not math.isfinite(y_num):
+                continue
+            x_val = float(format(x_num, f".{sig_figs}g"))
+            y_val = float(format(y_num, f".{sig_figs}g"))
             condensed_points_list.append(Point(x_value=x_val, y_value=y_val))
+        if not condensed_points_list:
+            continue
 
-        series = SeriesPoints(series_unique_id=extracted_series["id"], points=condensed_points_list)
+        series_id = extracted_series.get("id", idx)
+        try:
+            series_id = int(series_id)
+        except (TypeError, ValueError):
+            series_id = idx
+
+        series = SeriesPoints(series_unique_id=series_id, points=condensed_points_list)
         extracted_series_list.append(series)
-
     return SeriesPointsData(series_points=extracted_series_list)
 
 
@@ -78,7 +100,6 @@ async def extract_data_from_plot_image(
     if not plot_path.is_file():
         raise FileNotFoundError(f"Image not found or is not a regular file: {plot_path}")
 
-    # supported_extensions = {".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif", ".webp"}
     supported_extensions = {".png"}
     file_extension = plot_path.suffix.lower()
     if file_extension not in supported_extensions:
