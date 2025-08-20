@@ -8,9 +8,13 @@ MCP (Model Context Protocol) server for the Axiomatic_AI platform, built with Fa
 
 ## Installation
 
+> **Important**: This will install the latest released version (see [releases](https://github.com/Axiomatic-AI/ax-mcp/releases)). To install the latest development version, see the development instructions
+
 You can install each domain server independently based on your needs. These can be installed in many MCP clients such as cursor or claude.
 
 **For PIC Domain:**
+
+[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=axiomatic-pic&config=eyJjb21tYW5kIjoidXZ4IC0tZnJvbSBheGlvbWF0aWMtbWNwIGF4aW9tYXRpYy1waWMiLCJlbnYiOnsiQVhJT01BVElDX0FQSV9LRVkiOiJFTlRFUiBZT1VSIEFQSSBLRVkifX0%3D)
 
 ```json
 {
@@ -25,6 +29,8 @@ You can install each domain server independently based on your needs. These can 
 ```
 
 **For Documents:**
+
+[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=axiomatic-documents&config=eyJjb21tYW5kIjoidXZ4IC0tZnJvbSBheGlvbWF0aWMtbWNwIGF4aW9tYXRpYy1kb2N1bWVudHMiLCJlbnYiOnsiQVhJT01BVElDX0FQSV9LRVkiOiJFTlRFUiBZT1VSIEFQSSBLRVkifX0%3D)
 
 ```json
 {
@@ -148,6 +154,8 @@ def my_tool():
 [project.scripts]
 axiomatic-mydomain = "axiomatic_mcp.servers.my_domain:main"
 ```
+
+5. Update README.md with instructions on installing your server. You can generate the "Add to cursor" button [here](https://docs.cursor.com/en/tools/developers)
 
 ## Troubleshooting
 

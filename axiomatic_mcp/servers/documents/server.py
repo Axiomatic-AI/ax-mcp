@@ -4,6 +4,8 @@ from pathlib import Path
 from typing import Annotated
 
 from fastmcp import FastMCP
+from fastmcp.tools.tool import ToolResult
+from mcp.types import TextContent
 
 from ...shared import AxiomaticAPIClient
 
@@ -22,7 +24,7 @@ mcp = FastMCP(
 )
 async def document_to_markdown(
     file_path: Annotated[Path, "The absolute path to the PDF file to analyze"],
-) -> Annotated[str, "A string of markdown text of the analyzed document"]:
+) -> ToolResult:
     if not file_path.exists():
         raise FileNotFoundError(f"Document not found: {file_path}")
 
@@ -34,4 +36,11 @@ async def document_to_markdown(
     data = {"method": "mistral", "ocr": False, "layout_model": "doclayout_yolo"}
 
     response = AxiomaticAPIClient().post("/document/parse", files=files, data=data)
-    return response["markdown"]
+    markdown: str = response["markdown"]
+    name = file_path.stem + ".md"
+    return ToolResult(
+        content=[TextContent(type="text", text=f"Generated markdown for: {name}\n\n```markdown\n{markdown}\n```")],
+        structured_content={
+            "suggestions": [{"type": "create_file", "path": name, "content": markdown, "description": f"Create {name} with the generated markdown"}]
+        },
+    )
