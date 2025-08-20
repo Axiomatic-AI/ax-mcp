@@ -31,3 +31,8 @@ htmlcov/
 
 # OS
 .DS_Store
+
+# Sensitive configuration files
+.cursor/
+*.mcp.json
+temp_snippet.lean

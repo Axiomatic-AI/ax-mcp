@@ -75,7 +75,8 @@ async def mcp_agent_execute(
         )
     
     # Agent configuration (matching the original)
-    lean_lsp_path = "/Users/marcodeltredici/PycharmProjects/Axiomatic/lean-lsp-mcp"
+    # Use pip-installed lean-lsp instead of hardcoded path
+    import sys
     
     logger.info(f"🔧 {name}: Start task")
 
@@ -84,15 +85,15 @@ async def mcp_agent_execute(
     
     # Add elan bin directory to PATH so lake command can be found
     current_path = env.get("PATH", "")
-    elan_path = "/Users/marcodeltredici/.elan/bin"
+    elan_path = "/Users/jacobmccarran_ax/.elan/bin"
     if elan_path not in current_path:
         env["PATH"] = f"{elan_path}:{current_path}"
 
-    # Initialize Lean MCP server
+    # Initialize Lean MCP server using pip-installed package
     lean_params = StdioServerParameters(
-        command=f"{lean_lsp_path}/.venv/bin/python",
+        command=sys.executable,  # Use current Python executable
         args=["-m", "lean_lsp_mcp", "--transport", "stdio"],
-        cwd=lean_lsp_path,
+        cwd="/Users/jacobmccarran_ax/Downloads/ax-mcp",  # Use your project directory
         env=env,
     )
 
