@@ -8,7 +8,7 @@ from typing import Annotated
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 
 from ...shared import AxiomaticAPIClient
 
@@ -103,7 +103,7 @@ async def extract_data_from_plot_image(
     supported_extensions = {".png"}
     file_extension = plot_path.suffix.lower()
     if file_extension not in supported_extensions:
-        raise ValidationError(f"Unsupported image format: {file_extension}. Supported formats: {', '.join(supported_extensions)}")
+        raise ValueError(f"Unsupported image format: {file_extension}. Supported formats: {', '.join(supported_extensions)}")
 
     mime_type, _ = mimetypes.guess_type(str(plot_path))
     if not mime_type or not mime_type.startswith("image/"):
