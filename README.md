@@ -8,7 +8,7 @@ MCP (Model Context Protocol) server for the Axiomatic_AI platform, built with Fa
 
 ## Installation
 
-> **Important**: Not yet released to PyPi. Follow the developer for instructions for now
+> **Important**: This will install the latest released version (see [releases](https://github.com/Axiomatic-AI/ax-mcp/releases)). To install the latest development version, see the development instructions
 
 You can install each domain server independently based on your needs. These can be installed in many MCP clients such as cursor or claude.
 
