@@ -57,7 +57,7 @@ plots = FastMCP(
 
 
 @plots.tool(
-    name="extract_numerical_series_points_from_plot_image",
+    name="extract_numerical_series_points",
     description="Analyzes images of line and scatter plots to extract precise numerical data points from all series in the plot",
     tags={"plot", "filesystem", "analyze"},
 )
