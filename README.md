@@ -89,6 +89,20 @@ make install-dev
 }
 ```
 
+**For Plots:**
+
+```json
+{
+  "axiomatic-plots": {
+    "command": "python",
+    "args": ["-m", "axiomatic_mcp.servers.plots"],
+    "env": {
+      "AXIOMATIC_API_KEY": "your-api-key-here"
+    }
+  }
+}
+```
+
 ### Project Structure
 
 ```
