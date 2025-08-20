@@ -7,16 +7,23 @@ from typing import Annotated
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from ...shared import AxiomaticAPIClient
+
+
+class Point(BaseModel):
+    """Extracted point of a series from a plot"""
+
+    x_value: float
+    y_value: float
 
 
 class SeriesPoints(BaseModel):
     """Extracted series from a plot"""
 
-    id: int
-    points: list[tuple[float, float]]
+    series_unique_id: int
+    points: list[Point]
 
 
 class SeriesPointsData(BaseModel):
@@ -38,9 +45,9 @@ def process_plot_parser_output(response_json, max_points: int = 100, sig_figs: i
         for point in selected_points:
             x_val = float(format(point["value_x"], f".{sig_figs}g"))
             y_val = float(format(point["value_y"], f".{sig_figs}g"))
-            condensed_points_list.append((x_val, y_val))
+            condensed_points_list.append(Point(x_value=x_val, y_value=y_val))
 
-        series = SeriesPoints(id=extracted_series["id"], points=condensed_points_list)
+        series = SeriesPoints(series_unique_id=extracted_series["id"], points=condensed_points_list)
         extracted_series_list.append(series)
 
     return SeriesPointsData(series_points=extracted_series_list)
@@ -76,7 +83,7 @@ async def extract_data_from_plot_image(
     supported_extensions = {".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif", ".webp"}
     file_extension = plot_path.suffix.lower()
     if file_extension not in supported_extensions:
-        raise ToolError(f"Unsupported image format: {file_extension}. Supported formats: {', '.join(supported_extensions)}")
+        raise ValidationError(f"Unsupported image format: {file_extension}. Supported formats: {', '.join(supported_extensions)}")
 
     mime_type, _ = mimetypes.guess_type(str(plot_path))
     if not mime_type or not mime_type.startswith("image/"):
