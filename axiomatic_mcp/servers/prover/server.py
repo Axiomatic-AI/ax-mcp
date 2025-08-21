@@ -2,6 +2,7 @@
 
 import logging
 import os
+import sys
 from typing import List, Optional, Annotated
 
 import anthropic
@@ -53,43 +54,29 @@ def synthesize_claude_output(response):
 
 @mcp.tool(
     name="mcp_agent_execute",
-    description="""Execute MCPAgent on the incomplete lean theorem. You should use lean tools in order
-    to complete the proof. You should use the lean_diagnostic_messages tool to check the file for any issues.
-    You should use the lean_goal tool to get the current goal of the proof.
-    You should use the lean_hover_info tool to get the hover information for the current goal.
-    You should use the lean_multi_attempt tool to try multiple proof attempts.
-    You should use the lean_leansearch tool to search for theorems and lemmas.
-    You should use the lean_loogle tool to search for lemmas by type signature.
+    description="""Execute MCPAgent to work with Lean files and prove theorems. Uses file-based workflow with available Lean tools.
 
-    As you are completing the proof you will write your updates to the proof.lean file.
-    You will use the lean_diagnostic_messages tool to check the file for any issues.
-    You will use the lean_goal tool to get the current goal of the proof.
-    You will use the lean_hover_info tool to get the hover information for the current goal.
-    You will use the lean_multi_attempt tool to try multiple proof attempts.
-    You will use the lean_leansearch tool to search for theorems and lemmas.
-    You will use the lean_loogle tool to search for lemmas by type signature.
+    Available tools:
+    - lean_file_contents: Read Lean files with line numbers
+    - lean_write_file: Write content to Lean files (save proof solutions)
+    - lean_diagnostic_messages: Get diagnostic messages for Lean files
+    - lean_leansearch: Search for theorems and lemmas using natural language  
+    - lean_loogle: Search for lemmas by type signature
 
-    You will use the lean_diagnostic_messages tool to check the file for any issues.
-    You will use the lean_goal tool to get the current goal of the proof.
-    You will use the lean_hover_info tool to get the hover information for the current goal.
-    You will use the lean_multi_attempt tool to try multiple proof attempts.
-    You will use the lean_leansearch tool to search for theorems and lemmas.
-    You will use the lean_loogle tool to search for lemmas by type signature.
-
-    Once you have completed the proof, you will use the lean_diagnostic_messages tool to check the file for any issues.
+    Workflow: Read file → Analyze → Write improved proof → Verify with diagnostics. Use search tools when stuck.
     """,
     tags=["lean", "proving", "mcp", "agent"],
 )
 async def mcp_agent_execute(
-    lean_code: Annotated[str, "Lean code to analyze and prove"],
-    # project_path: Annotated[str, "Path to the Lean project"] = "/Users/marcodeltredici/PycharmProjects/Axiomatic/AX_Lean_Physics",
+    file_path: Annotated[str, "Absolute path to Lean file to analyze and prove"],
+    project_path: Annotated[str, "Path to the Lean project"] = "/Users/marcodeltredici/PycharmProjects/Axiomatic/AX_Lean_Physics",
     name: Annotated[str, "Agent name"] = "Prover",
     model: Annotated[str, "Claude model to use"] = "claude-sonnet-4-20250514",
-    lean_tools_filter: Annotated[Optional[List[str]], "List of Lean tools to include (None = all tools)"] = None,
+    lean_tools_filter: Annotated[Optional[List[str]], "List of Lean tools to include (None = all tools)"] = ["lean_diagnostic_messages", "lean_leansearch", "lean_loogle", "lean_file_contents", "lean_write_file"],
     max_iterations: Annotated[int, "Maximum tool use iterations"] = 100,
     max_tokens: Annotated[int, "Maximum tokens per API call"] = 5000,
 ) -> Annotated[str, "Agent execution result"]:
-    """Execute MCPAgent with Lean tools to prove theorems in Lean code."""
+    """Execute MCPAgent with Lean tools to prove theorems in a Lean file."""
     
     # Get API key
     api_key = os.getenv("ANTHROPIC_API_KEY")
@@ -110,69 +97,44 @@ async def mcp_agent_execute(
             ]
         )
     
-    # Agent configuration (matching the original)
-    # Use pip-installed lean-lsp instead of hardcoded path
-    import sys
+    # Agent configuration
     
     logger.info(f"🔧 {name}: Start task")
 
     env = os.environ.copy()
-    # env["LEAN_PROJECT_PATH"] = project_path
+    env["LEAN_PROJECT_PATH"] = project_path
     
     # Add elan bin directory to PATH so lake command can be found
     current_path = env.get("PATH", "")
-    elan_path = "/Users/jacobmccarran_ax/.elan/bin"
-    homebrew_path = "/opt/homebrew/bin"
+    elan_path = "/Users/marcodeltredici/.elan/bin"
     if elan_path not in current_path:
         env["PATH"] = f"{elan_path}:{current_path}"
-    if homebrew_path not in current_path:
-        env["PATH"] = f"{homebrew_path}:{env['PATH']}"
 
-    # Initialize filesystem MCP server with the updated environment
-    filesystem_params = StdioServerParameters(
-        command="/opt/homebrew/bin/npx", 
-        args=["@modelcontextprotocol/server-filesystem", os.getcwd()],
-        env=env
-    )
-
-    # Initialize Lean MCP server using pip-installed package
+    # Initialize Lean Tools MCP server (our standalone version)
     lean_params = StdioServerParameters(
         command=sys.executable,  # Use current Python executable
-        args=["-m", "lean_lsp_mcp", "--transport", "stdio"],
-        cwd="/Users/jacobmccarran_ax/Downloads/ax-mcp",  # Use your project directory
+        args=["-m", "axiomatic_mcp.servers.lean_tools", "--transport", "stdio"],
         env=env,
     )
 
     try:
-        # Connect to both servers simultaneously
-        async with stdio_client(filesystem_params) as (fs_read, fs_write), stdio_client(lean_params) as (lean_read, lean_write):
-            
-            async with ClientSession(fs_read, fs_write) as fs_session, ClientSession(lean_read, lean_write) as lean_session:
-                # Initialize both sessions
-                await fs_session.initialize()
+        # Connect to lean_tools server
+        async with stdio_client(lean_params) as (lean_read, lean_write):
+
+            async with ClientSession(lean_read, lean_write) as lean_session:
+                
+                # Initialize lean session
                 await lean_session.initialize()
 
-                # Get tools from both servers
-                fs_tools = await fs_session.list_tools()
+                # Get tools from lean server
                 lean_tools = await lean_session.list_tools()
 
-                logger.info(f"📁 Filesystem tools: {[tool.name for tool in fs_tools.tools]}")
                 logger.info(f"🔧 Lean tools: {[tool.name for tool in lean_tools.tools]}")
 
                 client = anthropic.Anthropic(api_key=api_key)
 
-                # Convert all MCP tools to Claude format
+                # Convert MCP tools to Claude format
                 claude_tools = []
-
-                # Add filesystem tools
-                for tool in fs_tools.tools:
-                    claude_tools.append(
-                        {
-                            "name": f"fs_{tool.name}",  # Prefix to avoid name conflicts
-                            "description": f"[Filesystem] {tool.description}",
-                            "input_schema": tool.inputSchema,
-                        }
-                    )
 
                 # Add lean tools (filtered if specified)
                 for tool in lean_tools.tools:
@@ -188,19 +150,27 @@ async def mcp_agent_execute(
                             }
                         )
 
+
                 logger.info(f"✅ Total tools available to Claude: {len(claude_tools)}")
+                logger.info(f"✅ Tool names: {[tool['name'] for tool in claude_tools]}")
 
-                # Create initial message with lean code
-                prompt = f"""You are an expert Lean theorem prover. Here is the Lean code:
+                # Create initial message with file path
+                prompt = f"""You are an expert Lean theorem prover. You need to work with the Lean file at: {file_path}
 
-```lean
-{lean_code}
-```
+IMPORTANT: Before doing anything else, you MUST:
+1. Use lean_file_contents to read the content of the file
+2. Use lean_diagnostic_messages to check the file for any existing errors
 
 The general approach you must follow is:
-(1) Read the theorem from the target file, identify proofs with a 'sorry'. 
-(2) You then MUST Produce a initial sketch of the proof: this must be a high-level outline of the proof steps without any specific tactics or code.
-(3) You then MUST Formalize each step of the proof in Lean4 using proper Lean tactics within the existing theorem structure. For example, given this input
+(1) Read the file content and analyze what theorems need to be proven
+(2) Run lean_diagnostic_messages to check the current state  
+(3) Look at the theorem and identify proofs with 'sorry'
+(4) Produce an initial sketch of the proof: a high-level outline of the proof steps without any specific tactics
+(5) Formalize each step of the proof in Lean4 using have statements (you CANNOT include tactics initially)
+(6) Use lean_write_file to save your proposed solution back to the file
+(7) Use lean_diagnostic_messages to verify your solution works
+
+For example, when working with this theorem:
 
 -- theorem statement
 theorem SlidingBlockProblem_2
@@ -221,45 +191,39 @@ theorem SlidingBlockProblem_2
 v = 10 * √2 := by
 sorry
 
-You must replace the 'sorry' with actual proof content like this:
+You must produce this output:
 
-v = 10 * √2 := by
-  -- Step 1: Use conservation of energy
-  have h1 : Ei = Ef := h_conservation
-  
-  -- Step 2: Substitute the expressions
-  have h2 : m * g * h = (1 / 2) * m * v ^ 2 := by
-    rw [h_initial, h_final, h1]
-  
-  -- Step 3: Cancel m and multiply by 2
-  have h3 : 2 * g * h = v ^ 2 := by
-    rw [h2]
-    field_simp [hm]
-    ring
-  
-  -- Step 4: Take square root
-  have h4 : v = Real.sqrt (2 * g * h) := by
-    apply eq_sqrt_of_sq_eq
-    exact h3
-  
-  -- Step 5: Substitute the given values
-  have h5 : v = 10 * Real.sqrt 2 := by
-    rw [h4, hg, hh]
-    norm_num
-  
-  exact h5
+-- Step 1: Ei = Ef
+have h1 : Ei = Ef := by
+  sorry
 
-(4) Then, solve one step at a time. Each proof step must be complete and valid. You MUST run lean_diagnostic_messages on the file after each significant change: DO NOT MOVE ON TO THE NEXT STEP IF YOU GET ANY MESSAGE WITH SEVERITY 1. DO NOT SOLVE ALL THE STEPS AT THE SAME TIME.
+-- Step 2: m * g * h = (1 / 2) * m * v ^ 2
+have h2 : m * g * h = (1 / 2) * m * v ^ 2 := by
+  sorry
+
+-- Step 3: 2 * g * h = v ^ 2
+have h3 : 2 * g * h = v ^ 2 := by
+  sorry
+
+-- Step 4: v = √(2 * g * h)
+have h4 : v = Real.sqrt (2 * g * h) := by
+  sorry
+
+-- Step 5: Solve for v
+have h5 : v = 10 * Real.sqrt 2 := by
+  sorry
+
+(4) Then, solve one step at a time. Each proof sketch must be a complete proof.
+You MUST run lean_diagnostic_messages on the step you solve before moving on to the next steps: DO NOT MOVE ON TO THE NEXT STEP IF YOU GET ANY MESSAGE WITH SEVERITY 1. DO NOT SOLVE ALL THE STEPS AT THE SAME TIME.
 
 You can use the following Lean tools:
-    - 'lean_diagnostic_messages': Get diagnostic messages (errors, warnings)
-    - 'lean_goal': Get the current proof goal at a position
-    - 'lean_hover_info': Get hover information for symbols
-    - 'lean_multi_attempt': Try multiple proof attempts
-    - 'lean_leansearch': Search for theorems and lemmas
+    - 'lean_file_contents': Read Lean files with line numbers  
+    - 'lean_write_file': Write content to Lean files (use this to save your proof solutions)
+    - 'lean_diagnostic_messages': Get diagnostic messages (errors, warnings) for Lean files
+    - 'lean_leansearch': Search for theorems and lemmas using natural language
     - 'lean_loogle': Search for lemmas by type signature
 
-It is VERY IMPORTANT that you use lean tools, especially those for searching, when you create your proofs, especially if you get stuck. 
+WORKFLOW: Always lean_file_contents first, then work on the proof, lean_write_file to save changes, and lean_diagnostic_messages to verify. Use the search tools when you get stuck. 
 """
 
                 messages = [{"role": "user", "content": prompt}]
@@ -295,18 +259,10 @@ It is VERY IMPORTANT that you use lean tools, especially those for searching, wh
                             logger.info(f"🔧 Using tool: {content.name}")
                             logger.info(f"📥 Input: {content.input}")
 
-                            # Execute tool via appropriate MCP server
-                            if content.name.startswith("fs_"):
-                                # Remove prefix and call filesystem server
-                                tool_name = content.name[3:]  # Remove "fs_" prefix
-                                result = await fs_session.call_tool(
-                                    tool_name, content.input
-                                )
-                            else:
-                                # Call lean server
-                                result = await lean_session.call_tool(
-                                    content.name, content.input
-                                )
+                            # Execute tool via lean server
+                            result = await lean_session.call_tool(
+                                content.name, content.input
+                            )
 
                             if result.isError:
                                 # Handle the error - something went wrong
@@ -354,7 +310,7 @@ It is VERY IMPORTANT that you use lean tools, especially those for searching, wh
 
 Agent: {name}
 Model: {model}
-Project: Prover MCP Test
+Project: {project_path}
 Iterations used: {iteration}/{max_iterations}
 
 Final Response:
