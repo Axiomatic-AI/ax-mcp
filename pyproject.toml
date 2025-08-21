@@ -28,6 +28,7 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "httpx>=0.25.0",
     "anthropic>=0.21.0",
+    "requests>=2.25.0",
 ]
 
 [project.optional-dependencies]
@@ -44,6 +45,7 @@ axiomatic-documents = "axiomatic_mcp.servers.documents:main"
 axiomatic-autoformalizer = "axiomatic_mcp.servers.autoformalizer:main"
 axiomatic-statement-negation = "axiomatic_mcp.servers.statement_negation:main"
 axiomatic-prover = "axiomatic_mcp.servers.prover:main"
+axiomatic-lean-tools = "axiomatic_mcp.servers.lean_tools:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
