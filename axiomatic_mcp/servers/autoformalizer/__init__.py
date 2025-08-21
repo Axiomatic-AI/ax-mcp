@@ -1,5 +1,5 @@
-from .server import AutoformalizerServer
-
 def main():
-    server = AutoformalizerServer()
-    server.run()
+    """Main entry point for the Documents server."""
+    from .server import mcp
+
+    mcp.run(transport="stdio")
