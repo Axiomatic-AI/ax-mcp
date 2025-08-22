@@ -74,8 +74,8 @@ def lean_diagnostic_messages(
         
         diagnostics = []
         
-        if result.returncode != 0 and result.stdout:
-            # Parse stdout for diagnostic messages (Lean 4 puts errors in stdout)
+        # Parse diagnostics from both successful and failed runs
+        if result.stdout:
             lines = result.stdout.split('\n')
             current_diagnostic = []
             
@@ -91,6 +91,20 @@ def lean_diagnostic_messages(
             
             if current_diagnostic:
                 diagnostics.append('\n'.join(current_diagnostic))
+        
+        # If no diagnostics but successful compilation, check for sorry
+        if not diagnostics and result.returncode == 0:
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                if 'sorry' in content:
+                    import re
+                    sorry_count = len(re.findall(r'\bsorry\b', content))
+                    diagnostics.append(f"info: File contains {sorry_count} 'sorry' statement(s) but compiled successfully")
+                else:
+                    diagnostics.append("info: File compiled successfully with no issues")
+            except:
+                diagnostics.append("info: File compiled successfully")
         
         return diagnostics
         
@@ -280,6 +294,95 @@ def lean_loogle(
         
     except Exception as e:
         return f"loogle error:\n{str(e)}"
+
+
+@mcp.tool("lean_goal")
+def lean_goal(
+    file_path: Annotated[str, "Absolute path to the Lean file"],
+    line: Annotated[int, "Line number (1-indexed)"]
+) -> Annotated[str, "Goal state at the specified position"]:
+    """Get the proof goals (proof state) at a specific location in a Lean file."""
+    try:
+        # Step 1: Read the original file content
+        with open(file_path, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+        
+        if line < 1 or line > len(lines):
+            return f"Line {line} is out of range (file has {len(lines)} lines)"
+        
+        # Step 2: Insert a goal-revealing tactic at the specified position
+        # We'll insert "trace_state" which will print the current proof state
+        target_line = lines[line - 1]
+        
+        # Find the indentation of the current line
+        indent = len(target_line) - len(target_line.lstrip())
+        indent_str = target_line[:indent]
+        
+        # Insert trace_state tactic at the position
+        goal_reveal_line = f"{indent_str}trace_state\n"
+        
+        # Create modified content with the trace_state inserted
+        modified_lines = lines.copy()
+        modified_lines.insert(line - 1, goal_reveal_line)
+        modified_content = ''.join(modified_lines)
+        
+        # Step 3: Write to temporary file  
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.lean', delete=False, encoding='utf-8') as f:
+            f.write(modified_content)
+            temp_file = f.name
+        
+        try:
+            # Step 4: Run lean on the temporary file from project directory
+            # Try to detect project directory from file_path
+            project_dir = os.path.dirname(file_path)
+            result = subprocess.run(
+                ["lean", temp_file],
+                cwd=project_dir,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            
+            # Step 5: Parse the output for goal state information
+            output = result.stdout if result.stdout else result.stderr
+            
+            if "⊢" in output:  # Goal symbol found
+                # Extract goal information, filtering out warnings and file paths
+                lines = output.split('\n')
+                goal_lines = []
+                
+                for line in lines:
+                    # Skip warning messages and file paths
+                    if (line.strip() and 
+                        not line.startswith('/') and 
+                        not 'warning:' in line and 
+                        not 'error:' in line):
+                        goal_lines.append(line)
+                
+                if goal_lines:
+                    return '\n'.join(goal_lines)
+                else:
+                    # Fallback: return raw output if we can't parse it cleanly
+                    return f"Goal state (raw):\n{output}"
+            else:
+                if result.returncode == 0:
+                    return "No goals (proof complete at this position)"
+                else:
+                    return f"No goal information found. Lean output:\n{output}"
+                
+        finally:
+            # Step 6: Clean up temporary file
+            try:
+                os.unlink(temp_file)
+            except:
+                pass
+                
+    except FileNotFoundError:
+        return f"File `{file_path}` does not exist"
+    except subprocess.TimeoutExpired:
+        return "Error: Lean command timed out"
+    except Exception as e:
+        return f"Error getting goals: {str(e)}"
 
 
 @mcp.tool("lean_build")
