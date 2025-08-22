@@ -2,6 +2,7 @@
 
 import logging
 import os
+import sys
 from typing import List, Optional, Annotated
 
 import anthropic
@@ -11,8 +12,20 @@ from mcp.client.stdio import stdio_client
 
 mcp = FastMCP(
     name="Lean Prover",
-    instructions="A prover that uses the exact MCPAgent implementation as a tool.",
+    instructions="""A prover that takes a lean theorem that is not complete and completes a proof.
+    You must use the tools provided to you to complete the proof. You first will write the incomplete
+    proof to a file titled 'proof.lean' in the current directory. You then will use the tools provided to you to complete the proof
+    by filling in that file and using the lean_diagnostic_message tool to figure out when the proof is complete.
+    So when you think the proof is complete, you will use the lean_diagnostic_messages tool to check the file for any issues.
+
+    1. Use lean_diagnostic_messages to check the file for any issues
+    2. Analyze the diagnostic results:
+    - If NO severity 1 messages exist: The proofs are VALID
+    - If severity 1 messages exist: The proofs are INVALID (severity 1 = errors)
+    - Severity 2 messages are warnings and are acceptable but should be noted
+    3. Provide a clear verification report with your findings""",
     version="0.0.1",
+
 )
 
 class ProverServer:
@@ -41,19 +54,30 @@ def synthesize_claude_output(response):
 
 @mcp.tool(
     name="mcp_agent_execute",
-    description="Execute MCPAgent with Lean tools only on Lean code",
+    description="""Execute MCPAgent to work with Lean files and prove theorems. Uses file-based workflow with available Lean tools.
+
+    Available tools:
+    - lean_file_contents: Read Lean files with line numbers
+    - lean_write_file: Write content to Lean files (save proof solutions)
+    - lean_diagnostic_messages: Get diagnostic messages for Lean files
+    - lean_goal: Get proof goals and context at specific line positions
+    - lean_leansearch: Search for theorems and lemmas using natural language  
+    - lean_loogle: Search for lemmas by type signature
+
+    Workflow: Read file → Check goals at positions → Write improved proof → Verify with diagnostics. Use search tools when stuck.
+    """,
     tags=["lean", "proving", "mcp", "agent"],
 )
 async def mcp_agent_execute(
-    lean_code: Annotated[str, "Lean code to analyze and prove"],
+    file_path: Annotated[str, "Absolute path to Lean file to analyze and prove"],
     project_path: Annotated[str, "Path to the Lean project"] = "/Users/marcodeltredici/PycharmProjects/Axiomatic/AX_Lean_Physics",
     name: Annotated[str, "Agent name"] = "Prover",
     model: Annotated[str, "Claude model to use"] = "claude-sonnet-4-20250514",
-    lean_tools_filter: Annotated[Optional[List[str]], "List of Lean tools to include (None = all tools)"] = None,
+    lean_tools_filter: Annotated[Optional[List[str]], "List of Lean tools to include (None = all tools)"] = ["lean_diagnostic_messages", "lean_leansearch", "lean_loogle", "lean_file_contents", "lean_write_file", "lean_goal"],
     max_iterations: Annotated[int, "Maximum tool use iterations"] = 100,
     max_tokens: Annotated[int, "Maximum tokens per API call"] = 5000,
 ) -> Annotated[str, "Agent execution result"]:
-    """Execute MCPAgent with Lean tools to prove theorems in Lean code."""
+    """Execute MCPAgent with Lean tools to prove theorems in a Lean file."""
     
     # Get API key
     api_key = os.getenv("ANTHROPIC_API_KEY")
@@ -74,9 +98,7 @@ async def mcp_agent_execute(
             ]
         )
     
-    # Agent configuration (matching the original)
-    # Use pip-installed lean-lsp instead of hardcoded path
-    import sys
+    # Agent configuration
     
     logger.info(f"🔧 {name}: Start task")
 
@@ -85,23 +107,23 @@ async def mcp_agent_execute(
     
     # Add elan bin directory to PATH so lake command can be found
     current_path = env.get("PATH", "")
-    elan_path = "/Users/jacobmccarran_ax/.elan/bin"
+    elan_path = "/Users/marcodeltredici/.elan/bin"
     if elan_path not in current_path:
         env["PATH"] = f"{elan_path}:{current_path}"
 
-    # Initialize Lean MCP server using pip-installed package
+    # Initialize Lean Tools MCP server (our standalone version)
     lean_params = StdioServerParameters(
         command=sys.executable,  # Use current Python executable
-        args=["-m", "lean_lsp_mcp", "--transport", "stdio"],
-        cwd="/Users/jacobmccarran_ax/Downloads/ax-mcp",  # Use your project directory
+        args=["-m", "axiomatic_mcp.servers.lean_tools", "--transport", "stdio"],
         env=env,
     )
 
     try:
-        # Connect to lean server only
+        # Connect to lean_tools server
         async with stdio_client(lean_params) as (lean_read, lean_write):
 
             async with ClientSession(lean_read, lean_write) as lean_session:
+                
                 # Initialize lean session
                 await lean_session.initialize()
 
@@ -112,7 +134,7 @@ async def mcp_agent_execute(
 
                 client = anthropic.Anthropic(api_key=api_key)
 
-                # Convert lean MCP tools to Claude format
+                # Convert MCP tools to Claude format
                 claude_tools = []
 
                 # Add lean tools (filtered if specified)
@@ -129,22 +151,19 @@ async def mcp_agent_execute(
                             }
                         )
 
+
                 logger.info(f"✅ Total tools available to Claude: {len(claude_tools)}")
+                logger.info(f"✅ Tool names: {[tool['name'] for tool in claude_tools]}")
 
-                # Create initial message with lean code
-                prompt = f"""You are an expert Lean theorem prover. Here is the Lean code:
-
-```lean
-{lean_code}
-```
-
-IMPORTANT: Before doing anything else, you MUST first run lean_diagnostic_messages on this code to check for any existing errors.
+                # Create initial message with file path
+                prompt = f"""You are an expert Lean theorem prover. You need to work with the Lean file at: {file_path}
 
 The general approach you must follow is:
-(1) Run lean_diagnostic_messages on the Lean code to analyze the current state
-(2) look at the theorem and identify proofs with a 'sorry'. 
-(3) You then MUST Produce a initial sketch of the proof: this must be a high-level outline of the proof steps without any specific tactics or code.
-(3) You then MUST Formalize each step of the proof in Lean4 using have statements but YOU CANNOT include any tactics. For example, given this input
+(1) Read the file content and analyze what theorems need to be proven
+(2) Run lean_diagnostic_messages to check the current state  
+(3) Look at the theorem and identify proofs with 'sorry'
+(4) Produce an initial sketch of the proof: a high-level outline of the proof steps without any specific tactics.
+For example, when working with this theorem:
 
 -- theorem statement
 theorem SlidingBlockProblem_2
@@ -191,14 +210,14 @@ have h5 : v = 10 * Real.sqrt 2 := by
 You MUST run lean_diagnostic_messages on the step you solve before moving on to the next steps: DO NOT MOVE ON TO THE NEXT STEP IF YOU GET ANY MESSAGE WITH SEVERITY 1. DO NOT SOLVE ALL THE STEPS AT THE SAME TIME.
 
 You can use the following Lean tools:
-    - 'lean_diagnostic_messages': Get diagnostic messages (errors, warnings)
-    - 'lean_goal': Get the current proof goal at a position
-    - 'lean_hover_info': Get hover information for symbols
-    - 'lean_multi_attempt': Try multiple proof attempts
-    - 'lean_leansearch': Search for theorems and lemmas
+    - 'lean_file_contents': Read Lean files with line numbers  
+    - 'lean_write_file': Write content to Lean files (use this to save your proof solutions)
+    - 'lean_diagnostic_messages': Get diagnostic messages (errors, warnings) for Lean files
+    - 'lean_goal': Get proof goals and context at specific line positions (very useful for understanding what to prove)
+    - 'lean_leansearch': Search for theorems and lemmas using natural language
     - 'lean_loogle': Search for lemmas by type signature
 
-It is VERY IMPORTANT that you use lean tools, especially those for searching, when you create your proofs, especially if you get stuck. 
+WORKFLOW: lean_file_contents → lean_goal at sorry positions → work on proof → lean_write_file → lean_diagnostic_messages to verify. Use search tools when stuck. 
 """
 
                 messages = [{"role": "user", "content": prompt}]
