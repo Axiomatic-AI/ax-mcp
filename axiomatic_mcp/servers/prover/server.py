@@ -60,10 +60,11 @@ def synthesize_claude_output(response):
     - lean_file_contents: Read Lean files with line numbers
     - lean_write_file: Write content to Lean files (save proof solutions)
     - lean_diagnostic_messages: Get diagnostic messages for Lean files
+    - lean_goal: Get proof goals and context at specific line positions
     - lean_leansearch: Search for theorems and lemmas using natural language  
     - lean_loogle: Search for lemmas by type signature
 
-    Workflow: Read file → Analyze → Write improved proof → Verify with diagnostics. Use search tools when stuck.
+    Workflow: Read file → Check goals at positions → Write improved proof → Verify with diagnostics. Use search tools when stuck.
     """,
     tags=["lean", "proving", "mcp", "agent"],
 )
@@ -72,7 +73,7 @@ async def mcp_agent_execute(
     project_path: Annotated[str, "Path to the Lean project"] = "/Users/marcodeltredici/PycharmProjects/Axiomatic/AX_Lean_Physics",
     name: Annotated[str, "Agent name"] = "Prover",
     model: Annotated[str, "Claude model to use"] = "claude-sonnet-4-20250514",
-    lean_tools_filter: Annotated[Optional[List[str]], "List of Lean tools to include (None = all tools)"] = ["lean_diagnostic_messages", "lean_leansearch", "lean_loogle", "lean_file_contents", "lean_write_file"],
+    lean_tools_filter: Annotated[Optional[List[str]], "List of Lean tools to include (None = all tools)"] = ["lean_diagnostic_messages", "lean_leansearch", "lean_loogle", "lean_file_contents", "lean_write_file", "lean_goal"],
     max_iterations: Annotated[int, "Maximum tool use iterations"] = 100,
     max_tokens: Annotated[int, "Maximum tokens per API call"] = 5000,
 ) -> Annotated[str, "Agent execution result"]:
@@ -157,19 +158,11 @@ async def mcp_agent_execute(
                 # Create initial message with file path
                 prompt = f"""You are an expert Lean theorem prover. You need to work with the Lean file at: {file_path}
 
-IMPORTANT: Before doing anything else, you MUST:
-1. Use lean_file_contents to read the content of the file
-2. Use lean_diagnostic_messages to check the file for any existing errors
-
 The general approach you must follow is:
 (1) Read the file content and analyze what theorems need to be proven
 (2) Run lean_diagnostic_messages to check the current state  
 (3) Look at the theorem and identify proofs with 'sorry'
-(4) Produce an initial sketch of the proof: a high-level outline of the proof steps without any specific tactics
-(5) Formalize each step of the proof in Lean4 using have statements (you CANNOT include tactics initially)
-(6) Use lean_write_file to save your proposed solution back to the file
-(7) Use lean_diagnostic_messages to verify your solution works
-
+(4) Produce an initial sketch of the proof: a high-level outline of the proof steps without any specific tactics.
 For example, when working with this theorem:
 
 -- theorem statement
@@ -220,10 +213,11 @@ You can use the following Lean tools:
     - 'lean_file_contents': Read Lean files with line numbers  
     - 'lean_write_file': Write content to Lean files (use this to save your proof solutions)
     - 'lean_diagnostic_messages': Get diagnostic messages (errors, warnings) for Lean files
+    - 'lean_goal': Get proof goals and context at specific line positions (very useful for understanding what to prove)
     - 'lean_leansearch': Search for theorems and lemmas using natural language
     - 'lean_loogle': Search for lemmas by type signature
 
-WORKFLOW: Always lean_file_contents first, then work on the proof, lean_write_file to save changes, and lean_diagnostic_messages to verify. Use the search tools when you get stuck. 
+WORKFLOW: lean_file_contents → lean_goal at sorry positions → work on proof → lean_write_file → lean_diagnostic_messages to verify. Use search tools when stuck. 
 """
 
                 messages = [{"role": "user", "content": prompt}]
