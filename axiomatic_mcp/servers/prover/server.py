@@ -14,7 +14,7 @@ mcp = FastMCP(
     name="Lean Prover",
     instructions="""A prover that takes a lean theorem that is not complete and completes a proof.
     You must use the tools provided to you to complete the proof. You first will write the incomplete
-    proof to a file titled 'proof.lean' in the current directory. You then will use the tools provided to you to complete the proof
+    proof to a file in the /Users/jacobmccarran_ax/ax-mcp/proofs directory. You then will use the tools provided to you to complete the proof
     by filling in that file and using the lean_diagnostic_message tool to figure out when the proof is complete.
     So when you think the proof is complete, you will use the lean_diagnostic_messages tool to check the file for any issues.
 
@@ -70,7 +70,7 @@ def synthesize_claude_output(response):
 )
 async def mcp_agent_execute(
     file_path: Annotated[str, "Absolute path to Lean file to analyze and prove"],
-    project_path: Annotated[str, "Path to the Lean project"] = "/Users/marcodeltredici/PycharmProjects/Axiomatic/AX_Lean_Physics",
+    project_path: Annotated[str, "Path to the Lean project"] = "/Users/jacobmccarran_ax/ax-mcp/proofs",
     name: Annotated[str, "Agent name"] = "Prover",
     model: Annotated[str, "Claude model to use"] = "claude-sonnet-4-20250514",
     lean_tools_filter: Annotated[Optional[List[str]], "List of Lean tools to include (None = all tools)"] = ["lean_diagnostic_messages", "lean_leansearch", "lean_loogle", "lean_file_contents", "lean_write_file", "lean_goal"],
@@ -107,7 +107,7 @@ async def mcp_agent_execute(
     
     # Add elan bin directory to PATH so lake command can be found
     current_path = env.get("PATH", "")
-    elan_path = "/Users/marcodeltredici/.elan/bin"
+    elan_path = "/Users/jacobmccarran_ax/.elan/bin"
     if elan_path not in current_path:
         env["PATH"] = f"{elan_path}:{current_path}"
 

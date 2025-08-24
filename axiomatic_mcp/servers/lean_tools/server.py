@@ -64,13 +64,27 @@ def lean_diagnostic_messages(
 ) -> Annotated[List[str], "List of diagnostic messages (errors, warnings, info)"]:
     """Get diagnostic messages for a Lean file."""
     try:
-        # Use lean to check the file
-        result = subprocess.run(
-            ["lean", file_path],
-            capture_output=True,
-            text=True,
-            timeout=30
-        )
+        # Use lake lean to check the file from the project directory for better project context
+        project_dir = os.path.dirname(file_path)
+        
+        # First try lake lean (project-aware)
+        try:
+            result = subprocess.run(
+                ["lake", "lean", file_path],
+                cwd=project_dir,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+        except FileNotFoundError:
+            # Fallback to lean if lake is not available
+            result = subprocess.run(
+                ["lean", file_path],
+                cwd=project_dir,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
         
         diagnostics = []
         
@@ -129,9 +143,24 @@ def lean_run_code(
             temp_file = f.name
         
         try:
-            # Check the file with Lean
+            # Check the file with Lean from the project directory
+            # Try to detect project directory from current working directory or use a default
+            project_dir = os.getcwd()
+            if os.path.exists(os.path.join(project_dir, "lakefile.lean")):
+                # We're in a Lean project directory
+                pass
+            else:
+                # Try to find a parent directory with lakefile.lean
+                parent_dir = os.path.dirname(project_dir)
+                if os.path.exists(os.path.join(parent_dir, "lakefile.lean")):
+                    project_dir = parent_dir
+                else:
+                    # Fallback to current directory
+                    project_dir = os.getcwd()
+            
             result = subprocess.run(
                 ["lean", temp_file],
+                cwd=project_dir,
                 capture_output=True,
                 text=True,
                 timeout=30
@@ -332,16 +361,28 @@ def lean_goal(
             temp_file = f.name
         
         try:
-            # Step 4: Run lean on the temporary file from project directory
+            # Step 4: Run lake lean on the temporary file from project directory for better project context
             # Try to detect project directory from file_path
             project_dir = os.path.dirname(file_path)
-            result = subprocess.run(
-                ["lean", temp_file],
-                cwd=project_dir,
-                capture_output=True,
-                text=True,
-                timeout=30
-            )
+            
+            # First try lake lean (project-aware)
+            try:
+                result = subprocess.run(
+                    ["lake", "lean", temp_file],
+                    cwd=project_dir,
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+            except FileNotFoundError:
+                # Fallback to lean if lake is not available
+                result = subprocess.run(
+                    ["lean", temp_file],
+                    cwd=project_dir,
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
             
             # Step 5: Parse the output for goal state information
             output = result.stdout if result.stdout else result.stderr
@@ -369,7 +410,7 @@ def lean_goal(
                     return "No goals (proof complete at this position)"
                 else:
                     return f"No goal information found. Lean output:\n{output}"
-                
+                    
         finally:
             # Step 6: Clean up temporary file
             try:
