@@ -1,6 +1,6 @@
 # Axiomatic MCP Servers
 
-MCP (Model Context Protocol) servers that provide AI assistants with access to the [Axiomatic AI](https://axiomatic.ai) platform - a suite of advanced tools for scientific computing, document processing, and photonic circuit design.
+MCP (Model Context Protocol) servers that provide AI assistants with access to the Axiomatic_AI Platform - a suite of advanced tools for scientific computing, document processing, and photonic circuit design.
 
 ## Available Servers
 
