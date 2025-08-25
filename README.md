@@ -138,6 +138,8 @@ axiomatic-mydomain = "axiomatic_mcp.servers.my_domain:main"
 
 5. Update README.md with instructions on installing your server. You can generate the "Add to cursor" button [here](https://docs.cursor.com/en/tools/developers)
 
+6. Don't forget to link to your server's README.md in the main project README.md
+
 ### Release Process
 
 #### Publishing a Release
