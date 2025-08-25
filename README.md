@@ -60,6 +60,8 @@ You can install each domain server independently based on your needs. These can 
 }
 ```
 
+[Short Demo Video (Claude Code)](https://youtu.be/6PFVK_couxs)
+
 ## Development
 
 1. Clone the repository:
