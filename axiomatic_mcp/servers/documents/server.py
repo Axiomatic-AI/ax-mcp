@@ -1,5 +1,6 @@
 """Documents MCP server for filesystem document operations."""
 
+import base64
 from pathlib import Path
 from typing import Annotated
 
@@ -38,6 +39,18 @@ async def document_to_markdown(
     response = AxiomaticAPIClient().post("/document/parse", files=files, data=data)
     markdown: str = response["markdown"]
     name = file_path.stem + ".md"
+
+    image_folder = Path(file_path.stem + "_images")
+    image_folder.mkdir(exist_ok=True)
+    for img_id, encoded_string in response["images"].items():
+        image_data = base64.b64decode(encoded_string)
+        output_image_path = image_folder / f"{img_id}.png"
+
+        with output_image_path.open("wb") as image_file:
+            image_file.write(image_data)
+
+    markdown = markdown.replace("![](images/", f"![]({image_folder.name}/")
+
     return ToolResult(
         content=[TextContent(type="text", text=f"Generated markdown for: {name}\n\n```markdown\n{markdown}\n```")],
         structured_content={
