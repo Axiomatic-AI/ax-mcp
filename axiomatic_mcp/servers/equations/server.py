@@ -31,12 +31,9 @@ async def compose_expression(
     try:
         response = await pdf_to_markdown(file_path)
 
-        input_body = {
-            "source_document": response.markdown,
-            "task": task,
-        }
+        input_body = {"source_doc": response.markdown, "task": task}
 
-        response = AxiomaticAPIClient().post("/document/expression/compose", input_body=input_body)
+        response = AxiomaticAPIClient().post("/document/expression/compose", data=input_body)
 
         return ToolResult(
             composed_expression=response["composed_expression"], comments=response["comments"], composition_code=response["composition_code"]
