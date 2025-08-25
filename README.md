@@ -1,68 +1,55 @@
-# Axiomatic MCP Server
+# Axiomatic MCP Servers
 
-MCP (Model Context Protocol) server for the Axiomatic_AI platform, built with FastMCP in Python. Provides access to Axiomatic_AI's tools via MCP.
+MCP (Model Context Protocol) servers that provide AI assistants with access to the [Axiomatic AI](https://axiomatic.ai) platform - a suite of advanced tools for scientific computing, document processing, and photonic circuit design.
 
-- **FastMCP-based server**: Built on the FastMCP framework for efficient MCP implementation
-- **Axiomatic API integration**: Connects to Axiomatic AI's API for various tooling
-- **Simple configuration**: Easy setup with API key environment variable
+## Available Servers
+
+### 📄 [Documents Server](./axiomatic_mcp/servers/documents/)
+
+Convert PDF documents to markdown with advanced OCR and layout understanding.
+
+### 📊 [Plots Server](./axiomatic_mcp/servers/plots/)
+
+Extract numerical data from plot images for analysis and reproduction.
+
+### 🔬 [PIC Designer Server](./axiomatic_mcp/servers/pic/)
+
+Design photonic integrated circuits using natural language descriptions.
+
+## Getting an API Key
+
+All Axiomatic MCP servers require an API key:
+
+1. Contact developers@axiomatic-ai.com to request access
+2. Add the API key to your MCP client configuration as `AXIOMATIC_API_KEY`
 
 ## Installation
 
-> **Important**: This will install the latest released version (see [releases](https://github.com/Axiomatic-AI/ax-mcp/releases)). To install the latest development version, see the development instructions
+Installation instructions can be found for each specific server in their README.
 
-You can install each domain server independently based on your needs. These can be installed in many MCP clients such as cursor or claude.
+### Setting up MCP Servers in AI Clients
 
-**For PIC Domain:**
+#### Claude Desktop
 
-[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=axiomatic-pic&config=eyJjb21tYW5kIjoidXZ4IC0tZnJvbSBheGlvbWF0aWMtbWNwIGF4aW9tYXRpYy1waWMiLCJlbnYiOnsiQVhJT01BVElDX0FQSV9LRVkiOiJFTlRFUiBZT1VSIEFQSSBLRVkifX0%3D)
+1. Open Claude Desktop settings
+2. Navigate to Developer → Edit MCP config
+3. Add the server configuration(s) above
+4. Restart Claude Desktop
 
-```json
-{
-  "axiomatic-pic": {
-    "command": "uvx",
-    "args": ["--from", "axiomatic-mcp", "axiomatic-pic"],
-    "env": {
-      "AXIOMATIC_API_KEY": "your-api-key-here"
-    }
-  }
-}
-```
+#### Cursor
 
-**For Documents:**
+1. Open Cursor settings (Cmd/Ctrl + ,)
+2. Search for "MCP"
+3. Add the server configuration(s) to the MCP settings
+4. Restart Cursor
 
-[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=axiomatic-documents&config=eyJjb21tYW5kIjoidXZ4IC0tZnJvbSBheGlvbWF0aWMtbWNwIGF4aW9tYXRpYy1kb2N1bWVudHMiLCJlbnYiOnsiQVhJT01BVElDX0FQSV9LRVkiOiJFTlRFUiBZT1VSIEFQSSBLRVkifX0%3D)
+#### Other MCP Clients
 
-```json
-{
-  "axiomatic-documents": {
-    "command": "uvx",
-    "args": ["--from", "axiomatic-mcp", "axiomatic-documents"],
-    "env": {
-      "AXIOMATIC_API_KEY": "your-api-key-here"
-    }
-  }
-}
-```
-
-**For Plots:**
-
-[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=axiomatic-plots&config=eyJjb21tYW5kIjoidXZ4IC0tZnJvbSBheGlvbWF0aWMtbWNwIGF4aW9tYXRpYy1wbG90cyIsImVudiI6eyJBWElPTUFUSUNfQVBJX0tFWSI6InlvdXItYXBpLWtleS1oZXJlIn19)
-
-```json
-{
-  "axiomatic-plots": {
-    "command": "uvx",
-    "args": ["--from", "axiomatic-mcp", "axiomatic-plots"],
-    "env": {
-      "AXIOMATIC_API_KEY": "your-api-key-here"
-    }
-  }
-}
-```
-
-[Short Demo Video (Claude Code)](https://youtu.be/6PFVK_couxs)
+Refer to your client's documentation for MCP server configuration.
 
 ## Development
+
+### Local Development Setup
 
 1. Clone the repository:
 
@@ -77,23 +64,9 @@ cd ax-mcp
 make install-dev
 ```
 
-3. Add servers to Cursor using Python module paths:
+3. Configure your MCP client to use local Python modules:
 
-**For PIC Domain:**
-
-```json
-{
-  "axiomatic-pic": {
-    "command": "python",
-    "args": ["-m", "axiomatic_mcp.servers.pic"],
-    "env": {
-      "AXIOMATIC_API_KEY": "your-api-key-here"
-    }
-  }
-}
-```
-
-**For Documents:**
+> See specific MCP server README for specific installation instructions.
 
 ```json
 {
@@ -105,30 +78,6 @@ make install-dev
     }
   }
 }
-```
-
-**For Plots:**
-
-```json
-{
-  "axiomatic-plots": {
-    "command": "python",
-    "args": ["-m", "axiomatic_mcp.servers.plots"],
-    "env": {
-      "AXIOMATIC_API_KEY": "your-api-key-here"
-    }
-  }
-}
-```
-
-### Project Structure
-
-```
-ax-mcp/
-├── axiomatic_mcp/
-│   ├── shared/              # Shared utilities
-│   └── servers/             # Domain-specific servers
-├── pyproject.toml           # Python package configuration
 ```
 
 ### Adding a New Server
@@ -189,6 +138,33 @@ axiomatic-mydomain = "axiomatic_mcp.servers.my_domain:main"
 
 5. Update README.md with instructions on installing your server. You can generate the "Add to cursor" button [here](https://docs.cursor.com/en/tools/developers)
 
+6. Don't forget to link to your server's README.md in the main project README.md
+
+### Release Process
+
+#### Publishing a Release
+
+1. Create a new release branch
+1. Update version in `pyproject.toml`
+1. Commit and push changes
+1. Create a pull request titled "Release: YOUR FEATURE(s)". Include detailed description of what's included in the release.
+1. Create a GitHub release with tag `vX.Y.Z`
+1. GitHub Actions automatically publishes to PyPI
+
+The package is available at: https://pypi.org/project/axiomatic-mcp/
+
+## Contributing
+
+We welcome contributions! To add a new server or improve existing ones:
+
+1. Fork the repository
+2. Create a feature branch
+3. Implement your changes following the existing patterns
+4. Add documentation to your server directory
+5. Submit a pull request
+
+For detailed guidelines on adding new servers, see the [Development](#development) section.
+
 ## Troubleshooting
 
 ### Server not appearing in Cursor
@@ -206,15 +182,7 @@ Install only the domain servers you need. Each server runs independently, so you
 1. Verify your API key is set correctly
 2. Check internet connection
 
-## Release Process
+## Support
 
-### Publishing a Release
-
-1. Create a new release branch
-1. Update version in `pyproject.toml`
-1. Commit and push changes
-1. Create a pull request titled "Release: YOUR FEATURE(s)". Include detailed description of what's included in the release.
-1. Create a GitHub release with tag `vX.Y.Z`
-1. GitHub Actions automatically publishes to PyPI
-
-The package is available at: https://pypi.org/project/axiomatic-mcp/
+- **Issues**: [GitHub Issues](https://github.com/axiomatic/ax-mcp/issues)
+- **Email**: developers@axiomatic-ai.com
