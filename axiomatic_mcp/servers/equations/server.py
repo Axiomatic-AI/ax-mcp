@@ -21,7 +21,9 @@ mcp = FastMCP(
     description="Compose an expression of your interest given the information form the source documents and equations residing there. Provide descrption of the expression you want to compose.",
     tags=["equations", "compose"],
 )
-async def compose_expression(file_path: Annotated[Path, "The absolute path to the PDF file to analyze"], task: Annotated[str, "The task to be done for expression composition"]) -> ToolResult:
+async def compose_expression(
+    file_path: Annotated[Path, "The absolute path to the PDF file to analyze"], task: Annotated[str, "The task to be done for expression composition"]
+) -> ToolResult:
     """If you have scientific text with equations, but you dont see the equation you're
     interested in then use this tool and simply say: >>Express the energy in terms of
      valocity and position<<, or something like that. The tool will return the desired expression
