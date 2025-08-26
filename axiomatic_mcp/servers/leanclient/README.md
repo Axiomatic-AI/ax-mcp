@@ -20,24 +20,6 @@ An advanced Lean 4 MCP (Model Context Protocol) server that provides comprehensi
 uvx --from "axiomatic-mcp[lean]" axiomatic-leanclient
 ```
 
-### Development Installation
-
-1. Clone the repository:
-```bash
-git clone https://github.com/axiomatic/ax-mcp.git
-cd ax-mcp
-```
-
-2. Install with Lean dependencies:
-```bash
-pip install -e ".[lean]"
-```
-
-3. Run the server:
-```bash
-python -m axiomatic_mcp.servers.leanclient
-```
-
 ### MCP Configuration
 
 #### For Cursor IDE
@@ -74,7 +56,7 @@ Add to your MCP settings (`.cursor/mcp.json`):
 - `LEAN_PROJECT_PATH`: Path to your Lean project directory (optional)
 
 **Requirements:**
-- The `leanclient` Python package (installed with `[lean]` extra)
+- The `leanclient` Python package (installed with `[lean]` extra)  
 - Lean 4 installation (for LSP functionality)
 
 ## Usage Examples
