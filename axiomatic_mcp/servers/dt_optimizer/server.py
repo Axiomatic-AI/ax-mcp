@@ -259,7 +259,8 @@ async def get_optimization_examples() -> ToolResult:
             "category": "Analytical Function",
             "description": "Single exponential decay/growth with offset - good for radioactive decay, signal attenuation, population growth",
             "model_name": "ExponentialModel",
-            "function_source": "def y(t, amplitude, decay_rate, offset):\n    return amplitude * jnp.exp(-decay_rate * t) + offset",
+            "function_source": """def y(t, amplitude, decay_rate, offset):
+    return amplitude * jnp.exp(-decay_rate * t) + offset""",
             "function_name": "y",
             "docstring": "Exponential model template",
             "parameters": [
@@ -287,7 +288,8 @@ async def get_optimization_examples() -> ToolResult:
             "category": "Analytical Function",
             "description": "Polynomial function - good for parabolic relationships, response curves",
             "model_name": "PolynomialModel",
-            "function_source": "def y(x, a, b, c):\n    return a * x**2 + b * x + c",
+            "function_source": """def y(x, a, b, c):
+    return a * x**2 + b * x + c""",
             "function_name": "y",
             "docstring": "Polynomial model template",
             "parameters": [
@@ -315,7 +317,8 @@ async def get_optimization_examples() -> ToolResult:
             "category": "Analytical Function",
             "description": "Sinusoidal oscillation - good for periodic signals, vibrations, waves",
             "model_name": "SinusoidalModel",
-            "function_source": "def y(t, amplitude, frequency, phase, offset):\n    return amplitude * jnp.sin(2 * jnp.pi * frequency * t + phase) + offset",  # noqa: E501
+            "function_source": """def y(t, amplitude, frequency, phase, offset):
+    return amplitude * jnp.sin(2 * jnp.pi * frequency * t + phase) + offset""",
             "function_name": "y",
             "docstring": "Sinusoidal model template",
             "parameters": [
@@ -341,6 +344,121 @@ async def get_optimization_examples() -> ToolResult:
             "jit_compile": True,
             "optimizer_config": {"use_gradient": True, "tol": 1e-06},
         },
+        "ODE_system_example": {
+            "category": "ODE System",
+            "description": "This models a chemical reactor in which the reaction A+B <=> C => D is happening. The concentrations of A and D are observed.",
+            "model_name": "ODESystem",
+            "function_source": """import diffrax
+import jax.numpy as jnp
+
+def c_obs(ts, A0, B0, C0, D0, k1, k2, k3):
+    def dc(t, c, p):
+        k1, k2, k3 = p
+        A, B, C, D = c
+        dA = -k1 * A * B + k2 * C
+        dB = -k1 * A * B + k2 * C
+        dC = k1 * A * B - k2 * C - k3 * C
+        dD = k3 * C
+        return jnp.array([dA, dB, dC, dD])
+
+    c0 = jnp.array([A0, B0, C0, D0])
+    k = jnp.array([k1, k2, k3])
+
+    saveat = diffrax.SaveAt(ts=ts)
+    sol = diffrax.diffeqsolve(
+        diffrax.ODETerm(dc),
+        diffrax.Dopri5(),
+        t0=0.0,
+        t1=ts[-1],
+        dt0=0.01,
+        y0=c0,
+        args=k,
+        saveat=saveat,
+    )
+    return sol.ys[:, [0, 3]]""",
+            "model_name": "ReactionModel",
+            "function_name": "c_obs",
+            "docstring": "ReactionModel - observed concentrations (A and D only)",
+            "jit_compile": True,
+            "tolerance": 1e-06,
+            "max_time": 10,
+            "optimizer_type": "nlopt",
+            "cost_function_type": "mse",
+            "optimizer_config": {"use_gradient": True, "tol": 1e-06},
+            "parameters": [
+                {"name": "A0", "value": {"magnitude": 2.0, "unit": "dimensionless"}},
+                {"name": "B0", "value": {"magnitude": 2.0, "unit": "dimensionless"}},
+                {"name": "C0", "value": {"magnitude": 0.0, "unit": "dimensionless"}},
+                {"name": "D0", "value": {"magnitude": 0.0, "unit": "dimensionless"}},
+                {"name": "k1", "value": {"magnitude": 1.0, "unit": "dimensionless"}},
+                {"name": "k2", "value": {"magnitude": 1.0, "unit": "dimensionless"}},
+                {"name": "k3", "value": {"magnitude": 1.0, "unit": "dimensionless"}},
+            ],
+            "bounds": [
+                {
+                    "name": "A0",
+                    "lower": {"magnitude": 0.0, "unit": "dimensionless"},
+                    "upper": {"magnitude": 5.0, "unit": "dimensionless"},
+                },
+                {
+                    "name": "B0",
+                    "lower": {"magnitude": 0.0, "unit": "dimensionless"},
+                    "upper": {"magnitude": 5.0, "unit": "dimensionless"},
+                },
+                {
+                    "name": "C0",
+                    "lower": {"magnitude": 0.0, "unit": "dimensionless"},
+                    "upper": {"magnitude": 5.0, "unit": "dimensionless"},
+                },
+                {
+                    "name": "D0",
+                    "lower": {"magnitude": 0.0, "unit": "dimensionless"},
+                    "upper": {"magnitude": 5.0, "unit": "dimensionless"},
+                },
+                {
+                    "name": "k1",
+                    "lower": {"magnitude": 0.0, "unit": "dimensionless"},
+                    "upper": {"magnitude": 5.0, "unit": "dimensionless"},
+                },
+                {
+                    "name": "k2",
+                    "lower": {"magnitude": 0.0, "unit": "dimensionless"},
+                    "upper": {"magnitude": 5.0, "unit": "dimensionless"},
+                },
+                {
+                    "name": "k3",
+                    "lower": {"magnitude": 0.0, "unit": "dimensionless"},
+                    "upper": {"magnitude": 5.0, "unit": "dimensionless"},
+                },
+                {
+                    "name": "ts",
+                    "lower": {"magnitude": 0.0, "unit": "dimensionless"},
+                    "upper": {"magnitude": 5.0, "unit": "dimensionless"},
+                },
+                {
+                    "name": "c_obs",
+                    "lower": {"magnitude": 0.0, "unit": "dimensionless"},
+                    "upper": {"magnitude": 10.0, "unit": "dimensionless"},
+                },
+            ],
+            "constants": [],
+            "input_data": {
+                "name": "ts",
+                "unit": "dimensionless",
+                "magnitudes": [0.0,0.10101010101010102,0.20202020202020204,0.30303030303030304,0.4040404040404041,0.5050505050505051,0.6060606060606061,0.7070707070707072,0.8080808080808082,0.9090909090909092,1.0101010101010102,1.1111111111111112,1.2121212121212122,1.3131313131313131,1.4141414141414144,1.5151515151515154,1.6161616161616164,1.7171717171717173,1.8181818181818183,1.9191919191919193], # Your existing ts_data
+            },
+            "target_data": {
+                "name": "c_obs",
+                "unit": "dimensionless",
+                "magnitudes": [[2.0290484183578608,0.00631150679115087],[1.7137258955755121,0.024575748765676548],[1.5840517018153317,0.04132967053685191],[1.4427320668271875,0.0580385719584766],[1.4124148995486188,0.1174516296450892],[1.368949685915051,0.18962503257090013],[1.3856405186866874,0.1932017018162794],[1.327393197993144,0.2150159392837813],[1.320938305668656,0.2418563193867974],[1.2936580207163744,0.34709043855172905],[1.3265907557052494,0.31604863425471974],[1.2772348154008333,0.3753005607117635],[1.2905260802750524,0.3824411022702551],[1.225388509509597,0.4288665690240162],[1.2294967390654807,0.472034492741107],[1.2352881942703335,0.45098857640967654],[1.2728845501112902,0.4682197703679211],[1.175889961410413,0.5215439950855341],[1.2224806724593729,0.5379143345300662],[1.1762241778536051,0.5877739882163965]],  # Your existing 2D data array
+            },
+            "optimizer_type": "nlopt",
+            "cost_function_type": "mse",
+            "max_time": 5,
+            "tolerance": 1e-06,
+            "jit_compile": True,
+            "optimizer_config": {"use_gradient": True, "tol": 1e-06},
+        },
     }
 
     # Concise template overview for LLMs
@@ -349,9 +467,15 @@ async def get_optimization_examples() -> ToolResult:
         template_summary[key] = {
             "category": template["category"],
             "description": template["description"],
-            "function": template["function_source"].split("\n")[0],  # Just the function signature
+            "function": template["function_source"],  # Just the function signature
             "parameters": len(template["parameters"]),
             "use_cases": template["description"].split(" - ")[1] if " - " in template["description"] else "General modeling",
+            "optimizer_type": template["optimizer_type"],
+            "cost_function_type": template["cost_function_type"],
+            "max_time": template["max_time"],
+            "tolerance": template["tolerance"],
+            "jit_compile": template["jit_compile"],
+            "optimizer_config": template["optimizer_config"],
         }
 
     summary_text = f"""# 🧬 Digital Twin Optimization Templates
