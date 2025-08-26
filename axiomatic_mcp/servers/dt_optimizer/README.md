@@ -17,10 +17,9 @@ Optimizes model parameters to fit experimental data using various optimization a
 - `function_source` (str, required): Python function definition using JAX operations (jnp.*)
 - `parameters` (list, required): List of parameter specifications with name, initial value, and bounds
 - `data_points` (list, required): List of data points with x, y values and optional units
-- `optimizer` (str, optional, default="nlopt"): Optimization algorithm ("nlopt", "scipy", "nevergrad")
-- `cost_function` (str, optional, default="mse"): Cost function ("mse", "mae", "huber", "relative_mse")
+- `optimizer_type` (str, optional, default="nlopt"): Optimization algorithm ("nlopt", "scipy", "nevergrad")
+- `cost_function_type` (str, optional, default="mse"): Cost function ("mse", "mae", "huber", "relative_mse")
 - `max_iterations` (int, optional, default=1000): Maximum optimization iterations
-
 **Returns:**
 
 - Optimized parameter values
