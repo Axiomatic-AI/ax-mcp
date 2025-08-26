@@ -80,23 +80,27 @@ async def optimize_digital_twin_model(
     parameters: Annotated[list, "Initial parameter guesses: [{'name': 'a', 'value': {'magnitude': 2.0, 'unit': 'dimensionless'}}]"],
     bounds: Annotated[
         list,
-        "ALL parameter/input/output bounds: [{'name': 'a', 'lower': {'magnitude': 0, 'unit': 'dimensionless'}, 'upper': {'magnitude': 10, 'unit': 'dimensionless'}}]",
+        "ALL parameter/input/output bounds: [{'name': 'a', 'lower': {'magnitude': 0, 'unit': 'dimensionless'}, 'upper': {'magnitude': 10, 'unit': 'dimensionless'}}]",  # noqa: E501
     ],
     input_data: Annotated[dict, "Input data: {'name': 'wavelength', 'unit': 'nanometer', 'magnitudes': [1550, 1551, ...]}"],
     target_data: Annotated[dict, "Target data: {'name': 'transmission', 'unit': 'dimensionless', 'magnitudes': [0.8, 0.6, ...]}"],
     # Optional parameters with defaults
-    constants: Annotated[list, "Fixed constants: [{'name': 'c', 'value': {'magnitude': 3.0, 'unit': 'meter'}}]"] = [],
+    constants: Annotated[list | None, "Fixed constants: [{'name': 'c', 'value': {'magnitude': 3.0, 'unit': 'meter'}}]"] = None,
     docstring: Annotated[str, "Brief description of the model"] = "",
     tolerance: Annotated[float, "Optimization tolerance"] = 1e-6,
     optimizer_type: Annotated[str, "Optimizer: 'nlopt' (best default), 'scipy' (simple), 'nevergrad' (gradient-free)"] = "nlopt",
     cost_function_type: Annotated[str, "Cost function: 'mse' (default), 'mae', 'huber', 'relative_mse'"] = "mse",
     max_time: Annotated[int, "Maximum optimization time in seconds"] = 5,
     jit_compile: Annotated[bool, "Enable JIT compilation for performance"] = True,
-    optimizer_config: Annotated[dict, "Optimizer config: {'use_gradient': True, 'tol': 1e-6, 'max_function_eval': 1000000}"] = {},
+    optimizer_config: Annotated[dict | None, "Optimizer config: {'use_gradient': True, 'tol': 1e-6, 'max_function_eval': 1000000}"] = None,
 ) -> ToolResult:
     """Optimize a digital twin model using the Axiomatic AI platform."""
 
     # Build API request exactly matching the expected format
+    if optimizer_config is None:
+        optimizer_config = {}
+    if constants is None:
+        constants = []
     request_data = {
         "model_name": model_name,
         "parameters": parameters,
@@ -311,7 +315,7 @@ async def get_optimization_examples() -> ToolResult:
             "category": "Analytical Function",
             "description": "Sinusoidal oscillation - good for periodic signals, vibrations, waves",
             "model_name": "SinusoidalModel",
-            "function_source": "def y(t, amplitude, frequency, phase, offset):\n    return amplitude * jnp.sin(2 * jnp.pi * frequency * t + phase) + offset",
+            "function_source": "def y(t, amplitude, frequency, phase, offset):\n    return amplitude * jnp.sin(2 * jnp.pi * frequency * t + phase) + offset",  # noqa: E501
             "function_name": "y",
             "docstring": "Sinusoidal model template",
             "parameters": [
