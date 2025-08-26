@@ -89,7 +89,7 @@ async def optimize_digital_twin_model(
     docstring: Annotated[str, "Brief description of the model"] = "",
     tolerance: Annotated[float, "Optimization tolerance"] = 1e-6,
     optimizer_type: Annotated[str, "Optimizer: 'nlopt' (best default), 'scipy' (simple), 'nevergrad' (gradient-free)"] = "nlopt",
-    cost_function_type: Annotated[str, "Cost function: 'mse' (default), 'mae', 'huber', 'relative_mse'"] = "mse",
+    cost_function_type: Annotated[str, "Cost function: 'mse' (default), 'mae', 'huber (with delta=1.0)', 'relative_mse'"] = "mse",
     max_time: Annotated[int, "Maximum optimization time in seconds"] = 5,
     jit_compile: Annotated[bool, "Enable JIT compilation for performance"] = True,
     optimizer_config: Annotated[dict | None, "Optimizer config: {'use_gradient': True, 'tol': 1e-6, 'max_function_eval': 1000000}"] = None,
@@ -362,10 +362,6 @@ async def get_optimization_examples() -> ToolResult:
 • `analytical_exponential` - Exponential decay/growth models
 • `analytical_polynomial` - Polynomial/quadratic functions
 • `analytical_trigonometric` - Sinusoidal/periodic signals
-
-** Dynamic Systems:**
-• `ode_first_order` - First-order differential equations
-• `multi_component` - Multi-exponential/compartment models
 
 ## How to Use:
 1. **Pick a template** closest to your model structure
