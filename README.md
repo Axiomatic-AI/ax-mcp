@@ -16,6 +16,10 @@ Extract numerical data from plot images for analysis and reproduction.
 
 Design photonic integrated circuits using natural language descriptions.
 
+### ⚙️ [Digital Twin Optimizer Server](./axiomatic_mcp/servers/dt_optimizer/)
+
+Optimize mathematical models and digital twins using advanced algorithms and experimental data fitting.
+
 ## Getting an API Key
 
 All Axiomatic MCP servers require an API key:
