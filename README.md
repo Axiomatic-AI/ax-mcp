@@ -107,7 +107,7 @@ You can install each domain server independently based on your needs. These can 
     "command": "uvx",
     "args": ["--from", "axiomatic-mcp", "axiomatic-statement-negation"],
     "env": {
-      "AXIOMATIC_API_KEY": "your-axiomatic-api-key-here"
+      "OPENAI_API_KEY": "your-openai-api-key-here"
     }
   }
 }
@@ -129,10 +129,7 @@ For a complete mathematical proof workflow, you might want to install all three 
     },
     "axiomatic-lean-tools": {
       "command": "uvx",
-      "args": ["--from", "axiomatic-mcp", "axiomatic-lean-tools"],
-      "env": {
-        "ANTHROPIC_API_KEY": "your-anthropic-api-key-here"
-      }
+      "args": ["--from", "axiomatic-mcp", "axiomatic-lean-tools"]
     },
     "axiomatic-prover": {
       "command": "uvx",
@@ -184,10 +181,7 @@ make install-dev
 {
   "axiomatic-lean-tools": {
     "command": "python",
-    "args": ["-m", "axiomatic_mcp.servers.lean_tools"],
-    "env": {
-      "ANTHROPIC_API_KEY": "your-anthropic-api-key-here"
-    }
+    "args": ["-m", "axiomatic_mcp.servers.lean_tools"]
   }
 }
 ```
@@ -244,7 +238,7 @@ make install-dev
     "command": "python",
     "args": ["-m", "axiomatic_mcp.servers.statement_negation"],
     "env": {
-      "AXIOMATIC_API_KEY": "your-axiomatic-api-key-here"
+      "OPENAI_API_KEY": "your-openai-api-key-here"
     }
   }
 }
@@ -367,8 +361,10 @@ Install only the domain servers you need. Each server runs independently, so you
 1. Verify your API key is set correctly
 2. Check internet connection
 3. Ensure you're using the correct API key type:
-   - `ANTHROPIC_API_KEY` for mathematical proof tools
-   - `AXIOMATIC_API_KEY` for content processing tools
+   - `ANTHROPIC_API_KEY` for mathematical proof tools (autoformalizer, prover)
+   - `AXIOMATIC_API_KEY` for content processing tools (pic, documents)
+   - `OPENAI_API_KEY` for statement negation tool
+   - No API key required for lean_tools (standalone Lean 4 integration)
 
 ### Lean 4 setup issues
 
