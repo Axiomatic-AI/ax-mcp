@@ -4,6 +4,7 @@ from typing import Annotated
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.tools.tool import ToolResult
+from mcp.types import TextContent
 
 from axiomatic_mcp.shared.documents.pdf_to_markdown import pdf_to_markdown
 
@@ -39,7 +40,11 @@ async def compose_expression(
         response = AxiomaticAPIClient().post("/document/expression/compose", data=input_body)
 
         return ToolResult(
-            composed_expression=response["composed_expression"], comments=response["comments"], composition_code=response["composition_code"]
+            content=[
+                TextContent(type="text", text=f"Composed expression: {response.get('composed_expression')}"),
+                TextContent(type="text", text=f"Comments: {response.get('comments')}"),
+                TextContent(type="text", text=f"Composition code: {response.get('composition_code')}"),
+            ]
         )
 
     except Exception as e:
