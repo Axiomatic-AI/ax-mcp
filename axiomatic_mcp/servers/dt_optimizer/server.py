@@ -18,6 +18,10 @@ mcp = FastMCP(
     name="Axiomatic Digital Twin Optimizer",
     instructions="""This server provides digital twin optimization using the Axiomatic AI platform.
 
+    USAGE GUIDE:
+    Get started with the `optimization_workflow` tool. It outlines how to process data and setup models, 
+    culminating in a succesful use of the `optimize_digital_twin_model` tool which is the main tool of this MCP.
+
     CRITICAL REQUIREMENTS for all function calls:
     1. ALL functions must use JAX operations: jnp.exp, jnp.sin, jnp.cos, jnp.sqrt, etc.
     2. ALL units must be valid pint units: 'dimensionless', 'nanometer', 'volt', 'second', etc.
@@ -60,7 +64,8 @@ mcp = FastMCP(
     description="""Optimize a custom JAX mathematical model against experimental data.
 
     This tool fits user-defined mathematical models to data using numerical optimization.
-    It requires JAX functions, valid pint units, and parameter bounds.
+    It requires JAX functions, valid pint units, and parameter bounds. Use the `optimization_workflow` tool 
+    to learn how to best apply this tool!
 
     REQUIREMENTS:
     - Functions must use JAX: jnp.exp(-b*x), jnp.sin(w*t), etc.
@@ -211,12 +216,12 @@ Call `get_optimization_examples` to see available templates:
 - **Analytical functions** (exponential, polynomial, trigonometric)
 - **ODE systems** (population dynamics, chemical kinetics)
 
-Pick the template closest to your model structure.
+Pick the template closest to your model structure as context for the optimization.
 
 ### 3️⃣ **Adapt the Template**
 - Replace the function with your model
 - Update parameter names and initial guesses
-- Set realistic bounds for all parameters AND input/output variables
+- *Set realistic bounds for ALL PARAMETERS, ALL INPUTS, AND ALL TARGETS/OUTPUTS variables*
 - Use proper pint units ('dimensionless', 'nanometer', 'volt', 'second', etc.)
 
 ### 4️⃣ **Ensure all Data is structured correctly following the Template**
