@@ -63,13 +63,45 @@ Provides step-by-step guidance for setting up and executing optimization workflo
 
 **Example Usage:**
 
+Via an LLM client such as Claude Desktop:
 ```
-Optimize an exponential decay model with parameters amplitude, decay_rate, and offset using this experimental data: [(0, 10.2), (1, 7.8), (2, 5.9), (3, 4.2), (4, 3.1)]
-```
-
+Given this data
+x = [-5, -4.66, -4.31, -3.97, -3.62, -3.28, -2.93, -2.59, -2.24, -1.9, -1.55, -1.21, -0.86, -0.52, -0.17, 0.17, 0.52, 0.86, 1.21, 1.55, 1.9, 2.24, 2.59, 2.93, 3.28, 3.62, 3.97, 4.31, 4.66, 5],
+y = [71.63, 62.31, 54.43, 46.8, 40.55, 33.55, 28.24, 23.83, 18.88, 14.05, 10.71, 8.32, 5.06, 3.86, 3.53, 2.81, 4.02, 3.51, 4.67, 6.71, 9.72, 12.79, 17.73, 20.76, 25.92, 31.87, 37.5, 44.55, 51.79, 59.92],
+use the axiomatic tool to fit a parabola.
 (wait for response)
 ```
 
+Example input for testing with the MCP Inspector
+```
+  model_name:
+  SimpleQuadratic
+
+  function_source:
+  def y(x, a, b, c):
+      return a * x**2 + b * x + c
+
+  function_name:
+  y
+
+  parameters:
+  [{"name": "a", "value": {"magnitude": 1, "unit": "dimensionless"}}, {"name": "b", "value": {"magnitude": 2, "unit": "dimensionless"}}, {"name": "c", "value": {"magnitude":
+   -5, "unit": "dimensionless"}}]
+
+  bounds:
+  [{"name": "a", "lower": {"magnitude": 0.5, "unit": "dimensionless"}, "upper": {"magnitude": 5, "unit": "dimensionless"}}, {"name": "b", "lower": {"magnitude": -5, "unit":
+  "dimensionless"}, "upper": {"magnitude": 5, "unit": "dimensionless"}}, {"name": "c", "lower": {"magnitude": -10, "unit": "dimensionless"}, "upper": {"magnitude": 10,
+  "unit": "dimensionless"}}, {"name": "x", "lower": {"magnitude": -5, "unit": "dimensionless"}, "upper": {"magnitude": 5, "unit": "dimensionless"}}, {"name": "y", "lower":
+  {"magnitude": 2.8, "unit": "dimensionless"}, "upper": {"magnitude": 72, "unit": "dimensionless"}}]
+
+  input_data:
+  {"name": "x", "unit": "dimensionless", "magnitudes": [-5, -4.66, -4.31, -3.97, -3.62, -3.28, -2.93, -2.59, -2.24, -1.9, -1.55, -1.21, -0.86, -0.52, -0.17, 0.17, 0.52,
+  0.86, 1.21, 1.55, 1.9, 2.24, 2.59, 2.93, 3.28, 3.62, 3.97, 4.31, 4.66, 5]}
+
+  target_data:
+  {"name": "y", "unit": "dimensionless", "magnitudes": [71.63, 62.31, 54.43, 46.8, 40.55, 33.55, 28.24, 23.83, 18.88, 14.05, 10.71, 8.32, 5.06, 3.86, 3.53, 2.81, 4.02, 3.51,
+   4.67, 6.71, 9.72, 12.79, 17.73, 20.76, 25.92, 31.87, 37.5, 44.55, 51.79, 59.92]}
+```
 
 ```
 ## Installation
@@ -139,17 +171,20 @@ See the [main README](../../../README.md#getting-an-api-key) for instructions on
 ## Example Model Types
 
 ### Analytical Functions
+
 - **Exponential Models**: `amplitude * jnp.exp(-decay_rate * t) + offset`
 - **Polynomial Models**: `a * x**2 + b * x + c`
 - **Trigonometric Models**: `amplitude * jnp.sin(frequency * t + phase) + offset`
 - **Power Laws**: `amplitude * jnp.power(x, exponent)`
 
 ### Dynamic Systems
+
 - **First-Order ODEs**: Exponential approach to steady state
 - **Multi-Component Systems**: Sum of exponentials with different time constants
 - **Damped Oscillators**: Combined exponential and sinusoidal behavior
 
 ### Physical Units
+
 - **Dimensionless**: Pure numbers without units
 - **Time Units**: seconds, milliseconds, microseconds, etc.
 - **Length Units**: meter, centimeter, millimeter, micrometer, nanometer, etc.
@@ -158,16 +193,19 @@ See the [main README](../../../README.md#getting-an-api-key) for instructions on
 ## Optimization Algorithms
 
 ### NLopt (Default)
+
 - **Strengths**: Global search, gradient-based optimization
 - **Best For**: General-purpose optimization
 - **Features**: Multiple algorithm variants, constraint support
 
 ### SciPy
+
 - **Strengths**: Robust, well-tested scientific algorithms
 - **Best For**: General-purpose optimization, educational use
 - **Features**: Fast, extensive documentation
 
 ### Nevergrad
+
 - **Strengths**: Global optimization, handles complex landscapes
 - **Best For**: Exploration-heavy problems
 - **Features**: Population-based methods, noise tolerance
@@ -195,10 +233,9 @@ See the [main README](../../../README.md#getting-an-api-key) for instructions on
 
 For issues or questions:
 
-For issues or questions:
-
 - GitHub Issues: [Axiomatic MCP Issues](https://github.com/Axiomatic-AI/ax-mcp/issues)
 - Email: [developers@axiomatic-ai.com](mailto:developers@axiomatic-ai.com)
+
 ## Related Resources
 
 - [JAX Documentation](https://jax.readthedocs.io/)
