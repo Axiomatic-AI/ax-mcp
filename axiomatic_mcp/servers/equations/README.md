@@ -5,7 +5,7 @@ An MCP server that provides equation composition capabilities using the Axiomati
 
 ## Tools Available
 
-### `compose-expression`
+### `compose_expression`
 
 generates the desired equation from all the other equations in the source text together with a code explaining the derivation steps.
 
