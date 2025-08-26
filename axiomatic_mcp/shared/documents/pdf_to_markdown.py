@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 
 from pydantic import BaseModel, Field
@@ -22,10 +23,15 @@ async def pdf_to_markdown(file_path: Path) -> ParseResponse:
     if file_path.suffix.lower() != ".pdf":
         raise ValueError("File must be a PDF")
 
-    file_content = file_path.read_bytes()
+    file_content = await asyncio.to_thread(file_path.read_bytes)
     files = {"file": (file_path.name, file_content, "application/pdf")}
     data = {"method": "mistral", "ocr": False, "layout_model": "doclayout_yolo"}
 
-    response = AxiomaticAPIClient().post("/document/parse", files=files, data=data)
+    response = await asyncio.to_thread(
+        AxiomaticAPIClient().post,
+        "/document/parse",
+        files=files,
+        data=data,
+    )
 
     return ParseResponse(**response)
