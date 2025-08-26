@@ -195,9 +195,10 @@ See the [main README](../../../README.md#getting-an-api-key) for instructions on
 
 For issues or questions:
 
-- GitHub Issues: https://github.com/axiomatic/ax-mcp/issues
-- Email: developers@axiomatic.ai
+For issues or questions:
 
+- GitHub Issues: [Axiomatic MCP Issues](https://github.com/Axiomatic-AI/ax-mcp/issues)
+- Email: [developers@axiomatic-ai.com](mailto:developers@axiomatic-ai.com)
 ## Related Resources
 
 - [JAX Documentation](https://jax.readthedocs.io/)
