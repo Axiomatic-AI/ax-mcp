@@ -18,7 +18,10 @@ mcp = FastMCP(
 
 @mcp.tool(
     name="compose_expression",
-    description="Compose an expression of your interest given the information form the source documents and equations residing there. Provide descrption of the expression you want to compose.",
+    description=(
+        "Compose an expression of your interest given the information form the source documents "
+        "and equations residing there. Provide descrption of the expression you want to compose."
+    ),
     tags=["equations", "compose"],
 )
 async def compose_expression(
