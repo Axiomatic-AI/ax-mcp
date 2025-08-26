@@ -29,6 +29,7 @@ dependencies = [
     "httpx>=0.25.0",
     "anthropic>=0.21.0",
     "requests>=2.25.0",
+    "leanclient>=0.1.0",
 ]
 
 [project.optional-dependencies]
@@ -46,6 +47,7 @@ axiomatic-autoformalizer = "axiomatic_mcp.servers.autoformalizer:main"
 axiomatic-statement-negation = "axiomatic_mcp.servers.statement_negation:main"
 axiomatic-prover = "axiomatic_mcp.servers.prover:main"
 axiomatic-lean-tools = "axiomatic_mcp.servers.lean_tools:main"
+axiomatic-leanclient = "axiomatic_mcp.servers.leanclient:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

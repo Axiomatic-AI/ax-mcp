@@ -69,6 +69,22 @@ You can install each domain server independently based on your needs. These can 
 }
 ```
 
+**For Lean Client (Advanced Lean 4 LSP Integration):**
+
+```json
+{
+  "axiomatic-leanclient": {
+    "command": "uvx",
+    "args": ["--from", "axiomatic-mcp", "axiomatic-leanclient"],
+    "env": {
+      "LEAN_PROJECT_PATH": "/path/to/your/lean/project"
+    }
+  }
+}
+```
+
+**Note**: The Lean Client server requires the `leanclient` Python package, which provides LSP integration for Lean 4. This may require additional system dependencies like a Lean 4 installation.
+
 ### Content Processing Tools Setup
 
 **For PIC Domain:**
@@ -195,6 +211,20 @@ make install-dev
     "args": ["-m", "axiomatic_mcp.servers.prover"],
     "env": {
       "ANTHROPIC_API_KEY": "your-anthropic-api-key-here"
+    }
+  }
+}
+```
+
+**For Lean Client:**
+
+```json
+{
+  "axiomatic-leanclient": {
+    "command": "python",
+    "args": ["-m", "axiomatic_mcp.servers.leanclient"],
+    "env": {
+      "LEAN_PROJECT_PATH": "/path/to/your/lean/project"
     }
   }
 }
