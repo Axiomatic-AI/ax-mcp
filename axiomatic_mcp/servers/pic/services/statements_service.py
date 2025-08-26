@@ -1,13 +1,12 @@
 from typing import Optional
 
-from constants.api_constants import API_ROUTES
-from utils.physics import get_linear_range, str_units_to_um
-
+from ...constants.api_constants import ApiRoutes
 from ..models.statements import (
     StatementValue,
     StatementValueWithValidations,
 )
 from ..models.statements_list import StatementListValue
+from ..utils.physics import get_linear_range, str_units_to_um
 from .axiomatic_api_client import AxiomaticApiClient
 
 
@@ -33,7 +32,7 @@ class StatementsService:
         statements_without_validation = [{k: v for k, v in s.items() if k != "validation"} for s in statements]
 
         response = await self.api_client.post(
-            API_ROUTES["FORMALIZE_CIRCUIT"],
+            ApiRoutes.FORMALIZE_CIRCUIT,
             {"query": query, "statements": statements_without_validation},
         )
 
@@ -101,7 +100,7 @@ class StatementsService:
 
     async def formalize_statement(self, statement: StatementValue) -> StatementValue:
         response = await self.api_client.post(
-            API_ROUTES["FORMALIZE_STATEMENT"],
+            ApiRoutes.FORMALIZE_STATEMENT,
             {"query": "", "statements": [statement]},
         )
 
@@ -118,7 +117,7 @@ class StatementsService:
 
     async def informalize_statement(self, statement: StatementValue) -> str:
         response = await self.api_client.post(
-            API_ROUTES["INFORMALIZE_STATEMENT"],
+            ApiRoutes.INFORMALIZE_STATEMENT,
             {"query": "", "statement": statement},
         )
 

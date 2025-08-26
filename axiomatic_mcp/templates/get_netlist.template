@@ -1,0 +1,17 @@
+import json
+import gdsfactory as gf
+from gdsfactory import CONF
+
+try:
+    # Get the active PDK type (dot-notation, e.g., "cspdk.si220.cband")
+    pdk_type = CONF.pdk
+
+    # Extract the netlist from the component
+    netlist_dict = c.get_netlist()
+    netlist_dict["pdk_type"] = pdk_type
+
+    # Print the netlist as JSON
+    print(json.dumps(netlist_dict))
+except Exception as e:
+    # Print any error as JSON
+    print(json.dumps({"__error__": str(e)}))

@@ -1,4 +1,4 @@
-from statements import (
+from .statements import (
     StatementType,
     StatementValidation,
     StatementValue,
@@ -46,8 +46,8 @@ class StatementList:
     def get_by_index(self, index: int) -> StatementValue:
         try:
             return self._statements[index]
-        except IndexError:
-            raise IndexError(f"Error getting statement: Index {index} is out of bounds.")
+        except IndexError as error:
+            raise IndexError(f"Error retrieving statement: Index {index} is out of bounds.") from error
 
     def get_value(self) -> StatementListValue:
         """Combine statements with validations (if available)."""

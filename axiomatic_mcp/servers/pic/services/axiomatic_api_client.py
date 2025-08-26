@@ -41,11 +41,7 @@ class AxiomaticApiClient:
             try:
                 response = await task
                 content_type = response.headers.get("content-type", "")
-                if "application/json" in content_type:
-                    body = response.json()
-                else:
-                    body = response.text
-
+                body = response.json() if "application/json" in content_type else response.text
                 if not response.is_success:
                     raise RuntimeError(f"API request failed ({response.status_code}): {response.reason_phrase}\n{body}")
 

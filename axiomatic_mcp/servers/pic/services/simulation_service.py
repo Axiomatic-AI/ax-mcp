@@ -1,0 +1,32 @@
+from typing import Any, Optional
+
+from ...constants.api_constants import ApiRoutes
+from .axiomatic_api_client import AxiomaticApiClient
+
+
+class SimulationService:
+    _instance: Optional["SimulationService"] = None
+
+    def __init__(self) -> None:
+        self.api_client = AxiomaticApiClient.get_instance()
+
+    @classmethod
+    def get_instance(cls) -> "SimulationService":
+        if cls._instance is None:
+            cls._instance = SimulationService()
+        return cls._instance
+
+    async def simulate_from_code(self, query: dict[str, Any]) -> dict[str, Any]:
+        """
+        Call the GET_SAX_SPECTRUM API endpoint with a simulation request.
+        query: {
+            "netlist": ...,
+            "wavelengths": ...
+        }
+        """
+        response = await self.api_client.post(ApiRoutes.GET_SAX_SPECTRUM, query)
+
+        if not response:
+            raise RuntimeError("No response from get_sax_spectrum API")
+
+        return response
