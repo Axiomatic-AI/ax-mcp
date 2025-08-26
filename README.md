@@ -69,6 +69,7 @@ You can install each domain server independently based on your needs. These can 
 }
 ```
 
+
 ### Content Processing Tools Setup
 
 **For PIC Domain:**
@@ -199,6 +200,8 @@ make install-dev
   }
 }
 ```
+
+
 
 ### Content Processing Tools (Development)
 

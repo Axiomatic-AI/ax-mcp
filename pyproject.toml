@@ -38,6 +38,9 @@ dev = [
     "ruff>=0.1.0",
     "mypy>=1.0.0",
 ]
+lean = [
+    "leanclient==0.1.14",
+]
 
 [project.scripts]
 axiomatic-pic = "axiomatic_mcp.servers.pic:main"
@@ -46,6 +49,7 @@ axiomatic-autoformalizer = "axiomatic_mcp.servers.autoformalizer:main"
 axiomatic-statement-negation = "axiomatic_mcp.servers.statement_negation:main"
 axiomatic-prover = "axiomatic_mcp.servers.prover:main"
 axiomatic-lean-tools = "axiomatic_mcp.servers.lean_tools:main"
+axiomatic-leanclient = "axiomatic_mcp.servers.leanclient:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
