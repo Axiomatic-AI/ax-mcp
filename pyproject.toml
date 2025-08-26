@@ -41,6 +41,7 @@ dev = [
 axiomatic-pic = "axiomatic_mcp.servers.pic:main"
 axiomatic-documents = "axiomatic_mcp.servers.documents:main"
 axiomatic-plots = "axiomatic_mcp.servers.plots:main"
+axiomatic-equations = "axiomatic_mcp.servers.equations:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
