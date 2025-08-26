@@ -14,7 +14,68 @@ An advanced Lean 4 MCP (Model Context Protocol) server that provides comprehensi
 
 ## Installation & Configuration
 
-For installation and configuration instructions, see the main [ax-mcp README](../../README.md#mathematical-proof-tools-setup).
+### Using uvx (Recommended)
+
+```bash
+uvx --from "axiomatic-mcp[lean]" axiomatic-leanclient
+```
+
+### Development Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/axiomatic/ax-mcp.git
+cd ax-mcp
+```
+
+2. Install with Lean dependencies:
+```bash
+pip install -e ".[lean]"
+```
+
+3. Run the server:
+```bash
+python -m axiomatic_mcp.servers.leanclient
+```
+
+### MCP Configuration
+
+#### For Cursor IDE
+
+Add to your MCP settings (`.cursor/mcp.json`):
+
+```json
+{
+  "axiomatic-leanclient": {
+    "command": "uvx",
+    "args": ["--from", "axiomatic-mcp[lean]", "axiomatic-leanclient"],
+    "env": {
+      "LEAN_PROJECT_PATH": "/path/to/your/lean/project"
+    }
+  }
+}
+```
+
+#### For Development
+
+```json
+{
+  "axiomatic-leanclient": {
+    "command": "python",
+    "args": ["-m", "axiomatic_mcp.servers.leanclient"],
+    "env": {
+      "LEAN_PROJECT_PATH": "/path/to/your/lean/project"
+    }
+  }
+}
+```
+
+**Environment Variables:**
+- `LEAN_PROJECT_PATH`: Path to your Lean project directory (optional)
+
+**Requirements:**
+- The `leanclient` Python package (installed with `[lean]` extra)
+- Lean 4 installation (for LSP functionality)
 
 ## Usage Examples
 
