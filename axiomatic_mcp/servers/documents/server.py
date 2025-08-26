@@ -39,7 +39,6 @@ async def document_to_markdown(
     markdown: str = response["markdown"]
     name = file_path.stem + ".md"
     return ToolResult(
-        content=[TextContent(type="text", text=f"Generated markdown for: {name}\n\n```markdown\n{markdown}\n```")],
         structured_content={
             "suggestions": [{"type": "create_file", "path": name, "content": markdown, "description": f"Create {name} with the generated markdown"}]
         },
