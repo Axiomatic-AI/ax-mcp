@@ -12,14 +12,22 @@ The Digital Twin Optimizer server enables AI assistants to optimize mathematical
 
 Optimizes model parameters to fit experimental data using various optimization algorithms and cost functions.
 
-**Parameters:**
+**Arguments:**
 
-- `function_source` (str, required): Python function definition using JAX operations (jnp.*)
-- `parameters` (list, required): List of parameter specifications with name, initial value, and bounds
-- `data_points` (list, required): List of data points with x, y values and optional units
-- `optimizer_type` (str, optional, default="nlopt"): Optimization algorithm ("nlopt", "scipy", "nevergrad")
-- `cost_function_type` (str, optional, default="mse"): Cost function ("mse", "mae", "huber", "relative_mse")
-- `max_iterations` (int, optional, default=1000): Maximum optimization iterations
+- `model_name`: Model name (e.g., 'ExponentialDecay', 'RingResonator')"
+- `function_source`: JAX function source code. MUST use jnp operations: jnp.exp, jnp.sin, etc.
+- `function_name`: Function name that computes the model output
+- `parameters`: Initial parameter guesses
+- `bounds`:  ALL parameter/input/output bounds
+- `input_data` Input data
+- `target_data` Target data
+
+**Selected optional arguments**
+
+- `max_time`: maximum runtime of optimizer (default: 10s)
+- `optimizer_type`: Type of optimizer to use (default: 'nlopt')
+- `cost_function_type` Type of cost function (default: 'mse')
+
 **Returns:**
 
 - Optimized parameter values
@@ -178,9 +186,7 @@ See the [main README](../../../README.md#getting-an-api-key) for instructions on
 
 ### Dynamic Systems
 
-- **First-Order ODEs**: Exponential approach to steady state
-- **Multi-Component Systems**: Sum of exponentials with different time constants
-- **Damped Oscillators**: Combined exponential and sinusoidal behavior
+- TBD
 
 ### Physical Units
 
