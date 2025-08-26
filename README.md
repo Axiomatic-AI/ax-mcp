@@ -186,3 +186,8 @@ Install only the domain servers you need. Each server runs independently, so you
 
 - **Issues**: [GitHub Issues](https://github.com/axiomatic/ax-mcp/issues)
 - **Email**: developers@axiomatic-ai.com
+
+## Creating a Install in Cursor buttons:
+Copy your MCP client configuration and paste it there:
+
+https://docs.cursor.com/en/tools/developers#generate-install-link
