@@ -37,9 +37,16 @@ async def document_to_markdown(
 
     response = AxiomaticAPIClient().post("/document/parse", files=files, data=data)
     markdown: str = response["markdown"]
-    name = file_path.stem + ".md"
+    name = file_path.parent / (file_path.stem + ".md")
+
+    with open(name, "w", encoding="utf-8") as f:
+        f.write(markdown)
+
     return ToolResult(
-        structured_content={
-            "suggestions": [{"type": "create_file", "path": name, "content": markdown, "description": f"Create {name} with the generated markdown"}]
-        },
+        content=[
+            TextContent(
+                type="text",
+                text=f"Generated markdown for: {name}\n\n```markdown\n{markdown}\n```",
+            )
+        ],
     )
