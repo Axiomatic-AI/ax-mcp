@@ -31,6 +31,7 @@ Add to your MCP settings (`.cursor/mcp.json`):
   "axiomatic-leanclient": {
     "command": "uvx",
     "args": ["--from", "axiomatic-mcp[lean]", "axiomatic-leanclient"],
+    "transport": "stdio",
     "env": {
       "LEAN_PROJECT_PATH": "/path/to/your/lean/project"
     }
