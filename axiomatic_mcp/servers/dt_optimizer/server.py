@@ -184,6 +184,59 @@ Use `get_optimization_examples` to see working examples.
         return ToolResult(content=[TextContent(type="text", text=error_details)])
 
 
+@mcp.prompt(
+    name="optimization_workflow", description="Generic workflow for digital twin optimization - works with many different mathematical models"
+)
+def optimization_workflow() -> str:
+    """Generate a generic optimization workflow guide."""
+
+    return """# Digital Twin Optimization Workflow
+
+## Step-by-Step Process:
+
+### 1️⃣ **Define Your Mathematical Model**
+Write your model as a JAX function:
+```python
+def target_variable_name(input_var, param1, param2, ...):
+    # Analytical functions - use jnp.* operations
+    return param1 * jnp.exp(-param2 * input_var) + param3
+```
+
+### 2️⃣ **Choose a Template**
+Call `get_optimization_examples` to see available templates:
+- **Analytical functions** (exponential, polynomial, trigonometric)
+- **ODE systems** (population dynamics, chemical kinetics)
+
+Pick the template closest to your model structure.
+
+### 3️⃣ **Adapt the Template**
+- Replace the function with your model
+- Update parameter names and initial guesses
+- Set realistic bounds for all parameters AND input/output variables
+- Use proper pint units ('dimensionless', 'nanometer', 'volt', 'second', etc.)
+
+### 4️⃣ **Ensure all Data is structured correctly following the Template**
+```python
+input_data = {"name": "time", "unit": "second", "magnitudes": [0, 1, 2, 3, ...]}
+target_data = {"name": "concentration", "unit": "molar", "magnitudes": [1.0, 0.8, 0.6, ...]}
+```
+
+### 5️⃣ **Run Optimization**
+Use `optimize_digital_twin_model` with your adapted template.
+
+## Template Selection Guide:
+1. **Simple analytical?** → Use polynomial/exponential templates
+2. **Time-dependent dynamics?** → Use ODE templates
+3. **Custom physics?** → Adapt the closest template structure
+
+## Key Requirements:
+- ALL functions must use JAX operations or JAX libraries (jnp.exp, jnp.sin, etc.)
+- Every parameter needs bounds (reasonable ranges)
+- Input AND output variables need bounds too
+
+Ready to optimize? Get templates with `get_optimization_examples`!"""
+
+
 @mcp.tool(
     name="get_optimization_examples",
     description="""Get working examples of digital twin optimization based on real usage.
@@ -196,86 +249,29 @@ Use `get_optimization_examples` to see working examples.
 async def get_optimization_examples() -> ToolResult:
     """Get clean JSON examples ready to use with optimize_digital_twin_model."""
 
-    examples = {
-        "exponential_decay": {
-            "model_name": "ExponentialDecay",
-            "function_source": "def y(t, a, k, offset):\n    return a * jnp.exp(-k * t) + offset\n",
+    # Generic templates covering different model categories
+    templates = {
+        "analytical_exponential": {
+            "category": "Analytical Function",
+            "description": "Single exponential decay/growth with offset - good for radioactive decay, signal attenuation, population growth",
+            "model_name": "ExponentialModel",
+            "function_source": "def y(t, amplitude, decay_rate, offset):\n    return amplitude * jnp.exp(-decay_rate * t) + offset",
             "function_name": "y",
-            "docstring": "ExponentialDecay model - y output",
+            "docstring": "Exponential model template",
             "parameters": [
-                {"name": "a", "value": {"magnitude": 2.0, "unit": "dimensionless"}},
-                {"name": "k", "value": {"magnitude": 0.8, "unit": "dimensionless"}},
-                {"name": "offset", "value": {"magnitude": -0.5, "unit": "dimensionless"}},
+                {"name": "amplitude", "value": {"magnitude": 2.0, "unit": "dimensionless"}},
+                {"name": "decay_rate", "value": {"magnitude": 0.5, "unit": "dimensionless"}},
+                {"name": "offset", "value": {"magnitude": 0.0, "unit": "dimensionless"}},
             ],
             "bounds": [
-                {"name": "a", "lower": {"magnitude": 1.0, "unit": "dimensionless"}, "upper": {"magnitude": 10.0, "unit": "dimensionless"}},
-                {"name": "k", "lower": {"magnitude": 0.05, "unit": "dimensionless"}, "upper": {"magnitude": 1.0, "unit": "dimensionless"}},
-                {"name": "offset", "lower": {"magnitude": -1.0, "unit": "dimensionless"}, "upper": {"magnitude": 3.0, "unit": "dimensionless"}},
-                {"name": "t", "lower": {"magnitude": 0.0, "unit": "dimensionless"}, "upper": {"magnitude": 8.0, "unit": "dimensionless"}},
-                {"name": "y", "lower": {"magnitude": 0.8, "unit": "dimensionless"}, "upper": {"magnitude": 5.5, "unit": "dimensionless"}},
+                {"name": "amplitude", "lower": {"magnitude": 0.1, "unit": "dimensionless"}, "upper": {"magnitude": 10.0, "unit": "dimensionless"}},
+                {"name": "decay_rate", "lower": {"magnitude": 0.01, "unit": "dimensionless"}, "upper": {"magnitude": 5.0, "unit": "dimensionless"}},
+                {"name": "offset", "lower": {"magnitude": -5.0, "unit": "dimensionless"}, "upper": {"magnitude": 5.0, "unit": "dimensionless"}},
+                {"name": "t", "lower": {"magnitude": 0.0, "unit": "dimensionless"}, "upper": {"magnitude": 10.0, "unit": "dimensionless"}},
+                {"name": "y", "lower": {"magnitude": -1.0, "unit": "dimensionless"}, "upper": {"magnitude": 10.0, "unit": "dimensionless"}},
             ],
-            "input_data": {
-                "name": "t",
-                "unit": "dimensionless",
-                "magnitudes": [
-                    0.0,
-                    0.333,
-                    0.667,
-                    1.0,
-                    1.333,
-                    1.667,
-                    2.0,
-                    2.333,
-                    2.667,
-                    3.0,
-                    3.333,
-                    3.667,
-                    4.0,
-                    4.333,
-                    4.667,
-                    5.0,
-                    5.333,
-                    5.667,
-                    6.0,
-                    6.333,
-                    6.667,
-                    7.0,
-                    7.333,
-                    7.667,
-                    8.0,
-                ],
-            },
-            "target_data": {
-                "name": "y",
-                "unit": "dimensionless",
-                "magnitudes": [
-                    5.425,
-                    5.156,
-                    4.718,
-                    4.044,
-                    3.705,
-                    3.361,
-                    3.430,
-                    2.992,
-                    2.741,
-                    2.588,
-                    2.243,
-                    2.146,
-                    1.888,
-                    1.923,
-                    1.638,
-                    1.652,
-                    1.616,
-                    1.402,
-                    1.409,
-                    1.127,
-                    1.058,
-                    1.134,
-                    1.033,
-                    0.860,
-                    0.905,
-                ],
-            },
+            "input_data": {"name": "t", "unit": "dimensionless", "magnitudes": [0, 1, 2, 3, 4]},
+            "target_data": {"name": "y", "unit": "dimensionless", "magnitudes": [2.0, 1.2, 0.8, 0.5, 0.4]},
             "optimizer_type": "nlopt",
             "cost_function_type": "mse",
             "max_time": 5,
@@ -283,193 +279,57 @@ async def get_optimization_examples() -> ToolResult:
             "jit_compile": True,
             "optimizer_config": {"use_gradient": True, "tol": 1e-06},
         },
-        "difference_exponentials": {
-            "model_name": "DifferenceOfExponentials",
-            "function_source": "def y(x, a, b, c, d):\n    return a * jnp.exp(-b * x) - c * jnp.exp(-d * x)\n",
+        "analytical_polynomial": {
+            "category": "Analytical Function",
+            "description": "Polynomial function - good for parabolic relationships, response curves",
+            "model_name": "PolynomialModel",
+            "function_source": "def y(x, a, b, c):\n    return a * x**2 + b * x + c",
             "function_name": "y",
-            "docstring": "DifferenceOfExponentials model - y output",
-            "parameters": [
-                {"name": "a", "value": {"magnitude": 3.0, "unit": "dimensionless"}},
-                {"name": "b", "value": {"magnitude": 2.5, "unit": "dimensionless"}},
-                {"name": "c", "value": {"magnitude": 1.0, "unit": "dimensionless"}},
-                {"name": "d", "value": {"magnitude": 10.0, "unit": "dimensionless"}},
-            ],
-            "bounds": [
-                {"name": "a", "lower": {"magnitude": 0.0, "unit": "dimensionless"}, "upper": {"magnitude": 5.0, "unit": "dimensionless"}},
-                {"name": "b", "lower": {"magnitude": 1.0, "unit": "dimensionless"}, "upper": {"magnitude": 100.0, "unit": "dimensionless"}},
-                {"name": "c", "lower": {"magnitude": 0.0, "unit": "dimensionless"}, "upper": {"magnitude": 5.0, "unit": "dimensionless"}},
-                {"name": "d", "lower": {"magnitude": 1.0, "unit": "dimensionless"}, "upper": {"magnitude": 100.0, "unit": "dimensionless"}},
-                {"name": "x", "lower": {"magnitude": 0.0, "unit": "dimensionless"}, "upper": {"magnitude": 2.0, "unit": "dimensionless"}},
-                {"name": "y", "lower": {"magnitude": -0.03, "unit": "dimensionless"}, "upper": {"magnitude": 0.5, "unit": "dimensionless"}},
-            ],
-            "input_data": {
-                "name": "x",
-                "unit": "dimensionless",
-                "magnitudes": [
-                    0.0,
-                    0.069,
-                    0.138,
-                    0.207,
-                    0.276,
-                    0.345,
-                    0.414,
-                    0.483,
-                    0.552,
-                    0.621,
-                    0.690,
-                    0.759,
-                    0.828,
-                    0.897,
-                    0.966,
-                    1.034,
-                    1.103,
-                    1.172,
-                    1.241,
-                    1.310,
-                    1.379,
-                    1.448,
-                    1.517,
-                    1.586,
-                    1.655,
-                    1.724,
-                    1.793,
-                    1.862,
-                    1.931,
-                    2.0,
-                ],
-            },
-            "target_data": {
-                "name": "y",
-                "unit": "dimensionless",
-                "magnitudes": [
-                    0.012,
-                    0.451,
-                    0.237,
-                    0.122,
-                    0.067,
-                    0.027,
-                    0.011,
-                    0.016,
-                    0.016,
-                    0.005,
-                    -0.020,
-                    -0.005,
-                    0.003,
-                    -0.004,
-                    0.015,
-                    -0.003,
-                    0.007,
-                    -0.007,
-                    -0.010,
-                    -0.012,
-                    0.001,
-                    -0.019,
-                    0.026,
-                    -0.016,
-                    -0.001,
-                    0.004,
-                    0.000,
-                    -0.003,
-                    -0.005,
-                    -0.004,
-                ],
-            },
-            "optimizer_type": "nlopt",
-            "cost_function_type": "mse",
-            "max_time": 5,
-            "tolerance": 1e-06,
-            "jit_compile": True,
-            "optimizer_config": {"use_gradient": True, "tol": 1e-06},
-        },
-        "simple_quadratic": {
-            "model_name": "SimpleQuadratic",
-            "function_source": "def y(x, a, b, c):\n    return a * x**2 + b * x + c\n",
-            "function_name": "y",
-            "docstring": "SimpleQuadratic model - y output",
+            "docstring": "Polynomial model template",
             "parameters": [
                 {"name": "a", "value": {"magnitude": 1.0, "unit": "dimensionless"}},
-                {"name": "b", "value": {"magnitude": 2.0, "unit": "dimensionless"}},
-                {"name": "c", "value": {"magnitude": -5.0, "unit": "dimensionless"}},
+                {"name": "b", "value": {"magnitude": 0.0, "unit": "dimensionless"}},
+                {"name": "c", "value": {"magnitude": 1.0, "unit": "dimensionless"}},
             ],
             "bounds": [
-                {"name": "a", "lower": {"magnitude": 0.5, "unit": "dimensionless"}, "upper": {"magnitude": 5.0, "unit": "dimensionless"}},
-                {"name": "b", "lower": {"magnitude": -5.0, "unit": "dimensionless"}, "upper": {"magnitude": 5.0, "unit": "dimensionless"}},
+                {"name": "a", "lower": {"magnitude": -10.0, "unit": "dimensionless"}, "upper": {"magnitude": 10.0, "unit": "dimensionless"}},
+                {"name": "b", "lower": {"magnitude": -10.0, "unit": "dimensionless"}, "upper": {"magnitude": 10.0, "unit": "dimensionless"}},
                 {"name": "c", "lower": {"magnitude": -10.0, "unit": "dimensionless"}, "upper": {"magnitude": 10.0, "unit": "dimensionless"}},
                 {"name": "x", "lower": {"magnitude": -5.0, "unit": "dimensionless"}, "upper": {"magnitude": 5.0, "unit": "dimensionless"}},
-                {"name": "y", "lower": {"magnitude": 2.8, "unit": "dimensionless"}, "upper": {"magnitude": 72.0, "unit": "dimensionless"}},
+                {"name": "y", "lower": {"magnitude": -10.0, "unit": "dimensionless"}, "upper": {"magnitude": 50.0, "unit": "dimensionless"}},
             ],
-            "input_data": {
-                "name": "x",
-                "unit": "dimensionless",
-                "magnitudes": [
-                    -5.0,
-                    -4.66,
-                    -4.31,
-                    -3.97,
-                    -3.62,
-                    -3.28,
-                    -2.93,
-                    -2.59,
-                    -2.24,
-                    -1.90,
-                    -1.55,
-                    -1.21,
-                    -0.86,
-                    -0.52,
-                    -0.17,
-                    0.17,
-                    0.52,
-                    0.86,
-                    1.21,
-                    1.55,
-                    1.90,
-                    2.24,
-                    2.59,
-                    2.93,
-                    3.28,
-                    3.62,
-                    3.97,
-                    4.31,
-                    4.66,
-                    5.0,
-                ],
-            },
-            "target_data": {
-                "name": "y",
-                "unit": "dimensionless",
-                "magnitudes": [
-                    71.63,
-                    62.31,
-                    54.43,
-                    46.80,
-                    40.55,
-                    33.55,
-                    28.24,
-                    23.83,
-                    18.88,
-                    14.05,
-                    10.71,
-                    8.32,
-                    5.06,
-                    3.86,
-                    3.53,
-                    2.81,
-                    4.02,
-                    3.51,
-                    4.67,
-                    6.71,
-                    9.72,
-                    12.79,
-                    17.73,
-                    20.76,
-                    25.92,
-                    31.87,
-                    37.50,
-                    44.55,
-                    51.79,
-                    59.92,
-                ],
-            },
+            "input_data": {"name": "x", "unit": "dimensionless", "magnitudes": [-2, -1, 0, 1, 2]},
+            "target_data": {"name": "y", "unit": "dimensionless", "magnitudes": [5, 2, 1, 2, 5]},
+            "optimizer_type": "nlopt",
+            "cost_function_type": "mse",
+            "max_time": 5,
+            "tolerance": 1e-06,
+            "jit_compile": True,
+            "optimizer_config": {"use_gradient": True, "tol": 1e-06},
+        },
+        "analytical_trigonometric": {
+            "category": "Analytical Function",
+            "description": "Sinusoidal oscillation - good for periodic signals, vibrations, waves",
+            "model_name": "SinusoidalModel",
+            "function_source": "def y(t, amplitude, frequency, phase, offset):\n    return amplitude * jnp.sin(2 * jnp.pi * frequency * t + phase) + offset",
+            "function_name": "y",
+            "docstring": "Sinusoidal model template",
+            "parameters": [
+                {"name": "amplitude", "value": {"magnitude": 1.0, "unit": "dimensionless"}},
+                {"name": "frequency", "value": {"magnitude": 0.5, "unit": "dimensionless"}},
+                {"name": "phase", "value": {"magnitude": 0.0, "unit": "dimensionless"}},
+                {"name": "offset", "value": {"magnitude": 0.0, "unit": "dimensionless"}},
+            ],
+            "bounds": [
+                {"name": "amplitude", "lower": {"magnitude": 0.1, "unit": "dimensionless"}, "upper": {"magnitude": 5.0, "unit": "dimensionless"}},
+                {"name": "frequency", "lower": {"magnitude": 0.1, "unit": "dimensionless"}, "upper": {"magnitude": 2.0, "unit": "dimensionless"}},
+                {"name": "phase", "lower": {"magnitude": -3.14, "unit": "dimensionless"}, "upper": {"magnitude": 3.14, "unit": "dimensionless"}},
+                {"name": "offset", "lower": {"magnitude": -2.0, "unit": "dimensionless"}, "upper": {"magnitude": 2.0, "unit": "dimensionless"}},
+                {"name": "t", "lower": {"magnitude": 0.0, "unit": "dimensionless"}, "upper": {"magnitude": 10.0, "unit": "dimensionless"}},
+                {"name": "y", "lower": {"magnitude": -3.0, "unit": "dimensionless"}, "upper": {"magnitude": 3.0, "unit": "dimensionless"}},
+            ],
+            "input_data": {"name": "t", "unit": "dimensionless", "magnitudes": [0, 1, 2, 3, 4, 5]},
+            "target_data": {"name": "y", "unit": "dimensionless", "magnitudes": [0, 1, 0, -1, 0, 1]},
             "optimizer_type": "nlopt",
             "cost_function_type": "mse",
             "max_time": 5,
@@ -479,9 +339,46 @@ async def get_optimization_examples() -> ToolResult:
         },
     }
 
+    # Concise template overview for LLMs
+    template_summary = {}
+    for key, template in templates.items():
+        template_summary[key] = {
+            "category": template["category"],
+            "description": template["description"],
+            "function": template["function_source"].split("\n")[0],  # Just the function signature
+            "parameters": len(template["parameters"]),
+            "use_cases": template["description"].split(" - ")[1] if " - " in template["description"] else "General modeling",
+        }
+
+    summary_text = f"""# 🧬 Digital Twin Optimization Templates
+
+## Available Template Categories:
+
+** Analytical Functions:**
+• `analytical_exponential` - Exponential decay/growth models
+• `analytical_polynomial` - Polynomial/quadratic functions
+• `analytical_trigonometric` - Sinusoidal/periodic signals
+
+** Dynamic Systems:**
+• `ode_first_order` - First-order differential equations
+• `multi_component` - Multi-exponential/compartment models
+
+## How to Use:
+1. **Pick a template** closest to your model structure
+2. **Replace the function** with your mathematical model
+3. **Update parameters** and bounds for your system
+4. **Replace data** with your experimental measurements
+5. **Run optimization** with `optimize_digital_twin_model`
+
+## Template Details:
+{json.dumps(template_summary, indent=2)}
+
+Use `optimization_workflow` prompt for detailed step-by-step guidance!
+All templates are generic - adapt the function, parameters, and data to your specific model."""
+
     return ToolResult(
-        content=[TextContent(type="text", text=f"Ready-to-use examples:\n{json.dumps(examples, indent=2)}")],
-        structured_content={"examples": examples},
+        content=[TextContent(type="text", text=summary_text)],
+        structured_content={"templates": templates},
     )
 
 
