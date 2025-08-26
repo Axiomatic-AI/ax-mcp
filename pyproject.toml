@@ -39,7 +39,7 @@ dev = [
     "mypy>=1.0.0",
 ]
 lean = [
-    "leanclient>=0.1.0",
+    "leanclient==0.1.14",
 ]
 
 [project.scripts]
