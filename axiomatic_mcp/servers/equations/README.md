@@ -86,13 +86,13 @@ See the [main README](../../../README.md#getting-an-api-key) for instructions on
 ## Use Cases
 
 - **Research Paper Analysis**: Ask and obtain equations that are not explicitly written in the paper you are analyzing
-- **Derivation**: The output of the tool contains a derivation code that explain how the equation was derived
+- **Derivation**: The output of the tool contains a derivation code that explains how the equation was derived
 
 ## Limitations
 
 - Requires internet connection for API access
 - Works with single paper - multiple paper context will be added in future releases
-- Processing time depends on document and derivaiton complexity 
+- Processing time depends on document and derivation complexity 
 
 
 ## Support

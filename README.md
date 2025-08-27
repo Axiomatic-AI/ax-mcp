@@ -8,13 +8,18 @@ MCP (Model Context Protocol) servers that provide AI assistants with access to t
 
 Convert PDF documents to markdown with advanced OCR and layout understanding.
 
-### 📊 [Plots Server](./axiomatic_mcp/servers/plots/)
+### 🖌️ [Equations Server](./axiomatic_mcp/servers/equations/)
 
-Extract numerical data from plot images for analysis and reproduction.
+Compose equations of your interests based on information in the scientific paper.
 
 ### 🔬 [PIC Designer Server](./axiomatic_mcp/servers/pic/)
 
 Design photonic integrated circuits using natural language descriptions.
+
+### 📊 [Plots Server](./axiomatic_mcp/servers/plots/)
+
+Extract numerical data from plot images for analysis and reproduction.
+
 
 ## Getting an API Key
 
