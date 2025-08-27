@@ -1,8 +1,15 @@
+import os
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
-from fastmcp import FastMCP
-from mcp.server.fastmcp import Context
+from mcp.server.fastmcp import Context, FastMCP
+from mcp.server.fastmcp.utilities.logging import get_logger
+
+if TYPE_CHECKING:
+    from leanclient import LeanLSPClient
 
 from ...shared import AxiomaticAPIClient
 from ..leanclient.lean_client import (
@@ -13,45 +20,170 @@ from ..leanclient.lean_client import (
     lean_run_code_impl,
 )
 
+logger = get_logger(__name__)
+
+
+# Server Context
+@dataclass
+class AppContext:
+    lean_project_path: str | None
+    client: "LeanLSPClient | None"
+    file_content_hashes: dict[str, str]
+
+
+@asynccontextmanager
+async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
+    try:
+        lean_project_path = os.environ.get("LEAN_PROJECT_PATH", "").strip()
+        if not lean_project_path:
+            lean_project_path = None
+        else:
+            lean_project_path = os.path.abspath(lean_project_path)
+
+        context = AppContext(
+            lean_project_path=lean_project_path,
+            client=None,
+            file_content_hashes={},
+        )
+        logger.info(f"Autoformalizer MCP server starting with project path: {lean_project_path}")
+        yield context
+    finally:
+        logger.info("Closing Lean LSP client")
+        if context.client:
+            context.client.close()
+
+
 mcp = FastMCP(
     name="Autoformalizer",
-    instructions="""You are an expert Lean 4 theorem formalizer. Convert natural language
-mathematical statements into syntactically correct Lean 4 theorem declarations.
+    instructions="""You are an expert Lean 4 theorem formalizer. Convert mathematical statements from PDFs into clean, syntactically correct Lean 4 theorem declarations.
 
-FORMALIZATION RULES:
-- Use the axiomatic API to extract all text from the PDF
-- Use proper Lean 4 and Mathlib syntax
-- Follow current Mathlib naming conventions
-- USE import Mathlib and DO NOT USE specific imports such as import Mathlib.LinearAlgebra
-- Include necessary hypotheses as parameters
-- End all theorems and statements with := by sorry
-- DO NOT PROVE any statements.
+## CRITICAL REQUIREMENTS (MUST FOLLOW EXACTLY):
+
+### 1. IMPORTS - MANDATORY FORMAT:
+- ONLY use: `import Mathlib`
+- NEVER use specific imports like `import Mathlib.FieldTheory.Finite.Basic`
+- NEVER use multiple import lines
+- VIOLATION = IMMEDIATE FAILURE
+
+### 2. THEOREM STRUCTURE - MANDATORY FORMAT:
+- ALL theorems MUST end with: `:= by sorry`
+- Proof sketches are ALLOWED using `have` statements before final `sorry`
+- Each `have` step must end with `:= by sorry`
+- Example format:
+  ```lean4
+  theorem SlidingBlockProblem_2
+    -- Variables
+    (Ei Ef h g m v : ℝ)
+
+    -- Hypotheses
+    (h_initial : Ei = m * g * h)
+    (h_final : Ef = (1 / 2) * m * v^2)
+    (h_conservation : Ei = Ef)
+    (hm : 0 < m)
+    (hv : 0 < v)
+    (hg : g = 10)
+    (hh : h = 10)
+    :
+
+    -- Objective
+    v = 10 * √2 := by
+
+    -- Step 1: Ei = Ef
+    have h1 : Ei = Ef := by
+        sorry
+
+    -- Step 2: m * g * h = (1 / 2) * m * v ^ 2
+    have h2 : m * g * h = (1 / 2) * m * v ^ 2 := by
+        sorry
+
+    -- Step 3: 2 * g * h = v ^ 2
+    have h3 : 2 * g * h = v ^ 2 := by
+        sorry
+
+    -- Step 4: v = √(2 * g * h)
+    have h4 : v = Real.sqrt (2 * g * h) := by
+        sorry
+
+    -- Step 5: Solve for v
+    have h5 : v = 10 * Real.sqrt 2 := by
+        sorry
+   
+    exact h5
+  ```
+- NEVER use tactics like `constructor`, `intro`, `rw`, `simp` except in proof sketch comments
+- VIOLATION = IMMEDIATE FAILURE if not ending with `sorry`
+
+### 3. FORMALIZATION SCOPE - WHAT TO DO:
+- IF file is PDF: Extract content using document_to_markdown tool
+- IF file is markdown: Read directly with standard file tools
+- Identify main theorems, propositions, lemmas from extracted content
+- Formalize ONLY the statements as clean theorem declarations
+- Use standard Mathlib types and naming conventions
+- Include necessary hypotheses as function parameters
+
+### 4. FORMALIZATION SCOPE - WHAT NOT TO DO:
+- DO NOT write complete proofs (all steps must end with `sorry`)
+- DO NOT create helper lemmas unless they appear in the source
+- DO NOT add computational examples or verification code
+- DO NOT create complex type hierarchies or abstract frameworks
+- DO NOT use `sorry` except in `have` steps and final position
+- DO NOT use tactics beyond structural `have` statements
+
+### 5. CODE QUALITY REQUIREMENTS:
+- Must compile without syntax errors
+- Use clean, readable variable names
+- Follow Mathlib naming conventions exactly
+- Keep definitions minimal and focused
+- Test with lean_diagnostic_messages before completion
+
+### 6. OUTPUT STRUCTURE:
+- Single .lean file with clean formalization
+- Brief comment explaining the source theorem
+- Theorem statements with optional proof sketches using `have` steps
+- Verify compilation with Lean tools
+
+## Available Tools:
+- document_to_markdown: Extract text from PDF
+- lean_file_contents: Read Lean files with line numbers
+- lean_diagnostic_messages: Check for compilation errors (REQUIRED)
+- lean_hover_info: Get symbol documentation
+- lean_run_code: Test small code snippets (use sparingly)
+
+## Success Criteria:
+1. PDF or MARKDOWN content successfully extracted and understood
+2. Main mathematical statements identified correctly 
+3. Clean Lean 4 code with only `import Mathlib`
+4. All theorems end with `:= by sorry`
+5. Zero compilation errors via lean_diagnostic_messages
+6. Minimal, focused formalization without extra complexity
 """,
-    version="0.0.1",
+    dependencies=["leanclient"],
+    lifespan=app_lifespan,
 )
 
 
-# Document Parsing Tools 
+# Document Parsing Tools
 @mcp.tool(
     name="document_to_markdown",
-    description="Convert a PDF document to markdown using Axiomatic's advanced OCR.",
-    tags=["document", "filesystem", "analyze"],
+    description="Convert a PDF document to markdown and save to file using Axiomatic's advanced OCR.",
 )
 async def document_to_markdown(
-    file_path: Annotated[Path, "The absolute path to the PDF file to analyze"],
-) -> Annotated[str, "A string of markdown text of the analyzed document"]:
+    file_path: Annotated[Path, "Abs path to PDF file"],
+) -> Annotated[str, "Markdown content of the document"]:
     if not file_path.exists():
         raise FileNotFoundError(f"Document not found: {file_path}")
-
-    if file_path.suffix.lower() != ".pdf":
-        raise ValueError("File must be a PDF")
 
     file_content = file_path.read_bytes()
     files = {"file": (file_path.name, file_content, "application/pdf")}
     data = {"method": "mistral", "ocr": False, "layout_model": "doclayout_yolo"}
 
     response = AxiomaticAPIClient().post("/document/parse", files=files, data=data)
-    return response["markdown"]
+
+    # Save to file automatically
+    output_path = file_path.with_suffix(".md")
+    output_path.write_text(response["markdown"], encoding="utf-8")
+
+    return f"Saved to {output_path}"
 
 
 # LEAN CLIENT TOOLS
