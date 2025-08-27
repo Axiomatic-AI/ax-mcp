@@ -10,7 +10,7 @@ Convert PDF documents to markdown with advanced OCR and layout understanding.
 
 ### 🖌️ [Equations Server](./axiomatic_mcp/servers/equations/)
 
-Compose equations of your interests based on information in the scientific paper.
+Compose equation of your interest based on information in the scientific paper.
 
 ### 🔬 [PIC Designer Server](./axiomatic_mcp/servers/pic/)
 
