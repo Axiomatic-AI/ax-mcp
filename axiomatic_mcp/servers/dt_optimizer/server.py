@@ -404,14 +404,8 @@ def c_obs(ts, A0, B0, C0, D0, k1, k2, k3):
         saveat=saveat,
     )
     return sol.ys[:, [0, 3]]""",
-            "model_name": "ReactionModel",
             "function_name": "c_obs",
-            "docstring": "ReactionModel - observed concentrations (A and D only)",
-            "jit_compile": True,
-            "max_time": 10,
-            "optimizer_type": "nlopt",
-            "cost_function_type": "mse",
-            "optimizer_config": {"use_gradient": True, "tol": 1e-06},
+            "docstring": "ODE model template",
             "parameters": [
                 {"name": "A0", "value": {"magnitude": 2.0, "unit": "dimensionless"}},
                 {"name": "B0", "value": {"magnitude": 2.0, "unit": "dimensionless"}},
