@@ -472,12 +472,54 @@ def c_obs(ts, A0, B0, C0, D0, k1, k2, k3):
             "input_data": {
                 "name": "ts",
                 "unit": "dimensionless",
-                "magnitudes": [0.0,0.10101010101010102,0.20202020202020204,0.30303030303030304,0.4040404040404041,0.5050505050505051,0.6060606060606061,0.7070707070707072,0.8080808080808082,0.9090909090909092,1.0101010101010102,1.1111111111111112,1.2121212121212122,1.3131313131313131,1.4141414141414144,1.5151515151515154,1.6161616161616164,1.7171717171717173,1.8181818181818183,1.9191919191919193], # Your existing ts_data
+                "magnitudes": [
+                    0.0,
+                    0.10101010101010102,
+                    0.20202020202020204,
+                    0.30303030303030304,
+                    0.4040404040404041,
+                    0.5050505050505051,
+                    0.6060606060606061,
+                    0.7070707070707072,
+                    0.8080808080808082,
+                    0.9090909090909092,
+                    1.0101010101010102,
+                    1.1111111111111112,
+                    1.2121212121212122,
+                    1.3131313131313131,
+                    1.4141414141414144,
+                    1.5151515151515154,
+                    1.6161616161616164,
+                    1.7171717171717173,
+                    1.8181818181818183,
+                    1.9191919191919193,
+                ],  # Your existing ts_data
             },
             "output_data": {
                 "name": "c_obs",
                 "unit": "dimensionless",
-                "magnitudes": [[2.0290484183578608,0.00631150679115087],[1.7137258955755121,0.024575748765676548],[1.5840517018153317,0.04132967053685191],[1.4427320668271875,0.0580385719584766],[1.4124148995486188,0.1174516296450892],[1.368949685915051,0.18962503257090013],[1.3856405186866874,0.1932017018162794],[1.327393197993144,0.2150159392837813],[1.320938305668656,0.2418563193867974],[1.2936580207163744,0.34709043855172905],[1.3265907557052494,0.31604863425471974],[1.2772348154008333,0.3753005607117635],[1.2905260802750524,0.3824411022702551],[1.225388509509597,0.4288665690240162],[1.2294967390654807,0.472034492741107],[1.2352881942703335,0.45098857640967654],[1.2728845501112902,0.4682197703679211],[1.175889961410413,0.5215439950855341],[1.2224806724593729,0.5379143345300662],[1.1762241778536051,0.5877739882163965]],  # Your existing 2D data array
+                "magnitudes": [
+                    [2.0290484183578608, 0.00631150679115087],
+                    [1.7137258955755121, 0.024575748765676548],
+                    [1.5840517018153317, 0.04132967053685191],
+                    [1.4427320668271875, 0.0580385719584766],
+                    [1.4124148995486188, 0.1174516296450892],
+                    [1.368949685915051, 0.18962503257090013],
+                    [1.3856405186866874, 0.1932017018162794],
+                    [1.327393197993144, 0.2150159392837813],
+                    [1.320938305668656, 0.2418563193867974],
+                    [1.2936580207163744, 0.34709043855172905],
+                    [1.3265907557052494, 0.31604863425471974],
+                    [1.2772348154008333, 0.3753005607117635],
+                    [1.2905260802750524, 0.3824411022702551],
+                    [1.225388509509597, 0.4288665690240162],
+                    [1.2294967390654807, 0.472034492741107],
+                    [1.2352881942703335, 0.45098857640967654],
+                    [1.2728845501112902, 0.4682197703679211],
+                    [1.175889961410413, 0.5215439950855341],
+                    [1.2224806724593729, 0.5379143345300662],
+                    [1.1762241778536051, 0.5877739882163965],
+                ],  # Your existing 2D data array
             },
             "optimizer_type": "nlopt",
             "cost_function_type": "mse",
@@ -552,47 +594,47 @@ async def calculate_r_squared(
     output_values: Annotated[list, "Output data: 1D list [1,2,3] or 2D list [[1,2],[3,4]] for multidimensional"],
 ) -> ToolResult:
     """Calculate R-squared coefficient of determination for 1D or multidimensional data."""
-    
+
     try:
         import numpy as np
-        
+
         # Convert to numpy array and handle both 1D and 2D cases
         y_true = np.array(output_values)
-        
+
         # Flatten to handle multidimensional data consistently
         y_flat = y_true.flatten()
         n_total_elements = len(y_flat)
-        
+
         if n_total_elements == 0:
             raise ValueError("Output values cannot be empty")
-        
+
         if mse < 0:
             raise ValueError("MSE cannot be negative")
-        
+
         # For multidimensional data, MSE is already the mean across all elements
         # So SS_res = MSE * total_number_of_elements
         ss_res = mse * n_total_elements
-        
+
         # Calculate total sum of squares (variance around mean across all dimensions)
         y_mean = np.mean(y_flat)
         ss_tot = np.sum((y_flat - y_mean) ** 2)
-        
+
         # Handle edge case where all output values are the same
         if ss_tot == 0:
             if mse == 0:
                 r_squared = 1.0  # Perfect fit to constant data
             else:
-                r_squared = float('-inf')  # Model worse than mean predictor
+                r_squared = float("-inf")  # Model worse than mean predictor
         else:
             r_squared = 1 - (ss_res / ss_tot)
-        
+
         # Determine data structure for display
         data_shape = y_true.shape
         if len(data_shape) == 1:
             data_info = f"1D data with {data_shape[0]} samples"
         else:
             data_info = f"Multidimensional data: {data_shape[0]} samples × {data_shape[1]} dimensions"
-        
+
         # Format result
         result_text = f"""# R-squared Calculation Results
 
@@ -604,7 +646,7 @@ async def calculate_r_squared(
 
 ## Interpretation
 """
-        
+
         if r_squared >= 0.9:
             result_text += "- **Excellent fit** (R² ≥ 0.9) - Model explains >90% of variance"
         elif r_squared >= 0.7:
@@ -615,11 +657,11 @@ async def calculate_r_squared(
             result_text += "- **Poor fit** (0.0 ≤ R² < 0.5) - Model explains <50% of variance"
         else:
             result_text += "- **Very poor fit** (R² < 0.0) - Model worse than simply using the mean"
-        
+
         result_text += f"\n- **Variance explained:** {r_squared * 100:.2f}%" if r_squared >= 0 else ""
-        
+
         return ToolResult(content=[TextContent(type="text", text=result_text)])
-        
+
     except Exception as e:
         error_text = f"""❌ **R-squared Calculation Failed**
 
