@@ -18,9 +18,37 @@ mcp = FastMCP(
     name="Axiomatic Digital Twin Optimizer",
     instructions="""This server provides digital twin optimization using the Axiomatic AI platform.
 
-    USAGE GUIDE:
-    Get started with the `optimization_workflow` tool. It outlines how to process data and setup models, 
-    culminating in a succesful use of the `optimize_digital_twin_model` tool which is the main tool of this MCP.
+    OPTIMIZATION WORKFLOW - FOLLOW THESE STEPS:
+    
+    1️⃣ DEFINE YOUR MATHEMATICAL MODEL
+    Write your model as a JAX function using jnp operations:
+    ```python
+    def target_variable_name(input_var, param1, param2, ...):
+        return param1 * jnp.exp(-param2 * input_var) + param3
+    ```
+
+    2️⃣ GET TEMPLATES
+    Use `get_optimization_examples` to see working templates:
+    • Analytical functions (exponential, polynomial, trigonometric)
+    • ODE systems (population dynamics, chemical kinetics)
+
+    3️⃣ ADAPT THE TEMPLATE
+    • Replace function with your model
+    • Update parameter names and initial guesses
+    • Set realistic bounds for ALL parameters, inputs, AND outputs
+    • Use proper pint units ('dimensionless', 'nanometer', 'volt', etc.)
+
+    4️⃣ STRUCTURE DATA
+    Format input/target data:
+    ```python
+    input_data = {"name": "time", "unit": "second", "magnitudes": [0, 1, 2, ...]}
+    target_data = {"name": "concentration", "unit": "molar", "magnitudes": [1.0, 0.8, ...]}
+    ```
+
+    5️⃣ RUN OPTIMIZATION
+    Use `optimize_digital_twin_model` with your adapted template.
+
+    For detailed guidance, use the `optimization_workflow` prompt.
 
     CRITICAL REQUIREMENTS for all function calls:
     1. ALL functions must use JAX operations: jnp.exp, jnp.sin, jnp.cos, jnp.sqrt, etc.
@@ -509,6 +537,109 @@ All templates are generic - adapt the function, parameters, and data to your spe
         content=[TextContent(type="text", text=summary_text)],
         structured_content={"templates": templates},
     )
+
+
+@mcp.tool(
+    name="calculate_r_squared",
+    description="""Calculate R-squared (coefficient of determination) from MSE and target data.
+    
+    Works with both 1D and multidimensional target data:
+    - 1D: [1.0, 0.8, 0.6] 
+    - 2D: [[1.0, 0.5], [0.8, 0.3], [0.6, 0.2]]
+    
+    R² measures how well the model explains the variance in the data:
+    - R² = 1 - (SS_res / SS_tot)
+    - For multidimensional data, computes total variance across all dimensions
+    
+    Returns R² value between 0 and 1 (higher is better fit).
+    """,
+    tags=["statistics", "model_evaluation", "goodness_of_fit"],
+)
+async def calculate_r_squared(
+    mse: Annotated[float, "Mean squared error from the optimization"],
+    target_values: Annotated[list, "Target data: 1D list [1,2,3] or 2D list [[1,2],[3,4]] for multidimensional"],
+) -> ToolResult:
+    """Calculate R-squared coefficient of determination for 1D or multidimensional data."""
+    
+    try:
+        import numpy as np
+        
+        # Convert to numpy array and handle both 1D and 2D cases
+        y_true = np.array(target_values)
+        
+        # Flatten to handle multidimensional data consistently
+        y_flat = y_true.flatten()
+        n_total_elements = len(y_flat)
+        
+        if n_total_elements == 0:
+            raise ValueError("Target values cannot be empty")
+        
+        if mse < 0:
+            raise ValueError("MSE cannot be negative")
+        
+        # For multidimensional data, MSE is already the mean across all elements
+        # So SS_res = MSE * total_number_of_elements
+        ss_res = mse * n_total_elements
+        
+        # Calculate total sum of squares (variance around mean across all dimensions)
+        y_mean = np.mean(y_flat)
+        ss_tot = np.sum((y_flat - y_mean) ** 2)
+        
+        # Handle edge case where all target values are the same
+        if ss_tot == 0:
+            if mse == 0:
+                r_squared = 1.0  # Perfect fit to constant data
+            else:
+                r_squared = float('-inf')  # Model worse than mean predictor
+        else:
+            r_squared = 1 - (ss_res / ss_tot)
+        
+        # Determine data structure for display
+        data_shape = y_true.shape
+        if len(data_shape) == 1:
+            data_info = f"1D data with {data_shape[0]} samples"
+        else:
+            data_info = f"Multidimensional data: {data_shape[0]} samples × {data_shape[1]} dimensions"
+        
+        # Format result
+        result_text = f"""# R-squared Calculation Results
+
+## Model Fit Quality
+- **R² Value:** {r_squared:.6f}
+- **MSE:** {mse:.6e}
+- **Data Structure:** {data_info}
+- **Total Elements:** {n_total_elements}
+
+## Interpretation
+"""
+        
+        if r_squared >= 0.9:
+            result_text += "- **Excellent fit** (R² ≥ 0.9) - Model explains >90% of variance"
+        elif r_squared >= 0.7:
+            result_text += "- **Good fit** (0.7 ≤ R² < 0.9) - Model explains 70-90% of variance"
+        elif r_squared >= 0.5:
+            result_text += "- **Moderate fit** (0.5 ≤ R² < 0.7) - Model explains 50-70% of variance"
+        elif r_squared >= 0.0:
+            result_text += "- **Poor fit** (0.0 ≤ R² < 0.5) - Model explains <50% of variance"
+        else:
+            result_text += "- **Very poor fit** (R² < 0.0) - Model worse than simply using the mean"
+        
+        result_text += f"\n- **Variance explained:** {r_squared * 100:.2f}%" if r_squared >= 0 else ""
+        
+        return ToolResult(content=[TextContent(type="text", text=result_text)])
+        
+    except Exception as e:
+        error_text = f"""❌ **R-squared Calculation Failed**
+
+**Error:** {e!s}
+
+## Troubleshooting:
+- Ensure MSE is a positive number
+- Verify target_values is a non-empty list or nested list
+- For multidimensional data: [[sample1_dim1, sample1_dim2], [sample2_dim1, sample2_dim2], ...]
+- Check that target data matches what was used in optimization
+"""
+        return ToolResult(content=[TextContent(type="text", text=error_text)])
 
 
 def main():
