@@ -620,10 +620,8 @@ async def calculate_r_squared(
         ss_tot = np.sum((y_flat - y_mean) ** 2)
 
         # Handle edge case where all output values are the same
-        if ss_tot == 0:
-            r_squared = 1.0 if mse == 0 else float("-inf")  # Perfect fit to constant data
-        else:
-            r_squared = 1 - (ss_res / ss_tot)
+
+        r_squared = r_squared = (1.0 if mse == 0 else float("-inf")) if ss_tot == 0 else 1 - ss_res / ss_tot
 
         # Determine data structure for display
         data_shape = y_true.shape
