@@ -1,106 +1,106 @@
-import asyncio
-from typing import Annotated
-
 from fastmcp import FastMCP
+from mcp.server.fastmcp import Context
 
-from ...shared import AxiomaticAPIClient
+from ..leanclient.lean_client import (
+    lean_declaration_file_impl,
+    lean_diagnostic_messages_impl,
+    lean_file_contents_impl,
+    lean_hover_info_impl,
+    lean_run_code_impl,
+)
 
 mcp = FastMCP(
     name="Autoformalizer",
-    instructions="""You are an expert Lean 4 theorem formalizer. Convert natural language mathematical statements into syntactically correct Lean 4 theorem declarations.
+    instructions="""You are an expert Lean 4 theorem formalizer. Convert natural language
+mathematical statements into syntactically correct Lean 4 theorem declarations.
 
 FORMALIZATION RULES:
+- Use the axiomatic API 
 - Use proper Lean 4 and Mathlib syntax
 - Follow current Mathlib naming conventions
-- ONLY USE import Mathlib - DO NOT USE specific import e.g. import Mathlib.LinearAlgebra.GeneralLinearGroup.
-- Every statement should be written as a theorem, class, or a definitions.
+- USE import Mathlib and DO NOT USE specific imports such as import Mathlib.LinearAlgebra
 - Include necessary hypotheses as parameters
-- End all theorems with := by sorry
+- End all theorems and statements with := by sorry
 - DO NOT PROVE THEOREMS.
-- Include necessary imports at the top (e.g., import Mathlib.Data.Nat.Prime.Basic)
-- CRITICAL: Never use escaped quotes (\") in comments - use simple quotes or rephrase without quotes
-
-EXAMPLES:
-Input: "All prime numbers greater than 2 are odd"
-Output:
-
-```lean4
-import Mathlib
-
-theorem primes_gt_two_odd : ∀ p : ℕ, p > 2 ∧ Nat.Prime p → Odd p := by sorry
-```
-
-Input: "Create a Hilbert space in Lean4"
-Output:
-
-```lean4
-class HilbertSpace (𝕜 : Type*) (E : Type*) [RCLike 𝕜] [NormedAddCommGroup E] [InnerProductSpace 𝕜 E] [CompleteSpace E] : Type
-```
-
-Input: "The square root of 2 is irrational"
-Output:
-
-```lean4
-import Mathlib
-
-theorem sqrt_two_irrational : Irrational (Real.sqrt 2) := by sorry
-```
-
-Once complete, execute the code to ensure there are no syntactical errors. You may do several attempts in parallel with the execute_list tool.
-
-Return all completed code blocks.""",
+""",
     version="0.0.1",
 )
 
 
-def _execute_lean_code(code: str) -> str:
-    """Core execution logic for Lean code."""
-    data = {"code": code}
-    response = AxiomaticAPIClient().post("/lean/execute", data=data)
-    return f"{response['status']}\n{response['stdout']}"
+# LEAN CLIENT TOOLS
+@mcp.tool("lean_file_contents")
+def lean_file_contents(ctx: Context, file_path: str, annotate_lines: bool = True) -> str:
+    """Get the text contents of a Lean file, optionally with line numbers.
+
+    Args:
+        file_path (str): Abs path to Lean file
+        annotate_lines (bool, optional): Annotate lines with line numbers. Defaults to True.
+
+    Returns:
+        str: File content or error msg
+    """
+    return lean_file_contents_impl(ctx, file_path, annotate_lines)
 
 
-@mcp.tool(
-    name="execute_lean_code",
-    description='Execute Lean 4 code and return compilation results. IMPORTANT: Do not use escaped quotes (") in comments',
-    tags=["lean", "execution", "validation"],
-)
-async def execute_lean_code(
-    code: Annotated[str, "Lean 4 code to execute"],
-) -> Annotated[str, "Execution results"]:
-    """Execute Lean code via Axiomatic API."""
-    return await asyncio.to_thread(_execute_lean_code, code)
+@mcp.tool("lean_diagnostic_messages")
+def lean_diagnostic_messages(ctx: Context, file_path: str) -> list[str] | str:
+    """Get all diagnostic msgs (errors, warnings, infos) for a Lean file.
+
+    "no goals to be solved" means code may need removal.
+
+    Args:
+        file_path (str): Abs path to Lean file
+
+    Returns:
+        List[str] | str: Diagnostic msgs or error msg
+    """
+    return lean_diagnostic_messages_impl(ctx, file_path)
 
 
-@mcp.tool(
-    name="execute_list",
-    description='Execute a list of Lean 4 code snippets in parallel. IMPORTANT: Do not use escaped quotes (") in comments',
-    tags=["lean", "execution", "parallel"],
-)
-async def execute_list(
-    codes: Annotated[list[str], "List of Lean 4 code snippets to execute"],
-) -> Annotated[list[str], "List of execution results"]:
-    """Execute multiple Lean code snippets concurrently."""
-    tasks = [asyncio.to_thread(_execute_lean_code, code) for code in codes]
-    return await asyncio.gather(*tasks)
+@mcp.tool("lean_hover_info")
+def lean_hover_info(ctx: Context, file_path: str, line: int, column: int) -> str:
+    """Get hover info (docs for syntax, variables, functions, etc.) at a specific location in a Lean file.
+
+    Args:
+        file_path (str): Abs path to Lean file
+        line (int): Line number (1-indexed)
+        column (int): Column number (1-indexed). Make sure to use the start or within the term, not the end.
+
+    Returns:
+        str: Hover info or error msg
+    """
+    return lean_hover_info_impl(ctx, file_path, line, column)
 
 
-# @mcp.tool(
-#     name="write_lean_file",
-#     description="Write Lean code to a file",
-#     tags=["lean", "file"],
-# )
+@mcp.tool("lean_declaration_file")
+def lean_declaration_file(ctx: Context, file_path: str, symbol: str) -> str:
+    """Get the file contents where a symbol/lemma/class/structure is declared.
+
+    Note:
+        Symbol must be present in the file! Add if necessary!
+        Lean files can be large, use `lean_hover_info` before this tool.
+
+    Args:
+        file_path (str): Abs path to Lean file
+        symbol (str): Symbol to look up the declaration for. Case sensitive!
+
+    Returns:
+        str: File contents or error msg
+    """
+    return lean_declaration_file_impl(ctx, file_path, symbol)
 
 
-# async def write_lean_file(
-#     lean_code: Annotated[str, "Lean code to write"],
-# ) -> Annotated[str, "Result"]:
-#     """Write Lean code to a file."""
+@mcp.tool("lean_run_code")
+def lean_run_code(ctx: Context, code: str) -> list[str] | str:
+    """Run a complete, self-contained code snippet and return diagnostics.
 
-#     try:
-#         path = Path(file_path)
-#         with open(path, "w") as f:
-#             f.write(lean_code)
-#         return f"✅ Wrote {file_path}"
-#     except Exception as e:
-#         return f"❌ Error: {e}"
+    Has to include all imports and definitions!
+    Only use for testing outside open files! Keep the user in the loop by editing files instead.
+
+    Args:
+        code (str): Code snippet
+
+    Returns:
+        List[str] | str: Diagnostics msgs or error msg
+    """
+    return lean_run_code_impl(ctx, code)
