@@ -374,7 +374,7 @@ async def get_optimization_examples() -> ToolResult:
         },
         "ODE_system_example": {
             "category": "ODE System",
-            "description": "This models a chemical reactor in which the reaction A+B <=> C => D is happening. The concentrations of A and D are observed.",
+            "description": "Chemical reactor model for the reaction A+B <=> C => D is happening. Concentrations of A and D are observed.",
             "model_name": "ODESystem",
             "function_source": """import diffrax
 import jax.numpy as jnp
@@ -622,7 +622,7 @@ async def calculate_r_squared(
         if len(data_shape) == 1:
             data_info = f"1D data with {data_shape[0]} samples"
         else:
-            data_info = f"Multidimensional data: {data_shape[0]} samples × {data_shape[1]} dimensions"
+            data_info = f"Multidimensional data: {data_shape[0]} samples x {data_shape[1]} dimensions"
 
         # Format result
         result_text = f"""# R-squared Calculation Results
