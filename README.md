@@ -8,13 +8,18 @@ MCP (Model Context Protocol) servers that provide AI assistants with access to t
 
 Convert PDF documents to markdown with advanced OCR and layout understanding.
 
-### 📊 [Plots Server](./axiomatic_mcp/servers/plots/)
+### 🖌️ [Equations Server](./axiomatic_mcp/servers/equations/)
 
-Extract numerical data from plot images for analysis and reproduction.
+Compose equation of your interest based on information in the scientific paper.
 
 ### 🔬 [PIC Designer Server](./axiomatic_mcp/servers/pic/)
 
 Design photonic integrated circuits using natural language descriptions.
+
+### 📊 [Plots Server](./axiomatic_mcp/servers/plots/)
+
+Extract numerical data from plot images for analysis and reproduction.
+
 
 ## Getting an API Key
 
@@ -186,3 +191,8 @@ Install only the domain servers you need. Each server runs independently, so you
 
 - **Issues**: [GitHub Issues](https://github.com/axiomatic/ax-mcp/issues)
 - **Email**: developers@axiomatic-ai.com
+
+## Creating >>Add to Cursor<< button:
+Copy your MCP client configuration and paste it there:
+
+https://docs.cursor.com/en/tools/developers#generate-install-link
