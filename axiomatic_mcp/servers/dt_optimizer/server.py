@@ -621,10 +621,7 @@ async def calculate_r_squared(
 
         # Handle edge case where all output values are the same
         if ss_tot == 0:
-            if mse == 0:
-                r_squared = 1.0  # Perfect fit to constant data
-            else:
-                r_squared = float("-inf")  # Model worse than mean predictor
+            r_squared = 1.0 if mse == 0 else float("-inf")  # Perfect fit to constant data
         else:
             r_squared = 1 - (ss_res / ss_tot)
 
