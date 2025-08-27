@@ -1,8 +1,9 @@
 """PIC (Photonic Integrated Circuit) domain MCP server."""
 
+import asyncio
+from pathlib import Path
 from typing import Annotated
 
-import nbformat
 from fastmcp import FastMCP
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
@@ -60,7 +61,9 @@ async def design(
     name="simulate_circuit",
     description="Simulates a circuit from code and returns a Jupyter notebook with results",
 )
-async def simulate_circuit(code: str, statements: list[dict]) -> dict:
+async def simulate_circuit(
+    file_path: Annotated[Path, "The absolute path to the python file to analyze"],
+) -> dict:
     """
     Parameters:
         code: str - Python code (GDSFactory or similar) that defines the circuit
@@ -71,17 +74,22 @@ async def simulate_circuit(code: str, statements: list[dict]) -> dict:
             - "notebook": nbformat JSON of the simulation results
             - "wavelengths": list of floats used in the simulation
     """
-    # 1. Get netlist from user code
+    # Get the code from the file_path
+    if not file_path.exists():
+        raise FileNotFoundError(f"Code not found: {file_path}")
+
+    if file_path.suffix.lower() != ".py":
+        raise ValueError("File must be a Python file")
+
+    code = await asyncio.to_thread(file_path.read_bytes)
     netlist = await circuit_service.get_netlist_from_code(code)
 
-    # 2. Extract wavelengths (or fallback to default)
-    wavelengths = statements_service.extract_wavelengths_from_statements(statements)
+    wavelengths = None
     if wavelengths is None:
         base = 1.25
         delta = base * 0.1
         wavelengths = [round(base - delta + i * (2 * delta / 100), 6) for i in range(101)]
 
-    # 3. Run simulation
     response = await simulation_service.simulate_from_code(
         {
             "netlist": netlist,
@@ -92,12 +100,14 @@ async def simulate_circuit(code: str, statements: list[dict]) -> dict:
     if not response:
         raise RuntimeError("Simulation service returned no response")
 
-    # 4. Build a Jupyter Notebook with nbformat
-    nb = nbformat.v4.new_notebook()
-    nb.cells.append(nbformat.v4.new_markdown_cell("# Simulation Results"))
-    nb.cells.append(nbformat.v4.new_code_cell("wavelengths = " + repr(wavelengths) + "\nresponse = " + repr(response) + "\nresponse"))
+    # TODO: Make a simulation notebook from here with another service
+    simulation_notebook = response.notebook
+    name = file_path.parent / (file_path.stem + ".ipynb")
+
+    with name.open("w", encoding="utf-8") as f:
+        f.write(simulation_notebook)
 
     return {
-        "notebook": nbformat.writes(nb),
+        "message": f"Simulation notebook saved at {name}",
         "wavelengths": wavelengths,
     }

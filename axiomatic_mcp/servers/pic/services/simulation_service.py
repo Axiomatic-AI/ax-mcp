@@ -1,5 +1,6 @@
 from typing import Any, Optional
 
+from ....shared import AxiomaticAPIClient
 from ...constants.api_constants import ApiRoutes
 from .axiomatic_api_client import AxiomaticApiClient
 
@@ -24,7 +25,7 @@ class SimulationService:
             "wavelengths": ...
         }
         """
-        response = await self.api_client.post(ApiRoutes.GET_SAX_SPECTRUM, query)
+        response = AxiomaticAPIClient().post(ApiRoutes.GET_SAX_SPECTRUM, data=query)
 
         if not response:
             raise RuntimeError("No response from get_sax_spectrum API")
