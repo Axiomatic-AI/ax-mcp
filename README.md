@@ -178,6 +178,61 @@ We welcome contributions! To add a new server or improve existing ones:
 
 For detailed guidelines on adding new servers, see the [Development](#development) section.
 
+## Debugging
+
+### Attaching debugpy to an MCP server
+
+1. In the directory where you cloned the repo, run `make install-dev` to install the required dependencies and create a python venv.
+2. In your IDE, add the following configuration to the **/Users/{user_name}/.cursor/mcp.json** file, to enable debugpy listen to your local mcp code execution, e.g. axiomatic-documents MCP: debugging:
+
+```json
+{
+  "mcpServers": {
+    "axiomatic-documents-debug": {
+      "command": "/Users/{user_name}/Work/Repos/ax-mcp/.venv/bin/python",
+      "cwd": "/Users/{user_name}/Work/Repos/ax-mcp",
+      "args": [
+        "-m",
+        "debugpy",
+        "--listen",
+        "127.0.0.1:5678", // Use unique port when adding more MCPs to debug
+        "--wait-for-client",
+        "-m",
+        "axiomatic_mcp.servers.documents" // Path to your MCP
+      ],
+      "env": {
+        "AXIOMATIC_API_KEY": "xxxx-xxxx-xxxx-xxxx-xxxx"
+      }
+    }
+  }
+}
+```
+
+3. Add the following block to the **ax-mcp/.vscode/launch.json**, use the same port as the MCP you would like to debug:
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Attach to DocumentsFastMCP server",
+      "type": "debugpy",
+      "request": "attach",
+      "connect": {
+        "host": "localhost",
+        "port": 5678 // Use matching port from mcp.json
+      },
+      "justMyCode": false
+    }
+  ]
+}
+```
+
+4. In your IDE settings, enable the MCP you are debugging. NOTE: After enabling the tool it should be in a yellow "Loading tools" state, if not toggle the switch and if that does not work, make sure you have the right requirements installed.
+   ![alt text](images/cursor-settings.png)
+
+5. At last, while the tool is in the yellow "Loading tools" state, go to the "Run and Debug" tab on the left of your IDE and click "Start Debugging", the MCP tool in the IDE settings should now be green and list the available tools. Once this is running, you can use breakpoints in the server code and see the execution.
+
 ## Troubleshooting
 
 ### Server not appearing in Cursor

@@ -693,7 +693,7 @@ async def calculate_r_squared(
 
         # Handle edge case where all output values are the same
 
-        r_squared = r_squared = (1.0 if mse == 0 else float("-inf")) if ss_tot == 0 else 1 - ss_res / ss_tot
+        r_squared = (1.0 if mse == 0 else float("-inf")) if ss_tot == 0 else 1 - ss_res / ss_tot
 
         # Determine data structure for display
         data_shape = y_true.shape
