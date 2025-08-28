@@ -296,7 +296,7 @@ def lean_completions_impl(ctx: Context, file_path: str, line: int, column: int, 
     # Truncate if too many results
     if len(formatted) > max_completions:
         remaining = len(formatted) - max_completions
-        formatted = formatted[:max_completions] + [f"{remaining} more, keep typing to filter further"]
+        formatted = [*formatted[:max_completions], f"{remaining} more, keep typing to filter further"]
     completions_text = "\n".join(formatted)
     return f"Completions at:\n{f_line}\n{completions_text}"
 
