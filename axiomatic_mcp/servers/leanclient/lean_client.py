@@ -3,10 +3,9 @@ import re
 import subprocess
 from pathlib import Path
 
+from leanclient import DocumentContentChange, LeanLSPClient
 from mcp.server.fastmcp import Context
 from mcp.server.fastmcp.utilities.logging import get_logger
-
-from leanclient import DocumentContentChange, LeanLSPClient
 
 from .utils import (
     OutputCapture,
