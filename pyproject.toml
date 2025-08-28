@@ -35,7 +35,7 @@ dependencies = [
     "klujax>=0.4.3",
     "sax>=0.14.5",
     "plotly>=6.1.2",
-    "nbformat>=5.10.4"
+    "nbformat>=5.10.4",
     "numpy>=1.21.0"
 ]
 
