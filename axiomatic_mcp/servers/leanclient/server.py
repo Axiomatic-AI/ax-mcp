@@ -228,6 +228,25 @@ def lean_multi_attempt(ctx: Context, file_path: str, line: int, snippets: list[s
     return lean_multi_attempt_impl(ctx, file_path, line, snippets)
 
 
+@mcp.tool("lean_write_file")
+def lean_write_file(ctx: Context, file_path: str, content: str) -> str:
+    """Write content to a Lean file.
+
+    Args:
+        file_path (str): Absolute path to the Lean file
+        content (str): Content to write to the file
+
+    Returns:
+        str: Result of write operation
+    """
+    try:
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(content)
+        return f"Successfully wrote to {file_path}"
+    except Exception as e:
+        return f"Error writing file: {e!s}"
+
+
 @mcp.tool("lean_run_code")
 def lean_run_code(ctx: Context, code: str) -> list[str] | str:
     """Run a complete, self-contained code snippet and return diagnostics.

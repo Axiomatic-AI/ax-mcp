@@ -91,6 +91,7 @@ def synthesize_claude_output(response):
 
     Available tools:
     - lean_file_contents: Read Lean files with line numbers
+    - lean_write_file: Write content to Lean files (save solutions)
     - lean_run_code: Run complete Lean code snippets for testing
     - lean_diagnostic_messages: Get diagnostic messages for Lean files
     - lean_goal: Get proof goals at specific locations
@@ -98,8 +99,7 @@ def synthesize_claude_output(response):
     - lean_completions: Get code completions
     - lean_multi_attempt: Test multiple code approaches
 
-    Workflow: Analyze query → Write lean theorem statement using lean_run_code → Verify with lean_diagnostic_messages. If there are issues, iterate until clean.
-    Use lean_run_code to test your formalization before finalizing.
+    Workflow: Analyze query → Write lean theorem statement → Use lean_run_code to test → Use lean_write_file to save to target file → Verify with lean_diagnostic_messages. If there are issues, iterate until clean.
                 """,
     tags=["lean", "formalization", "mathematics"],
 )
@@ -187,7 +187,9 @@ async def formalize_statement(
     (2) Formalize the query into a Lean theorem statement with proper imports
     (3) Use lean_run_code to test your formalization and check for syntax errors
     (4) If there are syntax issues, fix them and test again with lean_run_code
-    (5) Once the syntax is correct, return the final Lean theorem statement
+    (5) Once the syntax is correct, use lean_write_file to save to the target file: {file_path}
+    (6) Use lean_diagnostic_messages to verify the saved file
+    (7) Return the final Lean theorem statement
 
     For example, when working with this theorem:
 
