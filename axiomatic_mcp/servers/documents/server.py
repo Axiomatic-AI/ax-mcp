@@ -28,14 +28,19 @@ async def document_to_markdown(
 ) -> ToolResult:
     try:
         response = await pdf_to_markdown(file_path)
-        name = file_path.stem + ".md"
+        markdown = response.markdown
+        name = file_path.parent / (file_path.stem + ".md")
+
+        with Path.open(name, "w", encoding="utf-8") as f:
+            f.write(markdown)
+
         return ToolResult(
-            content=[TextContent(type="text", text=f"Generated markdown for: {name}\n\n```markdown\n{response.markdown}\n```")],
-            structured_content={
-                "suggestions": [
-                    {"type": "create_file", "path": name, "content": response.markdown, "description": f"Create {name} with the generated markdown"}
-                ]
-            },
+            content=[
+                TextContent(
+                    type="text",
+                    text=f"Generated markdown for: {name}\n\n```markdown\n{markdown}\n```",
+                )
+            ],
         )
     except Exception as e:
         raise ToolError(f"Failed to analyze PDF document: {e!s}") from e
