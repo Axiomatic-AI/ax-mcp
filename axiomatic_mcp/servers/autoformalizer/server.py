@@ -91,28 +91,25 @@ def synthesize_claude_output(response):
 
     Available tools:
     - lean_file_contents: Read Lean files with line numbers
-    - lean_write_file: Write content to Lean files (save proof solutions)
+    - lean_run_code: Run complete Lean code snippets for testing
     - lean_diagnostic_messages: Get diagnostic messages for Lean files
-    - lean_leansearch: Search for theorems and lemmas using natural language  
-    - lean_loogle: Search for lemmas by type signature
+    - lean_goal: Get proof goals at specific locations
+    - lean_hover_info: Get documentation for Lean terms
+    - lean_completions: Get code completions
+    - lean_multi_attempt: Test multiple code approaches
 
-    Workflow: Analyze query → use lean_search to see relevant terms → Write lean theorem statement → Verify with diagnostics. If there is an issue repeat until diagnostics are clean.
-    Use search tools when stuck. The tool will automatically continue iterating until lean_diagnostic_messages reports no errors.
+    Workflow: Analyze query → Write lean theorem statement using lean_run_code → Verify with lean_diagnostic_messages. If there are issues, iterate until clean.
+    Use lean_run_code to test your formalization before finalizing.
                 """,
     tags=["lean", "formalization", "mathematics"],
 )
 async def formalize_statement(
     query: Annotated[str, "A natural language mathematical statement to formalize into Lean syntax"],
     file_path: Annotated[str, "Absolute path to Lean file to analyze and prove"],
-    project_path: Annotated[str, "Path to the Lean project"] = "/Users/jacobmccarran_ax/ax-mcp/proofs",
+    project_path: Annotated[str, "Path to the Lean project"] = "/Users/benjaminbreen/Desktop/ax-mcp/axiomatic_mcp/servers/leanclient/example",
     name: Annotated[str, "Agent name"] = "Autoformalizer",
     model: Annotated[str, "Claude model to use"] = "claude-sonnet-4-20250514",
-    lean_tools_filter: Annotated[list[str] | None, "List of Lean tools to include (None = all tools)"] = [
-        "lean_diagnostic_messages",
-        "lean_file_contents",
-        "lean_goal",
-        "lean_hover_info",
-    ],
+    lean_tools_filter: Annotated[list[str] | None, "List of Lean tools to include (None = all tools)"] = None,
     max_iterations: Annotated[int, "Maximum tool use iterations"] = 100,
     max_tokens: Annotated[int, "Maximum tokens per API call"] = 5000,
 ) -> Annotated[str, "The corresponding Lean 4 theorem statement ending with `:= by sorry`"]:
@@ -132,7 +129,7 @@ async def formalize_statement(
 
     # Add elan bin directory to PATH so lake command can be found
     current_path = env.get("PATH", "")
-    elan_path = "/Users/jacobmccarran_ax/.elan/bin"
+    elan_path = "/Users/benjaminbreen/.elan/bin"
     if elan_path not in current_path:
         env["PATH"] = f"{elan_path}:{current_path}"
 
@@ -187,12 +184,10 @@ async def formalize_statement(
 
     The general approach you must follow is:
     (1) Read the query and analyze what theorem statement you need to write
-    (2) Use lean_file_contents to examine the current file structure and imports
-    (3) Formalize the query into a Lean theorem statement with proper syntax
-    (4) Note: File writing must be done manually - provide the complete formalized code
-    (5) Use lean_diagnostic_messages tool to validate the formalization syntax
-    (6) If there are any issues, fix them and repeat the process
-    (7) If there are no issues, return the Lean theorem statement with a sorry placeholder
+    (2) Formalize the query into a Lean theorem statement with proper imports
+    (3) Use lean_run_code to test your formalization and check for syntax errors
+    (4) If there are syntax issues, fix them and test again with lean_run_code
+    (5) Once the syntax is correct, return the final Lean theorem statement
 
     For example, when working with this theorem:
 

@@ -1,6 +1,6 @@
-"""Entry point for running lean_tools as a module."""
+"""Entry point for running leanclient as a module."""
 
-from .server import main
+from .server import mcp
 
 if __name__ == "__main__":
-    main()
+    mcp.run()
