@@ -278,7 +278,8 @@ def lean_run_code(ctx: Context, code: str) -> list[str] | str:
 
 #     Args:
 #         lean_project_path (str, optional): Path to the Lean project. If not provided, it will be inferred from previous tool calls.
-#         clean (bool, optional): Run `lake clean` before building. Attention: Only use if it is really necessary! It can take a long time! Defaults to False.
+#         clean (bool, optional): Run `lake clean` before building. Attention: Only use if it is really necessary!
+#             It can take a long time! Defaults to False.
 
 #     Returns:
 #         str: Build output or error msg

@@ -370,7 +370,10 @@ def lean_run_code_impl(ctx: Context, code: str) -> list[str] | str:
     """Run a complete, self-contained code snippet and return diagnostics."""
     lean_project_path = ctx.request_context.lifespan_context.lean_project_path
     if lean_project_path is None:
-        return "No valid Lean project path found. Run another tool (e.g. `lean_diagnostic_messages`) first to set it up or set the LEAN_PROJECT_PATH environment variable."
+        return (
+            "No valid Lean project path found. Run another tool (e.g. `lean_diagnostic_messages`) "
+            "first to set it up or set the LEAN_PROJECT_PATH environment variable."
+        )
 
     rel_path = "temp_snippet.lean"
     abs_path = os.path.join(lean_project_path, rel_path)
