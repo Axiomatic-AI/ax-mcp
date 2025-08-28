@@ -40,9 +40,6 @@ dev = [
 ]
 lean = [
     "leanclient==0.1.14",
-]
-autoformalizer = [
-    "leanclient==0.1.14",
     "anthropic>=0.34.0",
 ]
 

@@ -71,7 +71,13 @@ Add to your MCP client configuration:
 
 ### Development Install
 
-For development or local modifications:
+First, install the lean dependencies:
+
+```bash
+pip install "axiomatic-mcp[lean]"
+```
+
+Then configure MCP:
 
 ```json
 {
