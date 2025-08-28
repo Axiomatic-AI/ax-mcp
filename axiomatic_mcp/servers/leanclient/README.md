@@ -82,6 +82,14 @@ Add to your MCP settings file (`.cursor/mcp.json`):
 
 #### For Development
 
+First, install the lean dependencies:
+
+```bash
+pip install "axiomatic-mcp[lean]"
+```
+
+Then configure MCP:
+
 ```json
 {
   "axiomatic-leanclient": {
