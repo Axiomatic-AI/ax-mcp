@@ -1,5 +1,3 @@
-"""Lean client functions that interact with the LSP."""
-
 import contextlib
 import re
 import subprocess

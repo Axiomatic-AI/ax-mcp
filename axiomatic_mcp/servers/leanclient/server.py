@@ -1,5 +1,3 @@
-"""Main Lean Tools MCP Server that registers all tools."""
-
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager

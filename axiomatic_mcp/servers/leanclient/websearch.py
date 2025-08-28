@@ -1,5 +1,3 @@
-"""Web search functions for Lean theorem and premise search."""
-
 import json
 import os
 import urllib.parse

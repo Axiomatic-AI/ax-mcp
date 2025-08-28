@@ -1,5 +1,3 @@
-"""Utility functions that don't depend on lean client."""
-
 import os
 import sys
 import tempfile
