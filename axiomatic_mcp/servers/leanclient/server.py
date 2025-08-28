@@ -56,8 +56,9 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
         yield context
     finally:
         logger.info("Closing Lean LSP client")
-        if context.client:
-            context.client.close()
+        ctx_obj = locals().get("context")
+        if ctx_obj and ctx_obj.client:
+            ctx_obj.client.close()
 
 
 # Instructions
