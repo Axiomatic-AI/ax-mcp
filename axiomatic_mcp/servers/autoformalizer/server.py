@@ -99,7 +99,9 @@ def synthesize_claude_output(response):
     - lean_completions: Get code completions
     - lean_multi_attempt: Test multiple code approaches
 
-    Workflow: Analyze query → Write lean theorem statement → Use lean_run_code to test → Use lean_write_file to save to target file → Verify with lean_diagnostic_messages. If there are issues, iterate until clean.
+    Workflow: Analyze query → Write lean theorem statement → Use lean_run_code to test → 
+    Use lean_write_file to save to target file → Verify with lean_diagnostic_messages. 
+    If there are issues, iterate until clean.
                 """,
     tags=["lean", "formalization", "mathematics"],
 )
@@ -127,12 +129,6 @@ async def formalize_statement(
     env = os.environ.copy()
     env["LEAN_PROJECT_PATH"] = project_path
 
-    # Add elan bin directory to PATH so lake command can be found
-    current_path = env.get("PATH", "")
-    elan_path = "/Users/benjaminbreen/.elan/bin"
-    if elan_path not in current_path:
-        env["PATH"] = f"{elan_path}:{current_path}"
-
     # Initialize Lean Tools MCP server (our standalone version)
     lean_params = StdioServerParameters(
         command=sys.executable,  # Use current Python executable
@@ -142,35 +138,37 @@ async def formalize_statement(
 
     try:
         # Connect to lean_tools server
-        async with stdio_client(lean_params) as (lean_read, lean_write):
-            async with ClientSession(lean_read, lean_write) as lean_session:
-                # Initialize lean session
-                await lean_session.initialize()
+        async with (
+            stdio_client(lean_params) as (lean_read, lean_write),
+            ClientSession(lean_read, lean_write) as lean_session,
+        ):
+            # Initialize lean session
+            await lean_session.initialize()
 
-                # Get tools from lean server
-                lean_tools = await lean_session.list_tools()
+            # Get tools from lean server
+            lean_tools = await lean_session.list_tools()
 
-                logger.info(f"🔧 Lean tools: {[tool.name for tool in lean_tools.tools]}")
+            logger.info(f"🔧 Lean tools: {[tool.name for tool in lean_tools.tools]}")
 
-                client = anthropic.Anthropic(api_key=api_key)
+            client = anthropic.Anthropic(api_key=api_key)
 
-                # Convert MCP tools to Claude format
-                claude_tools = []
+            # Convert MCP tools to Claude format
+            claude_tools = []
 
-                # Add lean tools (filtered if specified)
-                for tool in lean_tools.tools:
-                    if lean_tools_filter is None or tool.name in lean_tools_filter:
-                        claude_tools.append(
-                            {
-                                "name": tool.name,
-                                "description": f"[Lean] {tool.description}",
-                                "input_schema": tool.inputSchema,
-                            }
-                        )
-                logger.info(f"✅ Total tools available to Claude: {len(claude_tools)}")
-                logger.info(f"✅ Tool names: {[tool['name'] for tool in claude_tools]}")
+            # Add lean tools (filtered if specified)
+            for tool in lean_tools.tools:
+                if lean_tools_filter is None or tool.name in lean_tools_filter:
+                    claude_tools.append(
+                        {
+                            "name": tool.name,
+                            "description": f"[Lean] {tool.description}",
+                            "input_schema": tool.inputSchema,
+                        }
+                    )
+            logger.info(f"✅ Total tools available to Claude: {len(claude_tools)}")
+            logger.info(f"✅ Tool names: {[tool['name'] for tool in claude_tools]}")
 
-                prompt = f"""Convert the following natural language mathematical statement into a Lean 4 theorem statement with a sorry placeholder.
+            prompt = f"""Convert the following natural language mathematical statement into a Lean 4 theorem statement with a sorry placeholder.
 
     Natural language statement: {query}
 
@@ -194,11 +192,59 @@ async def formalize_statement(
     For example, when working with this theorem:
 
     Example input: "If every prime greater than 2 is odd, then 7 must be odd. Is this true?"
-    Example output: import Mathlib theorem seven_is_odd (h : ∀ p : ℕ, p > 2 ∧ Nat.Prime p → Odd p) : Odd 7 := by sorry
+    Example output: import Mathlib theorem seven_is_odd (h : ∀ p : Nat, p > 2 ∧ Nat.Prime p → Odd p) : Odd 7 := by sorry
 
     Your response:"""
 
-                messages = [{"role": "user", "content": prompt}]
+            messages = [{"role": "user", "content": prompt}]
+
+            response = client.messages.create(
+                model=model,
+                max_tokens=max_tokens,
+                messages=messages,
+                tools=claude_tools,
+            )
+
+            # append assistant's output to messages
+            messages.append({"role": "assistant", "content": response.content})
+            # append assistant's output to
+
+            # get printable message
+            claude_message = synthesize_claude_output(response)
+
+            logger.info(f"🤖 {name} Claude: {claude_message}")
+
+            # Handle multiple tool calls
+            iteration = 0
+
+            while response.stop_reason == "tool_use" and iteration < max_iterations:
+                iteration += 1
+                logger.info(f"🔄 {name} iteration {iteration}")
+
+                tool_results = []
+                for content in response.content:
+                    if content.type == "tool_use":
+                        logger.info(f"🔧 Using tool: {content.name}")
+                        logger.info(f"📥 Input: {content.input}")
+
+                        # Execute tool via lean server
+                        result = await lean_session.call_tool(content.name, content.input)
+
+                        if result.isError:
+                            # Handle the error - something went wrong
+                            logger.error("Tool failed")
+
+                        logger.info(f"📤 Output: {result}")
+
+                        tool_results.append(
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": content.id,
+                                "content": str(result.content),
+                            }
+                        )
+
+                messages.append({"role": "user", "content": tool_results})
 
                 response = client.messages.create(
                     model=model,
@@ -207,72 +253,24 @@ async def formalize_statement(
                     tools=claude_tools,
                 )
 
-                # append assistant's output to messages
-                messages.append({"role": "assistant", "content": response.content})
-                # append assistant's output to
-
-                # get printable message
                 claude_message = synthesize_claude_output(response)
 
                 logger.info(f"🤖 {name} Claude: {claude_message}")
 
-                # Handle multiple tool calls
-                iteration = 0
+                messages.append({"role": "assistant", "content": response.content})
 
-                while response.stop_reason == "tool_use" and iteration < max_iterations:
-                    iteration += 1
-                    logger.info(f"🔄 {name} iteration {iteration}")
+            if iteration >= max_iterations:
+                logger.warning(f"⚠️ Maximum iterations reached. {name} may be incomplete.")
 
-                    tool_results = []
-                    for content in response.content:
-                        if content.type == "tool_use":
-                            logger.info(f"🔧 Using tool: {content.name}")
-                            logger.info(f"📥 Input: {content.input}")
+            # Extract the final response text
+            final_response = ""
+            for content in response.content:
+                if hasattr(content, "text"):
+                    final_response += content.text
 
-                            # Execute tool via lean server
-                            result = await lean_session.call_tool(content.name, content.input)
+            logger.info(f"✅ {name}: Task completed successfully")
 
-                            if result.isError:
-                                # Handle the error - something went wrong
-                                logger.error("Tool failed")
-
-                            logger.info(f"📤 Output: {result}")
-
-                            tool_results.append(
-                                {
-                                    "type": "tool_result",
-                                    "tool_use_id": content.id,
-                                    "content": str(result.content),
-                                }
-                            )
-
-                    messages.append({"role": "user", "content": tool_results})
-
-                    response = client.messages.create(
-                        model=model,
-                        max_tokens=max_tokens,
-                        messages=messages,
-                        tools=claude_tools,
-                    )
-
-                    claude_message = synthesize_claude_output(response)
-
-                    logger.info(f"🤖 {name} Claude: {claude_message}")
-
-                    messages.append({"role": "assistant", "content": response.content})
-
-                if iteration >= max_iterations:
-                    logger.warning(f"⚠️ Maximum iterations reached. {name} may be incomplete.")
-
-                # Extract the final response text
-                final_response = ""
-                for content in response.content:
-                    if hasattr(content, "text"):
-                        final_response += content.text
-
-                logger.info(f"✅ {name}: Task completed successfully")
-
-                return f"""MCPAgent Execution Result:
+            return f"""MCPAgent Execution Result:
 
 Agent: {name}
 Model: {model}
