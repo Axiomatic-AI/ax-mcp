@@ -1,5 +1,5 @@
-"""Lean Tools MCP Server - Standalone Lean tools for theorem proving."""
+def main():
+    """Main entry point for the Lean client server."""
+    from .server import mcp
 
-from .server import main
-
-__all__ = ["main"]
+    mcp.run(transport="stdio")

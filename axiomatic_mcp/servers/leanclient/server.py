@@ -241,10 +241,5 @@ def lean_run_code(ctx: Context, code: str) -> list[str] | str:
     return lean_run_code_impl(ctx, code)
 
 
-def main():
-    """Main entry point for the leanclient server."""
-    mcp.run()
-
-
 if __name__ == "__main__":
-    main()
+    mcp.run()
