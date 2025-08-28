@@ -1,9 +1,9 @@
 """Lean client functions that interact with the LSP."""
 
 import contextlib
-import os
 import re
 import subprocess
+from pathlib import Path
 
 from leanclient import DocumentContentChange, LeanLSPClient
 from mcp.server.fastmcp import Context
@@ -62,18 +62,16 @@ def setup_client_for_file(ctx: Context, file_path: str) -> str | None:
             return rel_path
 
     # Try to find the new correct project path by checking all directories in file_path.
-    file_dir = os.path.dirname(file_path)
+    file_path_obj = Path(file_path)
     rel_path = None
-    while file_dir:
-        if valid_lean_project_path(file_dir):
-            lean_project_path = file_dir
+    for parent_dir in file_path_obj.parents:
+        if valid_lean_project_path(str(parent_dir)):
+            lean_project_path = str(parent_dir)
             rel_path = get_relative_file_path(lean_project_path, file_path)
             if rel_path is not None:
                 ctx.request_context.lifespan_context.lean_project_path = lean_project_path
                 startup_client(ctx)
                 break
-        # Move up one directory
-        file_dir = os.path.dirname(file_dir)
 
     return rel_path
 
@@ -81,7 +79,7 @@ def setup_client_for_file(ctx: Context, file_path: str) -> str | None:
 def update_file(ctx: Context, rel_path: str) -> str:
     """Update the file contents in the context."""
     # Get file contents and hash
-    abs_path = os.path.join(ctx.request_context.lifespan_context.lean_project_path, rel_path)
+    abs_path = str(Path(ctx.request_context.lifespan_context.lean_project_path) / rel_path)
     file_content = get_file_contents(abs_path)
     hashed_file = hash(file_content)
 
@@ -110,7 +108,7 @@ def lean_build_impl(ctx: Context, lean_project_path: str | None = None, clean: b
     if not lean_project_path:
         lean_project_path = ctx.request_context.lifespan_context.lean_project_path
     else:
-        lean_project_path = os.path.abspath(lean_project_path)
+        lean_project_path = str(Path(lean_project_path).resolve())
         ctx.request_context.lifespan_context.lean_project_path = lean_project_path
 
     build_output = ""
@@ -327,7 +325,7 @@ def lean_declaration_file_impl(ctx: Context, file_path: str, symbol: str) -> str
         uri = declaration.get("uri")
 
     abs_path = client._uri_to_abs(uri)
-    if not os.path.exists(abs_path):
+    if not Path(abs_path).exists():
         return f"Could not open declaration file `{abs_path}` for `{symbol}`."
 
     file_content = get_file_contents(abs_path)
@@ -376,11 +374,10 @@ def lean_run_code_impl(ctx: Context, code: str) -> list[str] | str:
         )
 
     rel_path = "temp_snippet.lean"
-    abs_path = os.path.join(lean_project_path, rel_path)
+    abs_path = Path(lean_project_path) / rel_path
 
     try:
-        with open(abs_path, "w") as f:
-            f.write(code)
+        abs_path.write_text(code)
     except Exception as e:
         return f"Error writing code snippet to file `{abs_path}`:\n{e!s}"
 
@@ -389,7 +386,7 @@ def lean_run_code_impl(ctx: Context, code: str) -> list[str] | str:
     client.close_files([rel_path])
 
     try:
-        os.remove(abs_path)
+        abs_path.unlink()
     except Exception as e:
         return f"Error removing temporary file `{abs_path}`:\n{e!s}"
 

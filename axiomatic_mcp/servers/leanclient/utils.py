@@ -3,6 +3,7 @@
 import os
 import sys
 import tempfile
+from pathlib import Path
 
 from mcp.server.auth.provider import AccessToken, TokenVerifier
 
@@ -53,7 +54,7 @@ class OutputCapture:
         self.temp_file.seek(0)
         self.captured_output = self.temp_file.read()
         self.temp_file.close()
-        os.unlink(self.temp_file.name)
+        Path(self.temp_file.name).unlink()
 
     def get_output(self):
         return self.captured_output
@@ -71,14 +72,13 @@ class OptionalTokenVerifier(TokenVerifier):
 
 def get_file_contents(abs_path: str) -> str:
     """Read file contents with multiple encoding fallbacks."""
+    path = Path(abs_path)
     for enc in ("utf-8", "latin-1"):
         try:
-            with open(abs_path, encoding=enc) as f:
-                return f.read()
+            return path.read_text(encoding=enc)
         except UnicodeDecodeError:
             continue
-    with open(abs_path, encoding=None) as f:
-        return f.read()
+    return path.read_text(encoding=None)
 
 
 def format_diagnostics(diagnostics: list[dict], select_line: int = -1) -> list[str]:
@@ -170,26 +170,30 @@ def filter_diagnostics_by_position(diagnostics: list[dict], line: int, column: i
 
 def valid_lean_project_path(path: str) -> bool:
     """Check if the given path is a valid Lean project path (contains a lean-toolchain file)."""
-    if not os.path.exists(path):
+    path_obj = Path(path)
+    if not path_obj.exists():
         return False
-    return os.path.isfile(os.path.join(path, "lean-toolchain"))
+    return (path_obj / "lean-toolchain").is_file()
 
 
 def get_relative_file_path(lean_project_path: str, file_path: str) -> str | None:
     """Convert path relative to project path."""
+    lean_project = Path(lean_project_path)
+    file_path_obj = Path(file_path)
+
     # Check if absolute path
-    if os.path.exists(file_path):
-        return os.path.relpath(file_path, lean_project_path)
+    if file_path_obj.exists():
+        return str(file_path_obj.relative_to(lean_project))
 
     # Check if relative to project path
-    path = os.path.join(lean_project_path, file_path)
-    if os.path.exists(path):
-        return os.path.relpath(path, lean_project_path)
+    path = lean_project / file_path
+    if path.exists():
+        return str(path.relative_to(lean_project))
 
     # Check if relative to CWD
-    cwd = os.getcwd().strip()
-    path = os.path.join(cwd, file_path)
-    if os.path.exists(path):
-        return os.path.relpath(path, lean_project_path)
+    cwd = Path.cwd()
+    path = cwd / file_path
+    if path.exists():
+        return str(path.relative_to(lean_project))
 
     return None
