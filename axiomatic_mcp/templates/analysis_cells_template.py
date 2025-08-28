@@ -14,12 +14,15 @@ class AnalysisCellsTemplate:
     # The component's range of wavelengths in nanometers
     wavelengths: list[float]
     # The simulated transmission spectrum in dimensionless units.
-    # Dictionary which has port pairs as key, and simulated transmission values as value.
+    # Dictionary which has port pairs as key, and simulated transmission values
+    # as value.
     transmission_lin: dict[str, list[float]]
     # The simulated transmission spectrum in dB
-    # Dictionary which has port pairs as key, and simulated transmission values as value.
+    # Dictionary which has port pairs as key, and simulated transmission values
+    # as value.
     transmission_log: dict[str, list[float]]
-    # The names of the port pairs in the simulation. Shared between the linear and logarithmic transmission spectra.
+    # The names of the port pairs in the simulation. Shared between the linear
+    # and logarithmic transmission spectra.
     port_pairs: list[str]
 
     def __init__(
@@ -38,20 +41,30 @@ simulation_result = SimulationResult(wavelengths, simulation_data)"""
             nbformat.v4.new_markdown_cell(
                 """# Your Simulation Results
 
-Welcome! This interactive notebook has been generated to help you explore the data from your component simulation.
+Welcome! This interactive notebook has been generated to help you explore
+the data from your component simulation.
 
-The cells above contain your data and setup code. You can expand any cell to see its content, but you don't need to edit the first two cells to generate the plot.
+The cells above contain your data and setup code. You can expand any cell
+to see its content, but you don't need to edit the first two cells to
+generate the plot.
 
 ## Interactive Plot
 
-The cell below displays a plot showing the simulated transmission for all port pairs across the full wavelength range.
+The cell below displays a plot showing the simulated transmission for all
+port pairs across the full wavelength range.
 
 You can directly interact with this plot:
- - Show or Hide Data: Click the names in the legend on the right to toggle which port pairs are displayed (applies if there are multiple port pairs).
- - Switch the Scale: Use the "Log" and "Linear" buttons to change the view.
- - Zoom and Explore: Click and drag on the plot to zoom in. Double-click to reset the view. Use the range selector below the plot to adjust the visible wavelength range.
 
-The plot is created with [Plotly](https://plotly.com/). If you'd like to make custom changes, such as changing titles or colors, you can find many examples in the [Plotly documentation](https://plotly.com/python)."""
+- Show or Hide Data: Click the names in the legend on the right to toggle
+  which port pairs are displayed (applies if there are multiple port pairs).
+- Switch the Scale: Use the "Log" and "Linear" buttons to change the view.
+- Zoom and Explore: Click and drag on the plot to zoom in. Double-click to
+  reset the view. Use the range selector below the plot to adjust the visible
+  wavelength range.
+
+The plot is created with [Plotly](https://plotly.com/). If you'd like to make
+custom changes, such as changing titles or colors, you can find many examples
+in the [Plotly documentation](https://plotly.com/python)."""
             ),
             # Plotly visualization
             nbformat.v4.new_code_cell(
@@ -85,7 +98,8 @@ for i, name in enumerate(simulation_result.port_pairs):
         )
     )
 
-# We use both log and linear traces together, and toggle the visibility using the buttons (see updatemenus below)
+# We use both log and linear traces together, and toggle the visibility
+# using the buttons (see updatemenus below).
 fig = go.Figure(data=log_traces + lin_traces)
 
 min_wl = min(simulation_result.wavelengths)
