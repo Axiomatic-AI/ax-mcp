@@ -2,14 +2,10 @@ from typing import Any, Optional
 
 from ....shared import AxiomaticAPIClient
 from ...constants.api_constants import ApiRoutes
-from .axiomatic_api_client import AxiomaticApiClient
 
 
 class SimulationService:
     _instance: Optional["SimulationService"] = None
-
-    def __init__(self) -> None:
-        self.api_client = AxiomaticApiClient.get_instance()
 
     @classmethod
     def get_instance(cls) -> "SimulationService":

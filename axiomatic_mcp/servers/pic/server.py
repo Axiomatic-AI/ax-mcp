@@ -10,8 +10,8 @@ from mcp.types import TextContent
 
 from ...shared import AxiomaticAPIClient
 from .services.circuit_service import CircuitService
+from .services.notebook_service import NotebookService
 from .services.simulation_service import SimulationService
-from .services.statements_service import StatementsService
 
 mcp = FastMCP(
     name="Axiomatic PIC Designer",
@@ -21,8 +21,8 @@ mcp = FastMCP(
 )
 
 circuit_service = CircuitService.get_instance()
-statements_service = StatementsService.get_instance()
 simulation_service = SimulationService.get_instance()
+notebook_service = NotebookService.get_instance()
 
 
 @mcp.tool(
@@ -100,14 +100,18 @@ async def simulate_circuit(
     if not response:
         raise RuntimeError("Simulation service returned no response")
 
-    # TODO: Make a simulation notebook from here with another service
-    simulation_notebook = response.notebook
-    name = file_path.parent / (file_path.stem + ".ipynb")
+    notebook_json = await notebook_service.create_simulation_notebook(
+        response=response,
+        wavelengths=wavelengths,
+    )
 
-    with name.open("w", encoding="utf-8") as f:
-        f.write(simulation_notebook)
+    # Save the notebook alongside the .py file
+    notebook_path = file_path.parent / f"{file_path.stem}_simulation.ipynb"
+    with notebook_path.open("w", encoding="utf-8") as f:
+        f.write(notebook_json)
 
     return {
-        "message": f"Simulation notebook saved at {name}",
+        "message": f"Simulation notebook saved at {notebook_path}",
+        "notebook": notebook_json,
         "wavelengths": wavelengths,
     }

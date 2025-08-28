@@ -5,14 +5,10 @@ from importlib.resources import files
 from typing import Any, Optional
 
 from ...constants.api_constants import ApiRoutes
-from .axiomatic_api_client import AxiomaticApiClient
 
 
 class CircuitService:
     _instance: Optional["CircuitService"] = None
-
-    def __init__(self) -> None:
-        self.api_client = AxiomaticApiClient.get_instance()
 
     @classmethod
     def get_instance(cls) -> "CircuitService":
@@ -32,7 +28,7 @@ class CircuitService:
         template_code = files("axiomatic_mcp.templates").joinpath("get_netlist.template").read_text()
 
         # Merge user code + template
-        full_code = f"{current_file_content}\n\n{template_code}"
+        full_code = f"{current_file_content.decode()}\n\n{template_code}"
 
         # Sandbox namespace
         namespace: dict[str, object] = {}
