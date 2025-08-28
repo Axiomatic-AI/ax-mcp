@@ -23,7 +23,6 @@ from .lean_client import (
     lean_term_goal_impl,
 )
 from .websearch import (
-    lean_hammer_premise_impl,
     lean_leansearch_impl,
     lean_loogle_impl,
     lean_state_search_impl,

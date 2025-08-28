@@ -98,6 +98,9 @@ def synthesize_claude_output(response):
     - lean_hover_info: Get documentation for Lean terms
     - lean_completions: Get code completions
     - lean_multi_attempt: Test multiple code approaches
+    - lean_leansearch: Search for theorems using natural language
+    - lean_loogle: Search for definitions by type signature
+    - lean_state_search: Search theorems based on proof state
 
     Workflow: Analyze query → Write lean theorem statement → Use lean_run_code to test → 
     Use lean_write_file to save to target file → Verify with lean_diagnostic_messages. 
