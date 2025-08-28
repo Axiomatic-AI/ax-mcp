@@ -185,12 +185,13 @@ async def formalize_statement(
 
     The general approach you must follow is:
     (1) Read the query and analyze what theorem statement you need to write
-    (2) Formalize the query into a Lean theorem statement with proper imports
-    (3) Use lean_run_code to test your formalization and check for syntax errors
-    (4) If there are syntax issues, fix them and test again with lean_run_code
-    (5) Once the syntax is correct, use lean_write_file to save to the target file: {file_path}
-    (6) Use lean_diagnostic_messages to verify the saved file
-    (7) Return the final Lean theorem statement
+    (2) Use lean_leansearch and lean_loogle tools to search for existing related theorems
+    (3) Formalize the query into a Lean theorem statement with proper imports
+    (4) Use lean_run_code to test your formalization and check for syntax errors
+    (5) If there are syntax issues, fix them and test again with lean_run_code
+    (6) Once the syntax is correct, use lean_write_file to save to the target file: {file_path}
+    (7) Use lean_diagnostic_messages to verify the saved file
+    (8) Return the final Lean theorem statement
 
     For example, when working with this theorem:
 
