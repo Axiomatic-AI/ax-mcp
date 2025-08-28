@@ -128,6 +128,36 @@ async def optimize_digital_twin_model(
 ) -> ToolResult:
     """Optimize a digital twin model using the Axiomatic AI platform."""
 
+    myinf = 1e30 # float('inf') is not JSON compliant. 
+    
+    # sanity checks about input format to provide sensible error messages to the agent so it can be fixed
+    input_names = [in_data['name'] for in_data in input_data]
+    const_names = [const['name'] for const in constants] if constants else []
+    param_names = [param['name'] for param in parameters]
+    bounds_names = [bound['name'] for bound in bounds]
+
+    N = len(output_data["magnitudes"]) # number of data points
+    if N == 0:
+        return ToolResult(content=[TextContent(type="text", text=f"No data points provided. Please provide output data.")])
+    
+    for in_data in input_data: 
+        if len(in_data['magnitudes']) != N: 
+            return ToolResult(content=[TextContent(type="text", text=f"Input data {in_data['name']} must have the same number of data points as output data: {N}. Input data: {input_data}. Output data: {output_data}.")])    
+    
+    # make sure all parameters have bounds
+    for var in param_names:
+        if var not in bounds_names:
+            return ToolResult(content=[TextContent(type="text", text=f"Parameter {var} has no bounds. Please add bounds.")])
+
+    # set input, output, and constant bounds to -inf to inf (--> inconsequential for dt fitting. Adds robustness.)
+    for var in bounds:
+        if var['lower']['magnitude'] > var['upper']['magnitude']:
+            return ToolResult(content=[TextContent(type="text", text=f"Lower bound for {var['name']} is greater than upper bound. Lower bound: {var['lower']['magnitude']}, Upper bound: {var['upper']['magnitude']}.")])
+        
+        if var['name'] in input_names or var['name'] in const_names or var['name'] == output_data['name']:
+            var['lower']['magnitude'] = -myinf
+            var['upper']['magnitude'] = myinf
+
     # Build API request exactly matching the expected format
     if optimizer_config is None:
         optimizer_config = {}
