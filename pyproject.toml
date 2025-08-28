@@ -36,6 +36,7 @@ dependencies = [
     "sax>=0.14.5",
     "plotly>=6.1.2",
     "nbformat>=5.10.4",
+    "debugpy>=1.8.0",
     "numpy>=1.21.0"
 ]
 
