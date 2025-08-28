@@ -38,6 +38,9 @@ dev = [
     "ruff>=0.1.0",
     "mypy>=1.0.0",
 ]
+lean = [
+    "leanclient==0.1.14",
+]
 
 [project.scripts]
 axiomatic-pic = "axiomatic_mcp.servers.pic:main"
@@ -45,6 +48,7 @@ axiomatic-code-execution = "axiomatic_mcp.servers.code_execution:main"
 axiomatic-documents = "axiomatic_mcp.servers.documents:main"
 axiomatic-plots = "axiomatic_mcp.servers.plots:main"
 axiomatic-equations = "axiomatic_mcp.servers.equations:main"
+axiomatic-leanclient = "axiomatic_mcp.servers.leanclient:main"
 axiomatic-dt-optimizer = "axiomatic_mcp.servers.dt_optimizer:main"
 
 [tool.setuptools.packages.find]
