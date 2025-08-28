@@ -1,39 +1,66 @@
-"""MCP server that exposes the exact MCPAgent as a tool."""
+"""Prover domain MCP server."""
 
 import logging
 import os
 import sys
-from typing import List, Optional, Annotated
+from typing import Annotated
 
 import anthropic
 from fastmcp import FastMCP
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
+
+# Configure logging at module level
+def setup_logging():
+    """Set up logging configuration for the prover server."""
+    # Create logger
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+
+    # Clear any existing handlers to avoid duplicates
+    logger.handlers.clear()
+
+    # Create formatter
+    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+
+    # Add file handler
+    file_handler = logging.FileHandler("/tmp/mcp_prover_debug.log", mode="w")
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+
+    # Add console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+
+    return logger
+
+
+# Set up logging when module is imported
+logger = setup_logging()
+
 mcp = FastMCP(
-    name="Lean Prover",
-    instructions="""A prover that takes a lean theorem that is not complete and completes a proof.
-    You must use the tools provided to you to complete the proof. You first will write the incomplete
-    proof to a file in the /Users/jacobmccarran_ax/ax-mcp/proofs directory. You then will use the tools provided to you to complete the proof
-    by filling in that file and using the lean_diagnostic_message tool to figure out when the proof is complete.
-    So when you think the proof is complete, you will use the lean_diagnostic_messages tool to check the file for any issues.
-
-    1. Use lean_diagnostic_messages to check the file for any issues
-    2. Analyze the diagnostic results:
-    - If NO severity 1 messages exist: The proofs are VALID
-    - If severity 1 messages exist: The proofs are INVALID (severity 1 = errors)
-    - Severity 2 messages are warnings and are acceptable but should be noted
-    3. Provide a clear verification report with your findings""",
+    name="Prover",
+    instructions="""The Prover server provides tools to complete Lean theorem proofs.
+        It takes incomplete Lean theorems and uses available Lean tools to iteratively
+        complete the proofs. Use the lean_tools to help you complete the proof.
+        Use lean_diagnostic_messages to check the file for any issues. The tool
+        will automatically continue iterating until lean_diagnostic_messages reports no errors
+        (or only acceptable 'sorry' warnings), ensuring the final result is a complete proof.""",
     version="0.0.1",
-
 )
+
 
 class ProverServer:
     def __init__(self):
         self.mcp = mcp
-        
+
     def run(self):
         self.mcp.run()
+
 
 def synthesize_claude_output(response):
     """Synthesize Claude output from response."""
@@ -41,9 +68,9 @@ def synthesize_claude_output(response):
     tool_parts = []
 
     for content in response.content:
-        if hasattr(content, 'text'):
+        if hasattr(content, "text"):
             text_parts.append(content.text)
-        elif content.type == 'tool_use':
+        elif content.type == "tool_use":
             tool_parts.append(content.name)
 
     claude_message = " ".join(text_parts)
@@ -51,6 +78,7 @@ def synthesize_claude_output(response):
         claude_message += f" I will use tools: {', '.join(tool_parts)}"
 
     return claude_message
+
 
 @mcp.tool(
     name="mcp_agent_execute",
@@ -70,93 +98,80 @@ def synthesize_claude_output(response):
 )
 async def mcp_agent_execute(
     file_path: Annotated[str, "Absolute path to Lean file to analyze and prove"],
-    project_path: Annotated[str, "Path to the Lean project"] = "/Users/jacobmccarran_ax/ax-mcp/proofs",
+    project_path: Annotated[str, "Path to the Lean project"] = "/Users/benjaminbreen/Desktop/ax-mcp/axiomatic_mcp/servers/leanclient/example",
     name: Annotated[str, "Agent name"] = "Prover",
     model: Annotated[str, "Claude model to use"] = "claude-sonnet-4-20250514",
-    lean_tools_filter: Annotated[Optional[List[str]], "List of Lean tools to include (None = all tools)"] = ["lean_diagnostic_messages", "lean_leansearch", "lean_loogle", "lean_file_contents", "lean_write_file", "lean_goal"],
+    lean_tools_filter: Annotated[list[str] | None, "List of Lean tools to include (None = all tools)"] = None,
     max_iterations: Annotated[int, "Maximum tool use iterations"] = 100,
     max_tokens: Annotated[int, "Maximum tokens per API call"] = 5000,
 ) -> Annotated[str, "Agent execution result"]:
     """Execute MCPAgent with Lean tools to prove theorems in a Lean file."""
-    
+
     # Get API key
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
         raise ValueError("ANTHROPIC_API_KEY environment variable is required")
-    
+
     # Setup logging with file output
     logger = logging.getLogger(__name__)
-    
+
     # Configure logging to file if not already configured - overwrite each time
     if not logger.handlers:
         logging.basicConfig(
             level=logging.INFO,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            handlers=[
-                logging.FileHandler('/tmp/mcp_agent_debug.log', mode='w'),  # 'w' mode overwrites the file
-                logging.StreamHandler()
-            ]
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            handlers=[logging.FileHandler("/tmp/mcp_prover_debug.log", mode="w"), logging.StreamHandler()],
         )
-    
+
     # Agent configuration
-    
+
     logger.info(f"🔧 {name}: Start task")
 
     env = os.environ.copy()
     env["LEAN_PROJECT_PATH"] = project_path
-    
-    # Add elan bin directory to PATH so lake command can be found
-    current_path = env.get("PATH", "")
-    elan_path = "/Users/jacobmccarran_ax/.elan/bin"
-    if elan_path not in current_path:
-        env["PATH"] = f"{elan_path}:{current_path}"
 
     # Initialize Lean Tools MCP server (our standalone version)
     lean_params = StdioServerParameters(
         command=sys.executable,  # Use current Python executable
-        args=["-m", "axiomatic_mcp.servers.lean_tools", "--transport", "stdio"],
+        args=["-m", "axiomatic_mcp.servers.leanclient", "--transport", "stdio"],
         env=env,
     )
 
     try:
         # Connect to lean_tools server
-        async with stdio_client(lean_params) as (lean_read, lean_write):
+        async with (
+            stdio_client(lean_params) as (lean_read, lean_write),
+            ClientSession(lean_read, lean_write) as lean_session,
+        ):
+            # Initialize lean session
+            await lean_session.initialize()
 
-            async with ClientSession(lean_read, lean_write) as lean_session:
-                
-                # Initialize lean session
-                await lean_session.initialize()
+            # Get tools from lean server
+            lean_tools = await lean_session.list_tools()
 
-                # Get tools from lean server
-                lean_tools = await lean_session.list_tools()
+            logger.info(f"🔧 Lean tools: {[tool.name for tool in lean_tools.tools]}")
 
-                logger.info(f"🔧 Lean tools: {[tool.name for tool in lean_tools.tools]}")
+            client = anthropic.Anthropic(api_key=api_key)
 
-                client = anthropic.Anthropic(api_key=api_key)
+            # Convert MCP tools to Claude format
+            claude_tools = []
 
-                # Convert MCP tools to Claude format
-                claude_tools = []
+            # Add lean tools (filtered if specified)
+            for tool in lean_tools.tools:
+                if lean_tools_filter is None or tool.name in lean_tools_filter:
+                    claude_tools.append(
+                        {
+                            "name": tool.name,
+                            "description": f"[Lean] {tool.description}",
+                            "input_schema": tool.inputSchema,
+                        }
+                    )
 
-                # Add lean tools (filtered if specified)
-                for tool in lean_tools.tools:
-                    if (
-                        lean_tools_filter is None
-                        or tool.name in lean_tools_filter
-                    ):
-                        claude_tools.append(
-                            {
-                                "name": tool.name,
-                                "description": f"[Lean] {tool.description}",
-                                "input_schema": tool.inputSchema,
-                            }
-                        )
+            logger.info(f"✅ Total tools available to Claude: {len(claude_tools)}")
+            logger.info(f"✅ Tool names: {[tool['name'] for tool in claude_tools]}")
 
-
-                logger.info(f"✅ Total tools available to Claude: {len(claude_tools)}")
-                logger.info(f"✅ Tool names: {[tool['name'] for tool in claude_tools]}")
-
-                # Create initial message with file path
-                prompt = f"""You are an expert Lean theorem prover. You need to work with the Lean file at: {file_path}
+            # Create initial message with file path
+            prompt = f"""You are an expert Lean theorem prover. You need to work with the Lean file at: {file_path}
 
 The general approach you must follow is:
 (1) Read the file content and analyze what theorems need to be proven
@@ -220,7 +235,54 @@ You can use the following Lean tools:
 WORKFLOW: lean_file_contents → lean_goal at sorry positions → work on proof → lean_write_file → lean_diagnostic_messages to verify. Use search tools when stuck. 
 """
 
-                messages = [{"role": "user", "content": prompt}]
+            messages = [{"role": "user", "content": prompt}]
+
+            response = client.messages.create(
+                model=model,
+                max_tokens=max_tokens,
+                messages=messages,
+                tools=claude_tools,
+            )
+
+            # append assistant's output to messages
+            messages.append({"role": "assistant", "content": response.content})
+
+            # get printable message
+            claude_message = synthesize_claude_output(response)
+
+            logger.info(f"🤖 {name} Claude: {claude_message}")
+
+            # Handle multiple tool calls
+            iteration = 0
+
+            while response.stop_reason == "tool_use" and iteration < max_iterations:
+                iteration += 1
+                logger.info(f"🔄 {name} iteration {iteration}")
+
+                tool_results = []
+                for content in response.content:
+                    if content.type == "tool_use":
+                        logger.info(f"🔧 Using tool: {content.name}")
+                        logger.info(f"📥 Input: {content.input}")
+
+                        # Execute tool via lean server
+                        result = await lean_session.call_tool(content.name, content.input)
+
+                        if result.isError:
+                            # Handle the error - something went wrong
+                            logger.error("Tool failed")
+
+                        logger.info(f"📤 Output: {result}")
+
+                        tool_results.append(
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": content.id,
+                                "content": str(result.content),
+                            }
+                        )
+
+                messages.append({"role": "user", "content": tool_results})
 
                 response = client.messages.create(
                     model=model,
@@ -229,78 +291,24 @@ WORKFLOW: lean_file_contents → lean_goal at sorry positions → work on proof 
                     tools=claude_tools,
                 )
 
-                # append assistant's output to messages
-                messages.append({"role": "assistant", "content": response.content})
-
-                # get printable message
                 claude_message = synthesize_claude_output(response)
 
                 logger.info(f"🤖 {name} Claude: {claude_message}")
 
-                # Handle multiple tool calls
-                iteration = 0
+                messages.append({"role": "assistant", "content": response.content})
 
-                while (
-                    response.stop_reason == "tool_use"
-                    and iteration < max_iterations
-                ):
-                    iteration += 1
-                    logger.info(f"🔄 {name} iteration {iteration}")
+            if iteration >= max_iterations:
+                logger.warning(f"⚠️ Maximum iterations reached. {name} may be incomplete.")
 
-                    tool_results = []
-                    for content in response.content:
-                        if content.type == "tool_use":
-                            logger.info(f"🔧 Using tool: {content.name}")
-                            logger.info(f"📥 Input: {content.input}")
+            # Extract the final response text
+            final_response = ""
+            for content in response.content:
+                if hasattr(content, "text"):
+                    final_response += content.text
 
-                            # Execute tool via lean server
-                            result = await lean_session.call_tool(
-                                content.name, content.input
-                            )
+            logger.info(f"✅ {name}: Task completed")
 
-                            if result.isError:
-                                # Handle the error - something went wrong
-                                logger.error("Tool failed")
-
-                            logger.info(f"📤 Output: {result}")
-
-                            tool_results.append(
-                                {
-                                    "type": "tool_result",
-                                    "tool_use_id": content.id,
-                                    "content": str(result.content),
-                                }
-                            )
-
-                    messages.append({"role": "user", "content": tool_results})
-
-                    response = client.messages.create(
-                        model=model,
-                        max_tokens=max_tokens,
-                        messages=messages,
-                        tools=claude_tools,
-                    )
-
-                    claude_message = synthesize_claude_output(response)
-
-                    logger.info(f"🤖 {name} Claude: {claude_message}")
-
-                    messages.append(
-                        {"role": "assistant", "content": response.content}
-                    )
-
-                if iteration >= max_iterations:
-                    logger.warning(f"⚠️ Maximum iterations reached. {name} may be incomplete.")
-
-                # Extract the final response text
-                final_response = ""
-                for content in response.content:
-                    if hasattr(content, "text"):
-                        final_response += content.text
-
-                logger.info(f"✅ {name}: Task completed")
-
-                return f"""MCPAgent Execution Result:
+            return f"""MCPAgent Execution Result:
 
 Agent: {name}
 Model: {model}
@@ -311,12 +319,13 @@ Final Response:
 {final_response}
 
 Tools available: {len(claude_tools)}
-Lean tools filter: {lean_tools_filter or 'None (all tools)'}"""
+Lean tools filter: {lean_tools_filter or "None (all tools)"}"""
 
     except Exception as e:
-        logger.error(f"❌ {name} error: {str(e)}")
+        logger.error(f"❌ {name} error: {e!s}")
         logger.error(f"❌ Error type: {type(e).__name__}")
         import traceback
+
         logger.error(f"❌ Full traceback: {traceback.format_exc()}")
-        
-        return f"MCPAgent error: {str(e)}\n\nFull traceback:\n{traceback.format_exc()}"
+
+        return f"MCPAgent error: {e!s}\n\nFull traceback:\n{traceback.format_exc()}"
