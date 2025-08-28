@@ -38,6 +38,9 @@ dev = [
     "ruff>=0.1.0",
     "mypy>=1.0.0",
 ]
+lean = [
+    "leanclient==0.1.14",
+]
 
 [project.scripts]
 axiomatic-pic = "axiomatic_mcp.servers.pic:main"

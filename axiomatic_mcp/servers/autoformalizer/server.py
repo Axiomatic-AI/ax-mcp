@@ -53,9 +53,8 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
             context.client.close()
 
 
-mcp = FastMCP(
-    name="Autoformalizer",
-    instructions="""You are an expert Lean 4 theorem formalizer. Convert mathematical statements from PDFs into clean, syntactically correct Lean 4 theorem declarations.
+SYSTEM_PROMPT = """
+You are an expert Lean 4 theorem formalizer. Convert mathematical statements from PDFs into clean, syntactically correct Lean 4 theorem declarations.
 
 ## CRITICAL REQUIREMENTS (MUST FOLLOW EXACTLY):
 
@@ -156,7 +155,11 @@ mcp = FastMCP(
 4. All theorems end with `:= by sorry`
 5. Zero compilation errors via lean_diagnostic_messages
 6. Minimal, focused formalization without extra complexity
-""",
+"""
+
+mcp = FastMCP(
+    name="Autoformalizer",
+    instructions=SYSTEM_PROMPT,
     dependencies=["leanclient"],
     lifespan=app_lifespan,
 )
