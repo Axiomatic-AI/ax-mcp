@@ -79,8 +79,12 @@ INSTRUCTIONS = """## General Rules
 """
 
 # MCP Server Setup
-mcp_kwargs = {"name": "Lean LSP", "instructions": INSTRUCTIONS, "dependencies": ["leanclient"], "lifespan": app_lifespan}
-mcp = FastMCP(**mcp_kwargs)
+mcp = FastMCP(
+    name="Lean LSP",
+    instructions=INSTRUCTIONS,
+    dependencies=["leanclient"],
+    lifespan=app_lifespan,
+)
 
 
 # LEAN CLIENT TOOLS

@@ -12,6 +12,50 @@ An advanced Lean 4 MCP (Model Context Protocol) server that provides comprehensi
 - **File Operations**: Read, write, and analyze Lean files
 - **LSP Integration**: Full Language Server Protocol support
 
+## Prerequisites
+
+### 1. Lean 4 Installation
+
+First, install Lean 4 using elan:
+
+```bash
+# Install elan (Lean version manager)
+curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh
+
+# Install Lean 4
+elan default leanprover/lean4:v4.16.0
+```
+
+### 2. Set Up a Lean Project
+
+Create a new Lean project with Mathlib:
+
+```bash
+# Create a new project
+lake new my_lean_project
+cd my_lean_project
+
+# Add Mathlib dependency
+echo '[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.16.0"' >> lakefile.toml
+
+# Build the project (this may take several minutes)
+lake update && lake build
+```
+
+**Note**: If you already have a working Lean project, you can use that instead.
+
+### 3. Get the Project Path
+
+Note the absolute path to your Lean project directory:
+```bash
+# Get current directory path
+pwd
+# Example output: /Users/username/my_lean_project
+```
+
 ## Installation & Configuration
 
 ### Using uvx (Recommended)
@@ -22,9 +66,7 @@ uvx --from "axiomatic-mcp[lean]" axiomatic-leanclient
 
 ### MCP Configuration
 
-#### For Cursor IDE
-
-Add to your MCP settings (`.cursor/mcp.json`):
+Add to your MCP settings file (`.cursor/mcp.json`):
 
 ```json
 {
@@ -53,7 +95,7 @@ Add to your MCP settings (`.cursor/mcp.json`):
 ```
 
 **Environment Variables:**
-- `LEAN_PROJECT_PATH`: Path to your Lean project directory (optional)
+- `LEAN_PROJECT_PATH`: Path to your Lean project directory (Required)
 
 **Requirements:**
 - The `leanclient` Python package (installed with `[lean]` extra)  
