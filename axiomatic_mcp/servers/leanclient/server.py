@@ -240,7 +240,9 @@ def lean_write_file(ctx: Context, file_path: str, content: str) -> str:
         str: Result of write operation
     """
     try:
-        with open(file_path, "w", encoding="utf-8") as f:
+        from pathlib import Path
+
+        with Path(file_path).open("w", encoding="utf-8") as f:
             f.write(content)
         return f"Successfully wrote to {file_path}"
     except Exception as e:
