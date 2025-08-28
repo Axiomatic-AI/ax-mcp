@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "axiomatic-mcp"
-version = "0.0.2"
+version = "0.0.3"
 description = "Modular MCP servers for Axiomatic_AI"
 authors = [{name = "Axiomatic Team", email = "developers@axiomatic.ai"}]
 readme = "README.md"
@@ -36,6 +36,7 @@ dependencies = [
     "sax>=0.14.5",
     "plotly>=6.1.2",
     "nbformat>=5.10.4"
+    "numpy>=1.21.0"
 ]
 
 
@@ -50,9 +51,11 @@ dev = [
 
 [project.scripts]
 axiomatic-pic = "axiomatic_mcp.servers.pic:main"
+axiomatic-code-execution = "axiomatic_mcp.servers.code_execution:main"
 axiomatic-documents = "axiomatic_mcp.servers.documents:main"
 axiomatic-plots = "axiomatic_mcp.servers.plots:main"
 axiomatic-equations = "axiomatic_mcp.servers.equations:main"
+axiomatic-dt-optimizer = "axiomatic_mcp.servers.dt_optimizer:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
