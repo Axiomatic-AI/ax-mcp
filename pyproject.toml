@@ -27,6 +27,7 @@ dependencies = [
     "pydantic>=2.0.0",
     "python-dotenv>=1.0.0",
     "httpx>=0.25.0",
+    "numpy>=1.21.0",
 ]
 
 [project.optional-dependencies]
@@ -43,6 +44,7 @@ axiomatic-code-execution = "axiomatic_mcp.servers.code_execution:main"
 axiomatic-documents = "axiomatic_mcp.servers.documents:main"
 axiomatic-plots = "axiomatic_mcp.servers.plots:main"
 axiomatic-equations = "axiomatic_mcp.servers.equations:main"
+axiomatic-dt-optimizer = "axiomatic_mcp.servers.dt_optimizer:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
