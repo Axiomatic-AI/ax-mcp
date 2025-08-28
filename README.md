@@ -25,6 +25,10 @@ Extract numerical data from plot images for analysis and reproduction.
 Execute Python code in a secure environment with support for selected libraries (`gdsfactory`, `z3`, `json`).  
 Useful for photonic design workflows, symbolic reasoning, and structured data manipulation.
 
+### ⚙️ [Digital Twin Optimizer Server](./axiomatic_mcp/servers/dt_optimizer/)
+
+Optimize mathematical models and digital twins using advanced algorithms and experimental data fitting.
+
 ## Getting an API Key
 
 All Axiomatic MCP servers require an API key:
