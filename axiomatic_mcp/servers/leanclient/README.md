@@ -103,13 +103,13 @@ Add to your MCP settings file (`.cursor/mcp.json`):
 
 ## Usage Examples
 
-The included `test.lean` file demonstrates a theorem about the order of elements in additive groups. Here's how to use the MCP tools with it:
+The included `example.lean` file demonstrates a theorem about the order of elements in additive groups. Here's how to use the MCP tools with it:
 
 ### 1. Read File Contents
 
 ```python
 # Returns the full file with line numbers
-lean_file_contents("/path/to/test.lean", annotate_lines=True)
+lean_file_contents("/path/to/example.lean", annotate_lines=True)
 ```
 
 **Output**: Complete file contents with line numbers (1-62 lines)
@@ -118,7 +118,7 @@ lean_file_contents("/path/to/test.lean", annotate_lines=True)
 
 ```python
 # Get compilation errors and warnings
-lean_diagnostic_messages("/path/to/test.lean")
+lean_diagnostic_messages("/path/to/example.lean")
 ```
 
 **Example Output**:
@@ -134,7 +134,7 @@ tactic 'rewrite' failed, equality or iff proof expected
 
 ```python
 # View goals at line 42 (inside the proof)
-lean_goal("/path/to/test.lean", line=42)
+lean_goal("/path/to/example.lean", line=42)
 ```
 
 **Example Output**:
@@ -150,7 +150,7 @@ After:
 
 ```python
 # Hover over 'addOrderOf_eq_iff' at line 56
-lean_hover_info("/path/to/test.lean", line=56, column=8)
+lean_hover_info("/path/to/example.lean", line=56, column=8)
 ```
 
 **Example Output**:
@@ -162,14 +162,14 @@ addOrderOf_eq_iff: addOrderOf x = n ↔ n • x = 0 ∧ ∀ m < n, 0 < m → m �
 
 ```python
 # Get expected type at a specific position
-lean_term_goal("/path/to/test.lean", line=14)
+lean_term_goal("/path/to/example.lean", line=14)
 ```
 
 ### 6. Test Multiple Tactics
 
 ```python
 # Try different approaches for line 50
-lean_multi_attempt("/path/to/test.lean", line=50, snippets=[
+lean_multi_attempt("/path/to/example.lean", line=50, snippets=[
     "rw [ZMod.int_cast_eq_zero_iff]",
     "rw [ZMod.cast_nat_cast]", 
     "simp [ZMod.nat_cast_eq_zero_iff_dvd]"
@@ -178,7 +178,7 @@ lean_multi_attempt("/path/to/test.lean", line=50, snippets=[
 
 ## Working with the Example
 
-The `test.lean` file contains:
+The `example.lean` file contains:
 
 1. **Imports**: Essential Mathlib modules for group theory and number theory
 2. **Definitions**: 
