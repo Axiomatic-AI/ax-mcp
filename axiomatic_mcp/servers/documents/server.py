@@ -4,10 +4,11 @@ from pathlib import Path
 from typing import Annotated
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
-from ...shared import AxiomaticAPIClient
+from ...shared.documents.pdf_to_markdown import pdf_to_markdown
 
 mcp = FastMCP(
     name="Axiomatic Documents Server",
@@ -25,28 +26,21 @@ mcp = FastMCP(
 async def document_to_markdown(
     file_path: Annotated[Path, "The absolute path to the PDF file to analyze"],
 ) -> ToolResult:
-    if not file_path.exists():
-        raise FileNotFoundError(f"Document not found: {file_path}")
+    try:
+        response = await pdf_to_markdown(file_path)
+        markdown = response.markdown
+        name = file_path.parent / (file_path.stem + ".md")
 
-    if file_path.suffix.lower() != ".pdf":
-        raise ValueError("File must be a PDF")
+        with Path.open(name, "w", encoding="utf-8") as f:
+            f.write(markdown)
 
-    file_content = file_path.read_bytes()
-    files = {"file": (file_path.name, file_content, "application/pdf")}
-    data = {"method": "mistral", "ocr": False, "layout_model": "doclayout_yolo"}
-
-    response = AxiomaticAPIClient().post("/document/parse", files=files, data=data)
-    markdown: str = response["markdown"]
-    name = file_path.parent / (file_path.stem + ".md")
-
-    with open(name, "w", encoding="utf-8") as f:
-        f.write(markdown)
-
-    return ToolResult(
-        content=[
-            TextContent(
-                type="text",
-                text=f"Generated markdown for: {name}\n\n```markdown\n{markdown}\n```",
-            )
-        ],
-    )
+        return ToolResult(
+            content=[
+                TextContent(
+                    type="text",
+                    text=f"Generated markdown for: {name}\n\n```markdown\n{markdown}\n```",
+                )
+            ],
+        )
+    except Exception as e:
+        raise ToolError(f"Failed to analyze PDF document: {e!s}") from e
