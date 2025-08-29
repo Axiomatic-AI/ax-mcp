@@ -98,7 +98,9 @@ async def annotate_file_main(file_path: Path, query: str) -> ToolResult:
 
         # Parse the response to AnnotationsResponse
         annotations_response = AnnotationsResponse.model_validate(response)
-        annotations_text = format_annotations(annotations_response.annotations) if annotations_response.annotations else "No annotations found for the given query."
+        annotations_text = (
+            format_annotations(annotations_response.annotations) if annotations_response.annotations else "No annotations found for the given query."
+        )
 
         return ToolResult(
             content=[
@@ -135,24 +137,3 @@ def format_annotations(annotations: list[PDFAnnotation]) -> str:
 
     annotations_text = "\n".join(annotation_lines)
     return annotations_text
-
-
-if __name__ == "__main__":
-    import asyncio
-    from dotenv import load_dotenv
-    load_dotenv()
-
-    async def main():
-        result = await annotate_file_main(
-            file_path=Path("/Users/carlosarribalzagajove/Desktop/Axiomatic AI/Working Projects/hackathon/ax-mcp/test.pdf"),
-            query="What is the main idea of the paper? Give me three annotations. One text, one equation, and one figure description."
-        )
-        print(result)
-
-        for content_item in result.content:
-                if hasattr(content_item, 'text'):
-                    print(content_item.text)
-                else:
-                    print(f"[Non-text content: {content_item}]")
-
-    asyncio.run(main())
