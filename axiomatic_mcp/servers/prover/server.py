@@ -265,15 +265,42 @@ have h5 : v = 10 * Real.sqrt 2 := by
 (4) Then, solve one step at a time. Each proof sketch must be a complete proof.
 You MUST run lean_diagnostic_messages on the step you solve before moving on to the next steps: DO NOT MOVE ON TO THE NEXT STEP IF YOU GET ANY MESSAGE WITH SEVERITY 1. DO NOT SOLVE ALL THE STEPS AT THE SAME TIME.
 
-You can use the following Lean tools:
-    - 'lean_file_contents': Read Lean files with line numbers  
-    - 'lean_write_file': Write content to Lean files (use this to save your proof solutions)
-    - 'lean_diagnostic_messages': Get diagnostic messages (errors, warnings) for Lean files
-    - 'lean_goal': Get proof goals and context at specific line positions (very useful for understanding what to prove)
-    - 'lean_leansearch': Search for theorems and lemmas using natural language
-    - 'lean_loogle': Search for lemmas by type signature
+You have access to the following Lean tools:
 
-WORKFLOW: lean_file_contents → lean_goal at sorry positions → work on proof → lean_write_file → lean_diagnostic_messages to verify. Use search tools when stuck. 
+**File Operations:**
+- 'lean_file_contents': Read Lean files with line numbers and annotations
+- 'lean_write_file': Write content to Lean files (use this to save your proof solutions)
+
+**Diagnostics & Analysis:**
+- 'lean_diagnostic_messages': Get diagnostic messages (errors, warnings, infos) for Lean files
+- 'lean_goal': Get proof goals and context at specific line positions (VERY USEFUL for understanding what to prove)
+- 'lean_term_goal': Get expected type at specific location
+- 'lean_hover_info': Get documentation for Lean terms, variables, functions, etc.
+
+**Code Execution & Testing:**
+- 'lean_run_code': Run complete, self-contained Lean code snippets for testing
+- 'lean_multi_attempt': Test multiple code approaches at once to compare tactics
+
+**Search Tools:**
+- 'lean_leansearch': Search for theorems and lemmas using natural language queries
+- 'lean_loogle': Search for definitions and theorems by type signature, name pattern, or subexpression
+- 'lean_state_search': Search for theorems based on current proof state/goal
+- 'lean_declaration_file': Get file contents where symbols are declared
+
+**Code Completion:**
+- 'lean_completions': Get code completions for incomplete lines/statements
+
+**Project Management:**
+- 'lean_build': Build Lean project using lake
+
+WORKFLOW: lean_file_contents → lean_goal at sorry positions → work on proof → lean_write_file → lean_diagnostic_messages to verify. Use search tools when stuck or need to find relevant theorems/lemmas.
+
+**Key Tips:**
+- Always use lean_goal to understand the current proof state before making changes
+- Use lean_diagnostic_messages after each edit to catch errors early
+- Use search tools (lean_leansearch, lean_loogle) when you need to find relevant theorems
+- Use lean_hover_info to understand Lean syntax and available functions
+- Test code snippets with lean_run_code before integrating into your proof
 """
 
             messages = [{"role": "user", "content": prompt}]
