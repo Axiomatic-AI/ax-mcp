@@ -40,6 +40,7 @@ dev = [
 ]
 lean = [
     "leanclient==0.1.14",
+    "anthropic>=0.34.0",
 ]
 
 [project.scripts]
@@ -50,6 +51,7 @@ axiomatic-plots = "axiomatic_mcp.servers.plots:main"
 axiomatic-equations = "axiomatic_mcp.servers.equations:main"
 axiomatic-leanclient = "axiomatic_mcp.servers.leanclient:main"
 axiomatic-dt-optimizer = "axiomatic_mcp.servers.dt_optimizer:main"
+axiomatic-autoformalizer = "axiomatic_mcp.servers.autoformalizer:main"
 axiomatic-annotations = "axiomatic_mcp.servers.annotations:main"
 
 [tool.setuptools.packages.find]

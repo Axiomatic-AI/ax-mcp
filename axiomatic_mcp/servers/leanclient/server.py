@@ -22,6 +22,11 @@ from .lean_client import (
     lean_run_code_impl,
     lean_term_goal_impl,
 )
+from .websearch import (
+    lean_leansearch_impl,
+    lean_loogle_impl,
+    lean_state_search_impl,
+)
 
 logger = get_logger(__name__)
 
@@ -228,6 +233,27 @@ def lean_multi_attempt(ctx: Context, file_path: str, line: int, snippets: list[s
     return lean_multi_attempt_impl(ctx, file_path, line, snippets)
 
 
+@mcp.tool("lean_write_file")
+def lean_write_file(ctx: Context, file_path: str, content: str) -> str:
+    """Write content to a Lean file.
+
+    Args:
+        file_path (str): Absolute path to the Lean file
+        content (str): Content to write to the file
+
+    Returns:
+        str: Result of write operation
+    """
+    try:
+        from pathlib import Path
+
+        with Path(file_path).open("w", encoding="utf-8") as f:
+            f.write(content)
+        return f"Successfully wrote to {file_path}"
+    except Exception as e:
+        return f"Error writing file: {e!s}"
+
+
 @mcp.tool("lean_run_code")
 def lean_run_code(ctx: Context, code: str) -> list[str] | str:
     """Run a complete, self-contained code snippet and return diagnostics.
@@ -242,6 +268,50 @@ def lean_run_code(ctx: Context, code: str) -> list[str] | str:
         List[str] | str: Diagnostics msgs or error msg
     """
     return lean_run_code_impl(ctx, code)
+
+
+@mcp.tool("lean_leansearch")
+def lean_leansearch(ctx: Context, query: str, num_results: int = 5) -> list[dict] | str:
+    """Search for Lean theorems, definitions, and tactics using leansearch.net.
+
+    Args:
+        query (str): Search query for theorems and definitions
+        num_results (int, optional): Number of results to return. Defaults to 5.
+
+    Returns:
+        List[dict] | str: Search results or error message
+    """
+    return lean_leansearch_impl(ctx, query, num_results)
+
+
+@mcp.tool("lean_loogle")
+def lean_loogle(ctx: Context, query: str, num_results: int = 8) -> list[dict] | str:
+    """Search for definitions and theorems using loogle.
+
+    Args:
+        query (str): Search query (type signature, name pattern, etc.)
+        num_results (int, optional): Number of results to return. Defaults to 8.
+
+    Returns:
+        List[dict] | str: Search results or error message
+    """
+    return lean_loogle_impl(ctx, query, num_results)
+
+
+@mcp.tool("lean_state_search")
+def lean_state_search(ctx: Context, file_path: str, line: int, column: int, num_results: int = 5) -> list | str:
+    """Search for theorems based on proof state using premise-search.com.
+
+    Args:
+        file_path (str): Absolute path to Lean file
+        line (int): Line number (1-indexed)
+        column (int): Column number (1-indexed)
+        num_results (int, optional): Number of results to return. Defaults to 5.
+
+    Returns:
+        List | str: Search results or error message
+    """
+    return lean_state_search_impl(ctx, file_path, line, column, num_results)
 
 
 if __name__ == "__main__":

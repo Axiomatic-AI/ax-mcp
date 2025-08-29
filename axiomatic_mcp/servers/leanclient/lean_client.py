@@ -380,6 +380,8 @@ def lean_run_code_impl(ctx: Context, code: str) -> list[str] | str:
         return f"Error writing code snippet to file `{abs_path}`:\n{e!s}"
 
     client: LeanLSPClient = ctx.request_context.lifespan_context.client
+    if client is None:
+        return "Lean LSP client not initialized. Try running another tool first to set up the client."
     diagnostics = format_diagnostics(client.get_diagnostics(rel_path))
     client.close_files([rel_path])
 
