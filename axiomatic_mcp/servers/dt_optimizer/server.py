@@ -16,6 +16,100 @@ from mcp.types import TextContent
 from ...shared import AxiomaticAPIClient
 
 
+def validate_optimization_inputs(input_data: list, output_data: dict, parameters: list, bounds: list, constants: list = None):
+    """Validate optimization inputs and return extracted names and data info.
+    
+    Returns:
+        tuple: (input_names, const_names, param_names, bounds_names, N)
+    
+    Raises:
+        ValueError: If validation fails
+    """
+    input_names = [in_data['name'] for in_data in input_data]
+    const_names = [const['name'] for const in constants] if constants else []
+    param_names = [param['name'] for param in parameters]
+    bounds_names = [bound['name'] for bound in bounds]
+
+    N = len(output_data["magnitudes"])
+    if N == 0:
+        raise ValueError("No data points provided. Please provide output data.")
+    
+    for in_data in input_data: 
+        if len(in_data['magnitudes']) != N: 
+            raise ValueError(f"Input data {in_data['name']} must have the same number of data points as output data: {N}. Input data: {input_data}. Output data: {output_data}.")    
+    
+    # Make sure all parameters have bounds
+    for var in param_names:
+        if var not in bounds_names:
+            raise ValueError(f"Parameter {var} has no bounds. Please add bounds.")
+    
+    return input_names, const_names, param_names, bounds_names, N
+
+
+def prepare_bounds_for_optimization(bounds: list, input_names: list, const_names: list, output_name: str):
+    """Prepare bounds by setting input/output/constant bounds to ±inf and validating ranges.
+    
+    Args:
+        bounds: List of bound dictionaries to modify in-place
+        input_names: List of input variable names
+        const_names: List of constant names  
+        output_name: Name of output variable
+        
+    Raises:
+        ValueError: If lower bound > upper bound
+    """
+    myinf = 1e30
+    
+    for var in bounds:
+        if var['lower']['magnitude'] > var['upper']['magnitude']:
+            raise ValueError(f"Lower bound for {var['name']} is greater than upper bound. Lower bound: {var['lower']['magnitude']}, Upper bound: {var['upper']['magnitude']}.")
+        
+        # Set input, output, and constant bounds to -inf to inf for robustness
+        if var['name'] in input_names or var['name'] in const_names or var['name'] == output_name:
+            var['lower']['magnitude'] = -myinf
+            var['upper']['magnitude'] = myinf
+
+
+def compute_r_squared_from_mse_and_data(mse: float, output_magnitudes: list):
+    """Compute R-squared from MSE and output data.
+    
+    Args:
+        mse: Mean squared error
+        output_magnitudes: List of output values (1D or 2D)
+        
+    Returns:
+        float: R-squared value
+    """
+    import numpy as np
+    
+    # Convert to numpy array and handle both 1D and 2D cases
+    y_true = np.array(output_magnitudes)
+    
+    # Flatten to handle multidimensional data consistently
+    y_flat = y_true.flatten()
+    n_total_elements = len(y_flat)
+    
+    if n_total_elements == 0:
+        return float('nan')
+        
+    if mse < 0:
+        return float('nan')
+    
+    # For multidimensional data, MSE is already the mean across all elements
+    # So SS_res = MSE * total_number_of_elements
+    ss_res = mse * n_total_elements
+    
+    # Calculate total sum of squares (variance around mean across all dimensions)
+    y_mean = np.mean(y_flat)
+    ss_tot = np.sum((y_flat - y_mean) ** 2)
+    
+    # Handle edge case where all output values are the same
+    if ss_tot == 0:
+        return 1.0 if mse == 0 else float("-inf")
+    else:
+        return 1 - ss_res / ss_tot
+
+
 def evaluate_dt_model_loss(payload: dict) -> dict:
     """Evaluate the loss/cost of a digital twin model using the provided payload.
     
@@ -166,35 +260,17 @@ async def optimize_digital_twin_model(
 ) -> ToolResult:
     """Optimize a digital twin model using the Axiomatic AI platform."""
 
-    myinf = 1e30 # float('inf') is not JSON compliant. 
-    
-    # sanity checks about input format to provide sensible error messages to the agent so it can be fixed
-    input_names = [in_data['name'] for in_data in input_data]
-    const_names = [const['name'] for const in constants] if constants else []
-    param_names = [param['name'] for param in parameters]
-    bounds_names = [bound['name'] for bound in bounds]
-
-    N = len(output_data["magnitudes"]) # number of data points
-    if N == 0:
-        return ToolResult(content=[TextContent(type="text", text=f"No data points provided. Please provide output data.")])
-    
-    for in_data in input_data: 
-        if len(in_data['magnitudes']) != N: 
-            return ToolResult(content=[TextContent(type="text", text=f"Input data {in_data['name']} must have the same number of data points as output data: {N}. Input data: {input_data}. Output data: {output_data}.")])    
-    
-    # make sure all parameters have bounds
-    for var in param_names:
-        if var not in bounds_names:
-            return ToolResult(content=[TextContent(type="text", text=f"Parameter {var} has no bounds. Please add bounds.")])
-
-    # set input, output, and constant bounds to -inf to inf (--> inconsequential for dt fitting. Adds robustness.)
-    for var in bounds:
-        if var['lower']['magnitude'] > var['upper']['magnitude']:
-            return ToolResult(content=[TextContent(type="text", text=f"Lower bound for {var['name']} is greater than upper bound. Lower bound: {var['lower']['magnitude']}, Upper bound: {var['upper']['magnitude']}.")])
+    try:
+        # Validate inputs using helper function
+        input_names, const_names, param_names, bounds_names, N = validate_optimization_inputs(
+            input_data, output_data, parameters, bounds, constants
+        )
         
-        if var['name'] in input_names or var['name'] in const_names or var['name'] == output_data['name']:
-            var['lower']['magnitude'] = -myinf
-            var['upper']['magnitude'] = myinf
+        # Prepare bounds using helper function
+        prepare_bounds_for_optimization(bounds, input_names, const_names, output_data['name'])
+        
+    except ValueError as e:
+        return ToolResult(content=[TextContent(type="text", text=str(e))])
 
     # Build API request exactly matching the expected format
     if optimizer_config is None:
@@ -738,30 +814,18 @@ async def calculate_r_squared(
     try:
         import numpy as np
 
-        # Convert to numpy array and handle both 1D and 2D cases
-        y_true = np.array(output_values)
-
-        # Flatten to handle multidimensional data consistently
-        y_flat = y_true.flatten()
-        n_total_elements = len(y_flat)
-
-        if n_total_elements == 0:
+        if len(output_values) == 0:
             raise ValueError("Output values cannot be empty")
 
         if mse < 0:
             raise ValueError("MSE cannot be negative")
 
-        # For multidimensional data, MSE is already the mean across all elements
-        # So SS_res = MSE * total_number_of_elements
-        ss_res = mse * n_total_elements
-
-        # Calculate total sum of squares (variance around mean across all dimensions)
-        y_mean = np.mean(y_flat)
-        ss_tot = np.sum((y_flat - y_mean) ** 2)
-
-        # Handle edge case where all output values are the same
-
-        r_squared = (1.0 if mse == 0 else float("-inf")) if ss_tot == 0 else 1 - ss_res / ss_tot
+        # Use helper function for R² calculation
+        r_squared = compute_r_squared_from_mse_and_data(mse, output_values)
+        
+        # Get data info for display
+        y_true = np.array(output_values)
+        n_total_elements = len(y_true.flatten())
 
         # Determine data structure for display
         data_shape = y_true.shape
@@ -857,30 +921,30 @@ async def cross_validate_digital_twin(
         
         # Get data dimensions
         n_samples = len(output_data["magnitudes"])
-        indices = np.arange(n_samples)
         
-        # Create cross-validation splits
+        # Create cross-validation splits - sklearn can work directly with n_samples
         splits = []
         
         if validation_strategy == "kfold":
             cv = KFold(n_splits=n_splits, shuffle=True, random_state=random_state)
-            splits = list(cv.split(indices))
+            # cv.split() just needs any array-like of length n_samples
+            splits = list(cv.split(range(n_samples)))
             strategy_desc = f"KFold with {n_splits} folds"
             
         elif validation_strategy == "shuffle":
             cv = ShuffleSplit(n_splits=n_splits, test_size=test_size, random_state=random_state)
-            splits = list(cv.split(indices))
+            splits = list(cv.split(range(n_samples)))
             strategy_desc = f"ShuffleSplit with {n_splits} splits, test_size={test_size}"
             
         elif validation_strategy == "custom":
             if custom_splits is None:
                 return ToolResult(content=[TextContent(type="text", text="Custom splits must be provided when using 'custom' validation strategy.")])
             
-            # Convert custom splits to train/test index arrays
+            # Convert custom splits to train/test index lists
             for split in custom_splits:
                 if 'train' not in split or 'test' not in split:
                     return ToolResult(content=[TextContent(type="text", text="Each custom split must have 'train' and 'test' keys with index lists.")])
-                splits.append((np.array(split['train']), np.array(split['test'])))
+                splits.append((split['train'], split['test']))
             strategy_desc = f"Custom splits with {len(splits)} folds"
             
         else:
@@ -914,28 +978,35 @@ async def cross_validate_digital_twin(
                     "magnitudes": train_output_magnitudes
                 }
                 
-                # Build optimization payload for training data
-                myinf = 1e30
-                
-                # Apply same validation logic as optimize_digital_twin_model
-                input_names = [in_data['name'] for in_data in train_input_data]
-                const_names = [const['name'] for const in constants] if constants else []
-                param_names = [param['name'] for param in initial_parameters]
-                bounds_names = [bound['name'] for bound in bounds]
-                
-                # Make copy of bounds to avoid modifying original
-                fold_bounds = []
-                for bound in bounds:
-                    fold_bound = {
-                        "name": bound["name"],
-                        "lower": {"magnitude": bound["lower"]["magnitude"], "unit": bound["lower"]["unit"]},
-                        "upper": {"magnitude": bound["upper"]["magnitude"], "unit": bound["upper"]["unit"]}
-                    }
-                    # Set input, output, and constant bounds to -inf to inf
-                    if fold_bound['name'] in input_names or fold_bound['name'] in const_names or fold_bound['name'] == train_output_data['name']:
-                        fold_bound['lower']['magnitude'] = -myinf
-                        fold_bound['upper']['magnitude'] = myinf
-                    fold_bounds.append(fold_bound)
+                # Validate training data and prepare bounds using helper functions
+                try:
+                    input_names, const_names, param_names, bounds_names, train_N = validate_optimization_inputs(
+                        train_input_data, train_output_data, initial_parameters, bounds, constants
+                    )
+                    
+                    # Make copy of bounds to avoid modifying original
+                    fold_bounds = []
+                    for bound in bounds:
+                        fold_bound = {
+                            "name": bound["name"],
+                            "lower": {"magnitude": bound["lower"]["magnitude"], "unit": bound["lower"]["unit"]},
+                            "upper": {"magnitude": bound["upper"]["magnitude"], "unit": bound["upper"]["unit"]}
+                        }
+                        fold_bounds.append(fold_bound)
+                    
+                    # Prepare bounds for this fold
+                    prepare_bounds_for_optimization(fold_bounds, input_names, const_names, train_output_data['name'])
+                    
+                except ValueError as validation_error:
+                    fold_results.append({
+                        "fold": fold_idx + 1,
+                        "train_size": len(train_indices),
+                        "test_size": len(test_indices),
+                        "test_loss": "Failed",
+                        "test_r2": "Failed",
+                        "error": f"Validation failed: {validation_error}"
+                    })
+                    continue
                 
                 # Build optimization request for train data
                 train_payload = {
@@ -1029,17 +1100,8 @@ async def cross_validate_digital_twin(
                     })
                     continue
                 
-                # Calculate R² for this fold
-                test_output_flat = np.array(test_output_magnitudes).flatten()
-                n_elements = len(test_output_flat)
-                
-                if n_elements == 0:
-                    r2 = float('nan')
-                else:
-                    ss_res = test_loss * n_elements
-                    y_mean = np.mean(test_output_flat)
-                    ss_tot = np.sum((test_output_flat - y_mean) ** 2)
-                    r2 = 1 - ss_res / ss_tot if ss_tot > 0 else (1.0 if test_loss == 0 else float('-inf'))
+                # Calculate R² for this fold using helper function
+                r2 = compute_r_squared_from_mse_and_data(test_loss, test_output_magnitudes)
                 
                 # Store results
                 fold_results.append({
