@@ -29,6 +29,11 @@ Useful for photonic design workflows, symbolic reasoning, and structured data ma
 
 Optimize mathematical models and digital twins using advanced algorithms and experimental data fitting.
 
+### 📝 [Annotations Server](./axiomatic_mcp/servers/annotations/)
+
+Create intelligent annotations for PDF documents with contextual analysis, equation extraction, and parameter identification.
+
+
 ## Getting an API Key
 
 All Axiomatic MCP servers require an API key:

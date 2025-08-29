@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "axiomatic-mcp"
-version = "0.0.3"
+version = "0.0.4"
 description = "Modular MCP servers for Axiomatic_AI"
 authors = [{name = "Axiomatic Team", email = "developers@axiomatic.ai"}]
 readme = "README.md"
@@ -52,6 +52,7 @@ axiomatic-equations = "axiomatic_mcp.servers.equations:main"
 axiomatic-leanclient = "axiomatic_mcp.servers.leanclient:main"
 axiomatic-dt-optimizer = "axiomatic_mcp.servers.dt_optimizer:main"
 axiomatic-autoformalizer = "axiomatic_mcp.servers.autoformalizer:main"
+axiomatic-annotations = "axiomatic_mcp.servers.annotations:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
