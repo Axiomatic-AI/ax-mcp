@@ -214,8 +214,14 @@ def aic_bic_from_loss(
             aicc = aic + (2 * k_aicc * (k_aicc + 1)) / (n_obs - k_aicc - 1)
 
     return {
-        "aic": float(aic), "bic": float(bic), "aicc": float(aicc), "neg2loglik": float(neg2loglik), 
-        "k": k_eff, "n": n_obs, "loss_type": loss_type, "sigma_used": sigma_used
+        "aic": float(aic),
+        "bic": float(bic),
+        "aicc": float(aicc),
+        "neg2loglik": float(neg2loglik),
+        "k": k_eff,
+        "n": n_obs,
+        "loss_type": loss_type,
+        "sigma_used": sigma_used,
     }
 
 
