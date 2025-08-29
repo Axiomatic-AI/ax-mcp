@@ -25,13 +25,13 @@ async def pdf_to_markdown(file_path: Path) -> ParseResponse:
 
     file_content = await asyncio.to_thread(file_path.read_bytes)
     files = {"file": (file_path.name, file_content, "application/pdf")}
-    data = {"method": "mistral", "ocr": False, "layout_model": "doclayout_yolo"}
+    params = {"method": "mistral", "ocr": False, "layout_model": "doclayout_yolo"}
 
     response = await asyncio.to_thread(
         AxiomaticAPIClient().post,
         "/document/parse",
         files=files,
-        data=data,
+        params=params,
     )
 
     return ParseResponse(**response)
