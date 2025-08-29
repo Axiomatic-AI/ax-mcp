@@ -16,7 +16,7 @@ from mcp.types import TextContent
 from ...shared import AxiomaticAPIClient
 
 
-def validate_optimization_inputs(input_data: list, output_data: dict, parameters: list, bounds: list, constants: list = None):
+def validate_optimization_inputs(input_data: list, output_data: dict, parameters: list, bounds: list, constants: list | None = None):
     """Validate optimization inputs and return extracted names and data info.
 
     Returns:
@@ -30,14 +30,15 @@ def validate_optimization_inputs(input_data: list, output_data: dict, parameters
     param_names = [param["name"] for param in parameters]
     bounds_names = [bound["name"] for bound in bounds]
 
-    N = len(output_data["magnitudes"])
-    if N == 0:
+    n = len(output_data["magnitudes"])
+    if n == 0:
         raise ValueError("No data points provided. Please provide output data.")
 
     for in_data in input_data:
-        if len(in_data["magnitudes"]) != N:
+        if len(in_data["magnitudes"]) != n:
             raise ValueError(
-                f"Input data {in_data['name']} must have the same number of data points as output data: {N}. Input data: {input_data}. Output data: {output_data}."
+                f"Input data {in_data['name']} must have the same number of data points as output data: {n}. "
+                f"Input data: {input_data}. Output data: {output_data}."
             )
 
     # Make sure all parameters have bounds
@@ -45,7 +46,7 @@ def validate_optimization_inputs(input_data: list, output_data: dict, parameters
         if var not in bounds_names:
             raise ValueError(f"Parameter {var} has no bounds. Please add bounds.")
 
-    return input_names, const_names, param_names, bounds_names, N
+    return input_names, const_names, param_names, bounds_names, n
 
 
 def prepare_bounds_for_optimization(bounds: list, input_names: list, const_names: list, output_name: str):
@@ -65,7 +66,8 @@ def prepare_bounds_for_optimization(bounds: list, input_names: list, const_names
     for var in bounds:
         if var["lower"]["magnitude"] > var["upper"]["magnitude"]:
             raise ValueError(
-                f"Lower bound for {var['name']} is greater than upper bound. Lower bound: {var['lower']['magnitude']}, Upper bound: {var['upper']['magnitude']}."
+                f"Lower bound for {var['name']} is greater than upper bound. "
+                f"Lower bound: {var['lower']['magnitude']}, Upper bound: {var['upper']['magnitude']}."
             )
 
         # Set input, output, and constant bounds to -inf to inf for robustness
@@ -164,7 +166,7 @@ def aic_bic_from_loss(
         dict: Contains 'aic', 'bic', 'aicc', 'neg2loglik', 'k', 'n', 'loss_type', 'sigma_used'
     """
     if n_obs <= 0 or loss_value < 0:
-        return dict(aic=np.nan, bic=np.nan, aicc=np.nan, neg2loglik=np.nan, k=0, n=n_obs, loss_type=loss_type)
+        return {"aic": np.nan, "bic": np.nan, "aicc": np.nan, "neg2loglik": np.nan, "k": 0, "n": n_obs, "loss_type": loss_type}
 
     # Use effective degrees of freedom if provided, otherwise use parameter count
     if df_effective is not None:
@@ -211,9 +213,10 @@ def aic_bic_from_loss(
         if n_obs > k_aicc + 1:
             aicc = aic + (2 * k_aicc * (k_aicc + 1)) / (n_obs - k_aicc - 1)
 
-    return dict(
-        aic=float(aic), bic=float(bic), aicc=float(aicc), neg2loglik=float(neg2loglik), k=k_eff, n=n_obs, loss_type=loss_type, sigma_used=sigma_used
-    )
+    return {
+        "aic": float(aic), "bic": float(bic), "aicc": float(aicc), "neg2loglik": float(neg2loglik), 
+        "k": k_eff, "n": n_obs, "loss_type": loss_type, "sigma_used": sigma_used
+    }
 
 
 def compute_aic_bic_from_loss_and_data(
@@ -1798,8 +1801,8 @@ async def cross_validate_digital_twin(
                 )
 
         # Calculate summary statistics
-        valid_losses = [x for x in test_losses if isinstance(x, (int, float)) and not np.isnan(x)]
-        valid_r2s = [x for x in test_r2s if isinstance(x, (int, float)) and not np.isnan(x)]
+        valid_losses = [x for x in test_losses if isinstance(x, int | float) and not np.isnan(x)]
+        valid_r2s = [x for x in test_r2s if isinstance(x, int | float) and not np.isnan(x)]
 
         # Format results
         result_text = f"""# Cross-Validation Results: {model_name}
@@ -1826,8 +1829,11 @@ async def cross_validate_digital_twin(
         result_text += "\n## Fold-by-Fold Results\n"
 
         for result in fold_results:
-            if isinstance(result["test_loss"], (int, float)):
-                result_text += f"- **Fold {result['fold']}:** Loss={result['test_loss']:.6e}, R²={result['test_r2']:.6f} (train={result['train_size']}, test={result['test_size']})\n"
+            if isinstance(result["test_loss"], int | float):
+                result_text += (
+                    f"- **Fold {result['fold']}:** Loss={result['test_loss']:.6e}, "
+                    f"R²={result['test_r2']:.6f} (train={result['train_size']}, test={result['test_size']})\n"
+                )
             else:
                 error_msg = result.get("error", "Unknown error")
                 result_text += f"- **Fold {result['fold']}:** ❌ Failed - {error_msg} (train={result['train_size']}, test={result['test_size']})\n"
@@ -2064,7 +2070,7 @@ comparisons may be unreliable."""
         if df_effective is not None:
             result_text += f"- **Degrees of Freedom:** Using df_effective = {df_effective} (penalized/constrained models)\n"
         else:
-            result_text += f"- **Degrees of Freedom:** Using each model's k_params (standard MLE)\n"
+            result_text += "- **Degrees of Freedom:** Using each model's k_params (standard MLE)\n"
 
         scale_status = "included" if include_scale_param else "excluded"
         result_text += f"- **Scale Parameter:** {scale_status} in AIC/BIC complexity penalty\n"
@@ -2075,7 +2081,7 @@ comparisons may be unreliable."""
         if n_obs is not None:
             result_text += f"- **Sample Size:** Explicit n_obs = {n_obs} used for all models\n"
         else:
-            result_text += f"- **Sample Size:** Inferred from each model's output_values (independence assumed)\n"
+            result_text += "- **Sample Size:** Inferred from each model's output_values (independence assumed)\n"
 
         result_text += """
 
@@ -2121,7 +2127,7 @@ comparisons may be unreliable."""
                 result_text += "- **Large sample**: BIC provides consistent model selection\n"
                 result_text += "- AIC may allow overfitting\n"
         else:
-            result_text += f"\n### Sample Size Guidance:\n"
+            result_text += "\n### Sample Size Guidance:\n"
             result_text += f"- **Mixed sample sizes**: {min(sample_sizes)} to {max(sample_sizes)}\n"
             result_text += "- Use per-model n for interpretation (shown in table above)\n"
 
