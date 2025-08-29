@@ -113,55 +113,55 @@ def compute_r_squared_from_mse_and_data(mse: float, output_magnitudes: list):
 
 
 def aic_bic_from_loss(
-    loss_value, loss_type, n_obs, k_params, *, include_scale_param=True, use_aicc=True, aicc_include_scale=True, df_effective=None, n_scale_params=1
+    loss_value,
+    loss_type,
+    n_obs,
+    k_params,
+    sigma,
+    *,
+    include_scale_param=True,
+    use_aicc=True,
+    aicc_include_scale=True,
+    df_effective=None,
+    n_scale_params=1,
 ):
     """Compute AIC and BIC from loss value using the likelihood for each loss family.
 
     Supported loss families:
-    - MSE (Gaussian): Uses exact Gaussian likelihood with σ² = MSE
+    - MSE (Gaussian): Uses general Gaussian likelihood with diagonal covariance Σ = σ²I
     - MAE (Laplace): Uses exact Laplace likelihood with scale b = MAE
 
     Mathematical Foundation:
-    - Gaussian: -2 log L = n[log(2π) + log(σ²) + 1]
-    - Laplace: -2 log L = 2n[log(2b) + 1]
+    - Gaussian: -2 log L = n*log(2π) + n*log(σ²) + RSS/σ²
+      where RSS = MSE * n, so -2 log L = n*log(2π) + n*log(σ²) + n*MSE/σ²
+    - Laplace: -2 log L = 2n[log(2b) + 1] where b = MAE
     - AIC = -2 log L + 2k_eff
     - BIC = -2 log L + k_eff log(n)
     - AICc = AIC + 2k_aicc(k_aicc + 1)/(n - k_aicc - 1) [Gaussian only]
 
-    IMPORTANT DISTINCTION:
-    - AIC and BIC always use k_eff (determined by include_scale_param)
-    - AICc uses k_aicc which can differ from k_eff based on aicc_include_scale parameter
-    - This allows flexibility: you can include scale in AIC/BIC but exclude from AICc correction
-    - When comparing with references, verify whether they include scale in their AICc correction
+    DIAGONAL COVARIANCE: Assumes Σ = σ²I (diagonal covariance with constant variance
+    σ² across all observations). Requires user to provide σ from domain knowledge.
 
-    MLE ASSUMPTION: AIC/BIC assume Maximum Likelihood Estimation (MLE).
-    For penalized/constrained models, use df_effective instead of k_params.
+    PARAMETER COUNTING: Since σ is user-provided (not estimated), include_scale_param
+    should typically be False since σ is fixed, not fitted.
 
     Args:
         loss_value: Mean loss per observation (MSE for Gaussian, MAE for Laplace)
         loss_type: 'mse' or 'mae' (Huber/relative_mse not supported - use TIC/WAIC/CV)
         n_obs: count of (conditionally) independent scalar residuals
         k_params: parameters in the mean function (exclude scale); effective k may add +1
-        include_scale_param: If True (default), add 1 for scale parameter (σ² or b).
-            This follows standard statistical practice: minimizing MSE/MAE is equivalent
-            to joint MLE estimation of both location parameters θ and scale parameter.
-            The scale parameter contributes to model complexity and should be penalized.
+        sigma: Noise standard deviation for diagonal covariance Σ = σ²I. REQUIRED for 'mse'.
+               Not used for 'mae' (pass None).
+        include_scale_param: If True, add 1 for scale parameter count. Should be False
+                           when sigma is user-provided (not fitted).
         use_aicc: Apply AICc correction (Gaussian only, requires n > k + 1)
-        aicc_include_scale: If True (default), include scale parameter in k for AICc.
-            Note: Literature differs on this convention. AICc here uses k_eff which
-            includes scale parameter when both include_scale_param and aicc_include_scale are True.
+        aicc_include_scale: If True, include scale parameter in k for AICc.
         df_effective: Effective degrees of freedom for penalized/constrained models
             (EXCLUDING scale parameter). If provided, used instead of k_params.
-            Use this when the model wasn't fit by pure MLE (e.g., regularized models,
-            constrained optimization). The scale parameter is still added separately
-            based on include_scale_param.
         n_scale_params: Number of scale parameters to penalize when include_scale_param=True.
-            For single-output models: use 1 (default). For multi-output models with separate
-            noise scales per output dimension: use number_of_outputs. Only relevant when
-            include_scale_param=True.
 
     Returns:
-        dict: Contains 'aic', 'bic', 'aicc', 'neg2loglik', 'k', 'n', 'loss_type'
+        dict: Contains 'aic', 'bic', 'aicc', 'neg2loglik', 'k', 'n', 'loss_type', 'sigma_used'
     """
     if n_obs <= 0 or loss_value < 0:
         return dict(aic=np.nan, bic=np.nan, aicc=np.nan, neg2loglik=np.nan, k=0, n=n_obs, loss_type=loss_type)
@@ -173,11 +173,23 @@ def aic_bic_from_loss(
         k_eff = int(k_params + (n_scale_params if include_scale_param else 0))
 
     if loss_type == "mse":
-        sigma2 = max(loss_value, 1e-300)  # MSE = RSS/n
-        neg2loglik = n_obs * (np.log(2 * np.pi) + np.log(sigma2) + 1.0)
+        if sigma is None:
+            raise ValueError(
+                "sigma parameter is required for 'mse' (Gaussian) likelihood calculation. "
+                "Provide the noise standard deviation for diagonal covariance Σ = σ²I."
+            )
+
+        # General Gaussian likelihood: -2 log L = n*log(2π) + n*log(σ²) + RSS/σ²
+        # RSS = MSE * n, so RSS/σ² = n*MSE/σ²
+        sigma2_user = max(sigma**2, 1e-300)
+        neg2loglik = n_obs * (np.log(2 * np.pi) + np.log(sigma2_user)) + n_obs * loss_value / sigma2_user
+        sigma_used = sigma
     elif loss_type == "mae":
+        if sigma is not None:
+            raise ValueError("sigma parameter is only supported for 'mse' (Gaussian) loss type, not 'mae' (Laplace)")
         b = max(loss_value, 1e-300)  # MAE = (1/n) Σ|r|
         neg2loglik = 2 * n_obs * (np.log(2 * b) + 1)
+        sigma_used = None
 
     else:
         raise NotImplementedError(
@@ -199,7 +211,9 @@ def aic_bic_from_loss(
         if n_obs > k_aicc + 1:
             aicc = aic + (2 * k_aicc * (k_aicc + 1)) / (n_obs - k_aicc - 1)
 
-    return dict(aic=float(aic), bic=float(bic), aicc=float(aicc), neg2loglik=float(neg2loglik), k=k_eff, n=n_obs, loss_type=loss_type)
+    return dict(
+        aic=float(aic), bic=float(bic), aicc=float(aicc), neg2loglik=float(neg2loglik), k=k_eff, n=n_obs, loss_type=loss_type, sigma_used=sigma_used
+    )
 
 
 def compute_aic_bic_from_loss_and_data(
@@ -207,6 +221,7 @@ def compute_aic_bic_from_loss_and_data(
     cost_function_type,
     output_magnitudes,
     n_parameters,
+    sigma,
     include_scale_param=True,
     n_obs=None,
     df_effective=None,
@@ -234,6 +249,8 @@ def compute_aic_bic_from_loss_and_data(
         n_scale_params: Number of scale parameters to penalize when include_scale_param=True.
                For single-output models: use 1 (default). For multi-output models with separate
                noise scales per output dimension: use number_of_outputs.
+        sigma: REQUIRED noise standard deviation for diagonal covariance Σ = σ²I.
+               For 'mse': must be provided from domain knowledge. For 'mae': pass None.
 
     Returns:
         dict: Comprehensive statistics including AIC, BIC, AICc, scale estimates, etc.
@@ -266,6 +283,7 @@ def compute_aic_bic_from_loss_and_data(
         cost_function_type,
         n_obs,
         n_parameters,
+        sigma,
         include_scale_param=include_scale_param,
         use_aicc=True,
         df_effective=df_effective,
@@ -1201,15 +1219,22 @@ All templates are generic - adapt the function, parameters, and data to your spe
     ⚠️ STATISTICAL CORRECTNESS: Uses proper log-likelihood for each noise model,
     avoiding incorrect conversions that can reverse model rankings.
 
+    🔧 REQUIRED PARAMETER: sigma must be provided for MSE (Gaussian) calculations.
+    This ensures proper likelihood calculation with diagonal covariance Σ = σ²I.
+
     SUPPORTED LOSS FUNCTIONS (with correct likelihoods):
-    - MSE: Gaussian noise → -2 log L = n[log(2π) + log(σ²) + 1]
-    - MAE: Laplace noise → -2 log L = 2n[log(2b) + 1]
+    - MSE: Gaussian noise → -2 log L = n*log(2π) + n*log(σ²) + RSS/σ² 
+      (REQUIRES user-provided sigma from domain knowledge)
+    - MAE: Laplace noise → -2 log L = 2n[log(2b) + 1] (sigma should be None)
+
+    DIAGONAL COVARIANCE: Assumes Σ = σ²I (constant variance σ² across observations).
+    User must provide σ from domain knowledge, not empirical fit quality.
 
     UNSUPPORTED (use TIC/WAIC/cross-validation instead):
-    - Huber: Requires explicit Huber density computation
+    - Huber: Requires explicit Huber density computation  
     - Relative MSE: Needs heteroscedastic Gaussian with predictions
 
-    Features: Proper parameter counting, AICc only for Gaussian, no ad-hoc conversions.
+    Features: Diagonal covariance support, proper parameter counting, AICc for small samples.
     """,
     tags=["statistics", "model_selection", "information_criteria", "bayesian"],
 )
@@ -1218,7 +1243,10 @@ async def calculate_aic_bic_criteria(
     cost_function_type: Annotated[str, "Loss function type: 'mse' (Gaussian) or 'mae' (Laplace) only"],
     output_values: Annotated[list, "Output data used in optimization: 1D [1,2,3] or 2D [[1,2],[3,4]]"],
     n_parameters: Annotated[int, "Number of fitted parameters in mean function (scale param added automatically)"],
-    include_scale_param: Annotated[bool, "Include scale parameter (σ² or b) in k count"] = True,
+    sigma: Annotated[
+        float | None, "REQUIRED noise std dev for diagonal covariance Σ=σ²I. For mse: provide from domain knowledge. For mae: use None."
+    ],
+    include_scale_param: Annotated[bool, "Include scale parameter (σ² or b) in k count"] = False,
     n_obs: Annotated[int | None, "Explicit count of independent residuals. If None, infers from output_values"] = None,
     df_effective: Annotated[float | None, "Effective degrees of freedom for penalized models (EXCLUDING scale)"] = None,
     aicc_include_scale: Annotated[bool, "Include scale parameter in AICc correction (literature varies)"] = True,
@@ -1236,9 +1264,36 @@ async def calculate_aic_bic_criteria(
         if loss_value < 0:
             raise ValueError("Loss value cannot be negative")
 
+        if sigma is not None:
+            if cost_function_type != "mse":
+                raise ValueError("sigma parameter is only supported for 'mse' (Gaussian) cost function")
+            if sigma <= 0:
+                raise ValueError("sigma must be positive")
+
+            # Warn if sigma and MSE are very inconsistent (suggests different assumptions)
+            expected_sigma = np.sqrt(loss_value)  # If MSE = σ², then σ = √MSE
+            relative_diff = abs(sigma - expected_sigma) / expected_sigma if expected_sigma > 0 else float("inf")
+            if relative_diff > 0.5:  # More than 50% difference
+                import warnings
+
+                warnings.warn(
+                    f"sigma={sigma:.6f} differs significantly from √MSE={expected_sigma:.6f}. "
+                    f"This may indicate different noise assumptions. Consider if your sigma "
+                    f"represents the true noise level vs. the empirical fit quality."
+                )
+
         # Use helper function for AIC/BIC calculation
         result = compute_aic_bic_from_loss_and_data(
-            loss_value, cost_function_type, output_values, n_parameters, include_scale_param, n_obs, df_effective, aicc_include_scale, n_scale_params
+            loss_value,
+            cost_function_type,
+            output_values,
+            n_parameters,
+            sigma,
+            include_scale_param,
+            n_obs,
+            df_effective,
+            aicc_include_scale,
+            n_scale_params,
         )
 
         # Extract values for display
@@ -1255,8 +1310,13 @@ async def calculate_aic_bic_criteria(
         # Format conditional values to avoid f-string errors
         aicc_str = f"{aicc:.2f}" if np.isfinite(aicc) else "Infinite (over-parameterized)"
 
-        # Scale parameter label based on distribution family
-        scale_label = "Scale estimate (σ² for Gaussian, b for Laplace)"
+        # Scale parameter label and sigma information
+        if cost_function_type == "mse":
+            scale_label = f"User-provided σ = {sigma:.6f} (diagonal covariance Σ = σ²I)"
+            likelihood_method = "General Gaussian likelihood with user-provided σ"
+        else:  # MAE
+            scale_label = "Scale estimate (b for Laplace)"
+            likelihood_method = "Laplace likelihood with estimated scale parameter"
 
         # Format result
         result_text = f"""# Information Criteria for Model Selection
@@ -1268,6 +1328,7 @@ async def calculate_aic_bic_criteria(
 - **BIC-AIC Penalty Difference:** {delta_bic_aic:.2f}
 - **{scale_label}:** {scale_est:.6e}
 - **Log-Likelihood Estimate:** {log_likelihood_est:.2f}
+- **Likelihood Method:** {likelihood_method}
 
 ## Model Properties
 - **Loss Function:** {cost_function_type.upper()}
@@ -1851,7 +1912,11 @@ async def compare_models_with_information_criteria(
         list,
         "List of model dicts: [{'name': 'Model1', 'loss_value': 0.01, 'cost_function_type': 'mse', 'n_parameters': 3, 'output_values': [1,2,3]}, ...]",
     ],
-    include_scale_param: Annotated[bool, "Include scale parameter (σ² or b) in k count"] = True,
+    sigma: Annotated[
+        float | None,
+        "REQUIRED noise std dev for diagonal covariance Σ=σ²I applied to ALL models. For mse: provide from domain knowledge. For mae: use None.",
+    ],
+    include_scale_param: Annotated[bool, "Include scale parameter (σ² or b) in k count"] = False,
     n_obs: Annotated[int | None, "Explicit count of independent residuals for ALL models. If None, infers from output_values"] = None,
     df_effective: Annotated[float | None, "Effective degrees of freedom for penalized models (EXCLUDING scale) - applied to ALL models"] = None,
     aicc_include_scale: Annotated[bool, "Include scale parameter in AICc correction (literature varies)"] = True,
@@ -1881,6 +1946,7 @@ async def compare_models_with_information_criteria(
                     model["cost_function_type"],
                     model["output_values"],
                     model["n_parameters"],
+                    sigma,
                     include_scale_param,
                     n_obs,
                     df_effective,
