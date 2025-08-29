@@ -296,6 +296,7 @@ Model: {model}
 Project: {lean_project_path or "Not specified"}
 File: {target_file_path}
 Iterations used: {iteration}/{max_iterations}
+Log file: /tmp/mcp_autoformalizer_debug.log
 
 Final Response:
 {final_response}
