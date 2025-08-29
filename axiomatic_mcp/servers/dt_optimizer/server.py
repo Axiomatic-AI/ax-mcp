@@ -126,11 +126,11 @@ def aic_bic_from_loss(
     aicc_include_scale=True,
     df_effective=None,
     n_scale_params=1,
-):
+): 
     """Compute AIC and BIC from loss value using the likelihood for each loss family.
 
     Supported loss families:
-    - MSE (Gaussian): Uses general Gaussian likelihood with diagonal covariance Σ = σ²I
+    - MSE (Gaussian): Uses general Gaussian likelihood with diagonal covariance Σ = σ²I 
     - MAE (Laplace): Uses exact Laplace likelihood with scale b = MAE
 
     Mathematical Foundation:
@@ -141,18 +141,18 @@ def aic_bic_from_loss(
     - BIC = -2 log L + k_eff log(n)
     - AICc = AIC + 2k_aicc(k_aicc + 1)/(n - k_aicc - 1) [Gaussian only]
 
-    DIAGONAL COVARIANCE: Assumes Σ = σ²I (diagonal covariance with constant variance
-    σ² across all observations). Requires user to provide σ from domain knowledge.
+    DIAGONAL COVARIANCE: Assumes Σ = σ²I (diagonal covariance with constant variance  
+    σ² across all observations). Requires user to provide σ from domain knowledge.  
 
-    PARAMETER COUNTING: Since σ is user-provided (not estimated), include_scale_param
-    should typically be False since σ is fixed, not fitted.
+    PARAMETER COUNTING: Since σ is user-provided (not estimated), include_scale_param  
+    should typically be False since σ is fixed, not fitted. 
 
     Args:
         loss_value: Mean loss per observation (MSE for Gaussian, MAE for Laplace)
         loss_type: 'mse' or 'mae' (Huber/relative_mse not supported - use TIC/WAIC/CV)
         n_obs: count of (conditionally) independent scalar residuals
         k_params: parameters in the mean function (exclude scale); effective k may add +1
-        sigma: Noise standard deviation for diagonal covariance Σ = σ²I. REQUIRED for 'mse'.
+        sigma: Noise standard deviation for diagonal covariance Σ = σ²I. REQUIRED for 'mse'.  
                Not used for 'mae' (pass None).
         include_scale_param: If True, add 1 for scale parameter count. Should be False
                            when sigma is user-provided (not fitted).
@@ -164,7 +164,7 @@ def aic_bic_from_loss(
 
     Returns:
         dict: Contains 'aic', 'bic', 'aicc', 'neg2loglik', 'k', 'n', 'loss_type', 'sigma_used'
-    """
+    """ # noqa
     if n_obs <= 0 or loss_value < 0:
         return {"aic": np.nan, "bic": np.nan, "aicc": np.nan, "neg2loglik": np.nan, "k": 0, "n": n_obs, "loss_type": loss_type}
 
@@ -178,7 +178,7 @@ def aic_bic_from_loss(
         if sigma is None:
             raise ValueError(
                 "sigma parameter is required for 'mse' (Gaussian) likelihood calculation. "
-                "Provide the noise standard deviation for diagonal covariance Σ = σ²I."
+                "Provide the noise standard deviation for diagonal covariance Σ = σ²I."  # noqa: RUF001
             )
 
         # General Gaussian likelihood: -2 log L = n*log(2π) + n*log(σ²) + RSS/σ²
@@ -258,13 +258,13 @@ def compute_aic_bic_from_loss_and_data(
         n_scale_params: Number of scale parameters to penalize when include_scale_param=True.
                For single-output models: use 1 (default). For multi-output models with separate
                noise scales per output dimension: use number_of_outputs.
-        sigma: REQUIRED noise standard deviation for diagonal covariance Σ = σ²I.
+        sigma: REQUIRED noise standard deviation for diagonal covariance Σ = σ²I. 
                For 'mse': must be provided from domain knowledge. For 'mae': pass None.
 
     Returns:
         dict: Comprehensive statistics including AIC, BIC, AICc, scale estimates, etc.
         Also includes 'assumes_independence' flag when n_obs was inferred.
-    """
+    """ # noqa
     if n_obs is None:
         y_true = np.asarray(output_magnitudes)
         n_obs = int(y_true.size)
@@ -304,10 +304,7 @@ def compute_aic_bic_from_loss_and_data(
     scale_est = loss_value  # σ² for MSE, b for MAE
 
     # Legacy field: only populate sigma_squared_est for Gaussian; otherwise np.nan
-    if cost_function_type == "mse":
-        sigma_squared_est = scale_est  # σ² = MSE for Gaussian
-    else:
-        sigma_squared_est = np.nan  # For MAE/Laplace, variance would be 2*b², but we don't report it here
+    sigma_squared_est = scale_est if cost_function_type == "mse" else np.nan
 
     return {
         "aic": res["aic"],
@@ -458,7 +455,7 @@ async def optimize_digital_twin_model(
     parameters: Annotated[list, "Initial parameter guesses: [{'name': 'a', 'value': {'magnitude': 2.0, 'unit': 'dimensionless'}}]"],
     bounds: Annotated[
         list,
-        "ALL parameter/input/output bounds: [{'name': 'a', 'lower': {'magnitude': 0, 'unit': 'dimensionless'}, 'upper': {'magnitude': 10, 'unit': 'dimensionless'}}]",  # noqa: E501
+        "ALL parameter/input/output bounds: [{'name': 'a', 'lower': {'magnitude': 0, 'unit': 'dimensionless'}, 'upper': {'magnitude': 10, 'unit': 'dimensionless'}}]",  # noqa E501
     ],
     input_data: Annotated[list, "Input data: [{'name': 'wavelength', 'unit': 'nanometer', 'magnitudes': [1550, 1551, ...]}, ...]"],
     output_data: Annotated[dict, "Output data: {'name': 'transmission', 'unit': 'dimensionless', 'magnitudes': [0.8, 0.6, ...]}"],
@@ -475,7 +472,7 @@ async def optimize_digital_twin_model(
 
     try:
         # Validate inputs using helper function
-        input_names, const_names, param_names, bounds_names, N = validate_optimization_inputs(input_data, output_data, parameters, bounds, constants)
+        input_names, const_names, param_names, bounds_names, n = validate_optimization_inputs(input_data, output_data, parameters, bounds, constants)
 
         # Prepare bounds using helper function
         prepare_bounds_for_optimization(bounds, input_names, const_names, output_data["name"])
@@ -1229,31 +1226,31 @@ All templates are generic - adapt the function, parameters, and data to your spe
     avoiding incorrect conversions that can reverse model rankings.
 
     🔧 REQUIRED PARAMETER: sigma must be provided for MSE (Gaussian) calculations.
-    This ensures proper likelihood calculation with diagonal covariance Σ = σ²I.
+    This ensures proper likelihood calculation with diagonal covariance Σ = σ²I.  
 
     SUPPORTED LOSS FUNCTIONS (with correct likelihoods):
-    - MSE: Gaussian noise → -2 log L = n*log(2π) + n*log(σ²) + RSS/σ² 
+    - MSE: Gaussian noise → -2 log L = n*log(2π) + n*log(σ²) + RSS/σ²
       (REQUIRES user-provided sigma from domain knowledge)
     - MAE: Laplace noise → -2 log L = 2n[log(2b) + 1] (sigma should be None)
 
-    DIAGONAL COVARIANCE: Assumes Σ = σ²I (constant variance σ² across observations).
-    User must provide σ from domain knowledge, not empirical fit quality.
+    DIAGONAL COVARIANCE: Assumes Σ = σ²I (constant variance σ² across observations).  
+    User must provide σ from domain knowledge, not empirical fit quality.  
 
     UNSUPPORTED (use TIC/WAIC/cross-validation instead):
-    - Huber: Requires explicit Huber density computation  
+    - Huber: Requires explicit Huber density computation
     - Relative MSE: Needs heteroscedastic Gaussian with predictions
 
     Features: Diagonal covariance support, proper parameter counting, AICc for small samples.
-    """,
+    """, # noqa
     tags=["statistics", "model_selection", "information_criteria", "bayesian"],
-)
+) 
 async def calculate_aic_bic_criteria(
     loss_value: Annotated[float, "Mean loss value from optimization (MSE or MAE only)"],
     cost_function_type: Annotated[str, "Loss function type: 'mse' (Gaussian) or 'mae' (Laplace) only"],
     output_values: Annotated[list, "Output data used in optimization: 1D [1,2,3] or 2D [[1,2],[3,4]]"],
     n_parameters: Annotated[int, "Number of fitted parameters in mean function (scale param added automatically)"],
     sigma: Annotated[
-        float | None, "REQUIRED noise std dev for diagonal covariance Σ=σ²I. For mse: provide from domain knowledge. For mae: use None."
+        float | str | None, "REQUIRED noise std dev for diagonal covariance Σ=σ²I. Specify from domain knowledge or estimate based on available data." # noqa
     ],
     include_scale_param: Annotated[bool, "Include scale parameter (σ² or b) in k count"] = False,
     n_obs: Annotated[int | None, "Explicit count of independent residuals. If None, infers from output_values"] = None,
@@ -1264,6 +1261,13 @@ async def calculate_aic_bic_criteria(
     """Calculate AIC and BIC information criteria for digital twin model selection."""
 
     try:
+        # Handle string-to-float conversion for sigma (JSON might pass it as string)
+        if sigma is not None:
+            try:
+                sigma = float(sigma)
+            except Exception as e:
+                raise ValueError(f"sigma must be a number. Error: {e!s}") from e
+
         if n_parameters <= 0:
             raise ValueError("Number of parameters must be positive")
 
@@ -1280,7 +1284,7 @@ async def calculate_aic_bic_criteria(
                 raise ValueError("sigma must be positive")
 
             # Warn if sigma and MSE are very inconsistent (suggests different assumptions)
-            expected_sigma = np.sqrt(loss_value)  # If MSE = σ², then σ = √MSE
+            expected_sigma = np.sqrt(loss_value)  # If MSE = σ², then σ = √MSE  # noqa
             relative_diff = abs(sigma - expected_sigma) / expected_sigma if expected_sigma > 0 else float("inf")
             if relative_diff > 0.5:  # More than 50% difference
                 import warnings
@@ -1288,7 +1292,8 @@ async def calculate_aic_bic_criteria(
                 warnings.warn(
                     f"sigma={sigma:.6f} differs significantly from √MSE={expected_sigma:.6f}. "
                     f"This may indicate different noise assumptions. Consider if your sigma "
-                    f"represents the true noise level vs. the empirical fit quality."
+                    f"represents the true noise level vs. the empirical fit quality.",
+                    stacklevel=2,
                 )
 
         # Use helper function for AIC/BIC calculation
@@ -1321,8 +1326,8 @@ async def calculate_aic_bic_criteria(
 
         # Scale parameter label and sigma information
         if cost_function_type == "mse":
-            scale_label = f"User-provided σ = {sigma:.6f} (diagonal covariance Σ = σ²I)"
-            likelihood_method = "General Gaussian likelihood with user-provided σ"
+            scale_label = f"User-provided σ = {sigma:.6f} (diagonal covariance Σ = σ²I)"  # noqa
+            likelihood_method = "General Gaussian likelihood with user-provided σ"  # noqa
         else:  # MAE
             scale_label = "Scale estimate (b for Laplace)"
             likelihood_method = "Laplace likelihood with estimated scale parameter"
@@ -1352,7 +1357,7 @@ async def calculate_aic_bic_criteria(
 ⚠️  **Independence Assumption**: Sample size (n={n_total}) was inferred by counting all scalar values
 in output_values. This assumes each scalar is an independent residual, which may be incorrect for:
 - Multi-output models (correlated outputs)
-- Time series data (temporal correlation)  
+- Time series data (temporal correlation)
 - Spatial data (spatial correlation)
 - Hierarchical/grouped data (within-group correlation)
 
@@ -1488,7 +1493,7 @@ Where ΔAICᵢ = AICᵢ - AIC_best
     - R² = 1 - (SS_res / SS_tot)
     - For multidimensional data, computes total variance across all dimensions
 
-    Returns R² value between 0 and 1 (higher is better fit).
+    Returns R² value, typically between 0 and 1 (higher is better fit). Negative values are possible but indicate a really poor fit.
     """,
     tags=["statistics", "model_evaluation", "goodness_of_fit"],
 )
@@ -1657,7 +1662,7 @@ async def cross_validate_digital_twin(
 
                 # Validate training data and prepare bounds using helper functions
                 try:
-                    input_names, const_names, param_names, bounds_names, train_N = validate_optimization_inputs(
+                    input_names, const_names, param_names, bounds_names, train_n = validate_optimization_inputs(
                         train_input_data, train_output_data, initial_parameters, bounds, constants
                     )
 
@@ -1922,12 +1927,12 @@ async def cross_validate_digital_twin(
 async def compare_models_with_information_criteria(
     models: Annotated[
         list,
-        "List of model dicts: [{'name': 'Model1', 'loss_value': 0.01, 'cost_function_type': 'mse', 'n_parameters': 3, 'output_values': [1,2,3]}, ...]",
+        "List of model dicts: [{'name': 'Model1', 'loss_value': 0.01, 'cost_function_type': 'mse', 'n_parameters': 3, 'output_values': [1,2,3]}, ...]"
     ],
     sigma: Annotated[
-        float | None,
-        "REQUIRED noise std dev for diagonal covariance Σ=σ²I applied to ALL models. For mse: provide from domain knowledge. For mae: use None.",
-    ],
+        float | str | None,
+        "REQUIRED noise std dev for diagonal covariance Σ=σ²I applied to ALL models. For mse: provide from domain knowledge. For mae: use None.",  # noqa
+    ] = None,
     include_scale_param: Annotated[bool, "Include scale parameter (σ² or b) in k count"] = False,
     n_obs: Annotated[int | None, "Explicit count of independent residuals for ALL models. If None, infers from output_values"] = None,
     df_effective: Annotated[float | None, "Effective degrees of freedom for penalized models (EXCLUDING scale) - applied to ALL models"] = None,
@@ -1937,8 +1942,24 @@ async def compare_models_with_information_criteria(
     """Compare multiple models using information criteria for digital twin model selection."""
 
     try:
+        if sigma is not None:
+            try:
+                sigma = float(sigma)
+            except Exception as e:
+                raise ValueError(f"sigma must be a number. Error: {e!s}") from e
+
         if len(models) < 2:
             return ToolResult(content=[TextContent(type="text", text="At least 2 models are required for comparison.")])
+
+        # Check if any models use MSE - if so, sigma is required
+        mse_models = [model.get("cost_function_type") for model in models if model.get("cost_function_type") == "mse"]
+        if mse_models and sigma is None:
+            error_msg = (
+                "❌ **Sigma parameter required**: One or more models use 'mse' cost function, "
+                "which requires the sigma parameter for diagonal covariance Σ=σ²I. "  # noqa
+                "Provide the noise standard deviation from domain knowledge."
+            )
+            return ToolResult(content=[TextContent(type="text", text=error_msg)])
 
         # Calculate AIC/BIC for each model
         model_results = []
@@ -2052,7 +2073,10 @@ async def compare_models_with_information_criteria(
             delta_bic_str = f"{model['delta_bic']:.2f}" if model["delta_bic"] < 1000 else f"{model['delta_bic']:.1e}"
             aicc_str = f"{model['aicc']:.2f}" if model["aicc"] != float("inf") else "∞"
 
-            result_text += f"\n| {model['name'][:12]} | {model['loss_value']:.2e} | {model['k_effective']} | {model['sample_size']} | {model['aic']:.2f} | {model['bic']:.2f} | {aicc_str} | {delta_aic_str} | {delta_bic_str} | {weight_str} |"
+            result_text += (
+                f"\n| {model['name'][:12]} | {model['loss_value']:.2e} | {model['k_effective']} | {model['sample_size']} | "
+                f"{model['aic']:.2f} | {model['bic']:.2f} | {aicc_str} | {delta_aic_str} | {delta_bic_str} | {weight_str} |"
+            )
 
         # Check if any models used independence assumption and add warning
         any_assumes_independence = any(m.get("assumes_independence", False) for m in valid_models)
@@ -2061,9 +2085,9 @@ async def compare_models_with_information_criteria(
             result_text += f"""
 
 ⚠️  **Independence Assumption**: Sample sizes for the following models were inferred by counting
-scalar values in output_values: {', '.join(independence_models)}. This assumes each scalar is an 
-independent residual, which may be incorrect for multi-output, time series, spatial, or 
-hierarchical data. If residuals are correlated, effective sample sizes are smaller and 
+scalar values in output_values: {', '.join(independence_models)}. This assumes each scalar is an
+independent residual, which may be incorrect for multi-output, time series, spatial, or
+hierarchical data. If residuals are correlated, effective sample sizes are smaller and
 comparisons may be unreliable."""
 
         # Add parameter settings summary
@@ -2140,7 +2164,7 @@ comparisons may be unreliable."""
         # Evidence ratio calculation
         if len(valid_models) >= 2 and valid_models[1]["akaike_weight"] > 0:
             er = valid_models[0]["akaike_weight"] / valid_models[1]["akaike_weight"]
-            result_text += f"\n**Evidence ratio:** {er:.1f}× in favor of the best model\n"
+            result_text += f"\n**Evidence ratio:** {er:.1f}x in favor of the best model\n"
 
         # Akaike weights interpretation
         result_text += """
