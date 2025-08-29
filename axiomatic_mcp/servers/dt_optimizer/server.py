@@ -6,6 +6,7 @@ guidance, examples, and validation to help LLMs use the API correctly.
 """
 
 import json
+import numpy as np
 from typing import Annotated
 
 from fastmcp import FastMCP
@@ -13,6 +14,43 @@ from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
 from ...shared import AxiomaticAPIClient
+
+
+def evaluate_dt_model_loss(payload: dict) -> dict:
+    """Evaluate the loss/cost of a digital twin model using the provided payload.
+    
+    Args:
+        payload: Complete request payload for the cost evaluation API
+        
+    Returns:
+        Dict with cost_value and any other response fields
+        
+    Raises:
+        Exception: If API call fails
+    """
+    with AxiomaticAPIClient() as client:
+        response = client.post("/digital-twin/custom_evaluate_cost", data=payload)
+    
+    return response
+
+
+def evaluate_dt_model(payload: dict) -> dict:
+    """Evaluate/predict outputs of a digital twin model using the provided payload.
+    
+    Args:
+        payload: Complete request payload for the model evaluation API
+        
+    Returns:
+        Dict with predicted outputs and any other response fields
+        
+    Raises:
+        Exception: If API call fails
+    """
+    with AxiomaticAPIClient() as client:
+        response = client.post("/digital-twin/custom_predict", data=payload)
+    
+    return response
+
 
 mcp = FastMCP(
     name="Axiomatic Digital Twin Optimizer",
@@ -769,6 +807,349 @@ async def calculate_r_squared(
 - Verify output_values is a non-empty list or nested list
 - For multidimensional data: [[sample1_dim1, sample1_dim2], [sample2_dim1, sample2_dim2], ...]
 - Check that output data matches what was used in optimization
+"""
+        return ToolResult(content=[TextContent(type="text", text=error_text)])
+
+
+@mcp.tool(
+    name="cross_validate_digital_twin",
+    description="""Perform cross-validation to assess digital twin model performance.
+    
+    Supports three validation strategies:
+    - KFold: Split data into K equal folds for systematic validation
+    - ShuffleSplit: Random splits with specified train/test proportions
+    - Custom: User-provided train/test indices for each fold
+    
+    Returns test loss and R² values for each validation fold to assess model generalization.
+    """,
+    tags=["validation", "cross_validation", "model_evaluation", "statistics"],
+)
+async def cross_validate_digital_twin(
+    # Model definition parameters
+    model_name: Annotated[str, "Model name for identification"],
+    function_source: Annotated[str, "JAX function source code using jnp operations"],
+    function_name: Annotated[str, "Function name that computes the model output"],
+    initial_parameters: Annotated[list, "Initial parameter guesses for optimization on each fold"],
+    bounds: Annotated[list, "Parameter/input/output bounds"],
+    input_data: Annotated[list, "Input data for validation"],
+    output_data: Annotated[dict, "Output data for validation"],
+    constants: Annotated[list | None, "Fixed constants"] = None,
+    
+    # Validation strategy
+    validation_strategy: Annotated[str, "Validation type: 'kfold', 'shuffle', or 'custom'"] = "kfold",
+    n_splits: Annotated[int, "Number of validation folds (for kfold and shuffle)"] = 5,
+    test_size: Annotated[float, "Test set proportion (for shuffle split)"] = 0.2,
+    random_state: Annotated[int | None, "Random seed for reproducibility"] = 31415926,
+    custom_splits: Annotated[list | None, "Custom train/test splits: [{'train': [0,1,2], 'test': [3,4]}, ...]"] = None,
+    
+    # Optimization settings
+    cost_function_type: Annotated[str, "Cost function: 'mse', 'mae', 'huber', 'relative_mse'"] = "mse",
+    jit_compile: Annotated[bool, "Enable JIT compilation"] = True,
+    optimizer_type: Annotated[str, "Optimizer: 'nlopt' (best default), 'scipy' (simple), 'nevergrad' (gradient-free)"] = "nlopt",
+    max_time: Annotated[int, "Maximum optimization time in seconds per fold"] = 5,
+    optimizer_config: Annotated[dict | None, "Optimizer config: {'use_gradient': True, 'tol': 1e-6, 'max_function_eval': 1000000}"] = None,
+) -> ToolResult:
+    """Perform cross-validation on a digital twin model."""
+    
+    try:
+        # Import scikit-learn here to avoid dependency if not used
+        from sklearn.model_selection import KFold, ShuffleSplit
+        
+        # Get data dimensions
+        n_samples = len(output_data["magnitudes"])
+        indices = np.arange(n_samples)
+        
+        # Create cross-validation splits
+        splits = []
+        
+        if validation_strategy == "kfold":
+            cv = KFold(n_splits=n_splits, shuffle=True, random_state=random_state)
+            splits = list(cv.split(indices))
+            strategy_desc = f"KFold with {n_splits} folds"
+            
+        elif validation_strategy == "shuffle":
+            cv = ShuffleSplit(n_splits=n_splits, test_size=test_size, random_state=random_state)
+            splits = list(cv.split(indices))
+            strategy_desc = f"ShuffleSplit with {n_splits} splits, test_size={test_size}"
+            
+        elif validation_strategy == "custom":
+            if custom_splits is None:
+                return ToolResult(content=[TextContent(type="text", text="Custom splits must be provided when using 'custom' validation strategy.")])
+            
+            # Convert custom splits to train/test index arrays
+            for split in custom_splits:
+                if 'train' not in split or 'test' not in split:
+                    return ToolResult(content=[TextContent(type="text", text="Each custom split must have 'train' and 'test' keys with index lists.")])
+                splits.append((np.array(split['train']), np.array(split['test'])))
+            strategy_desc = f"Custom splits with {len(splits)} folds"
+            
+        else:
+            return ToolResult(content=[TextContent(type="text", text="validation_strategy must be 'kfold', 'shuffle', or 'custom'.")])
+        
+        if len(splits) == 0:
+            return ToolResult(content=[TextContent(type="text", text="No validation splits generated. Check your parameters.")])
+        
+        # Prepare results storage
+        fold_results = []
+        test_losses = []
+        test_r2s = []
+        
+        # Process each fold
+        for fold_idx, (train_indices, test_indices) in enumerate(splits):
+            try:
+                # Create train data for this fold
+                train_input_data = []
+                for inp in input_data:
+                    train_magnitudes = [inp["magnitudes"][i] for i in train_indices]
+                    train_input_data.append({
+                        "name": inp["name"],
+                        "unit": inp["unit"],
+                        "magnitudes": train_magnitudes
+                    })
+                
+                train_output_magnitudes = [output_data["magnitudes"][i] for i in train_indices]
+                train_output_data = {
+                    "name": output_data["name"],
+                    "unit": output_data["unit"],
+                    "magnitudes": train_output_magnitudes
+                }
+                
+                # Build optimization payload for training data
+                myinf = 1e30
+                
+                # Apply same validation logic as optimize_digital_twin_model
+                input_names = [in_data['name'] for in_data in train_input_data]
+                const_names = [const['name'] for const in constants] if constants else []
+                param_names = [param['name'] for param in initial_parameters]
+                bounds_names = [bound['name'] for bound in bounds]
+                
+                # Make copy of bounds to avoid modifying original
+                fold_bounds = []
+                for bound in bounds:
+                    fold_bound = {
+                        "name": bound["name"],
+                        "lower": {"magnitude": bound["lower"]["magnitude"], "unit": bound["lower"]["unit"]},
+                        "upper": {"magnitude": bound["upper"]["magnitude"], "unit": bound["upper"]["unit"]}
+                    }
+                    # Set input, output, and constant bounds to -inf to inf
+                    if fold_bound['name'] in input_names or fold_bound['name'] in const_names or fold_bound['name'] == train_output_data['name']:
+                        fold_bound['lower']['magnitude'] = -myinf
+                        fold_bound['upper']['magnitude'] = myinf
+                    fold_bounds.append(fold_bound)
+                
+                # Build optimization request for train data
+                train_payload = {
+                    "model_name": f"{model_name}_fold_{fold_idx + 1}",
+                    "parameters": initial_parameters,
+                    "bounds": fold_bounds,
+                    "constants": constants or [],
+                    "input": train_input_data,
+                    "target": train_output_data,
+                    "function_source": function_source,
+                    "function_name": function_name,
+                    "docstring": f"Cross-validation training fold {fold_idx + 1}",
+                    "jit_compile": jit_compile,
+                    "max_time": max_time,
+                    "optimizer_type": optimizer_type,
+                    "cost_function_type": cost_function_type,
+                    "optimizer_config": optimizer_config or {},
+                }
+                
+                # Optimize model on training data
+                with AxiomaticAPIClient() as client:
+                    train_response = client.post("/digital-twin/custom_optimize", data=train_payload)
+                
+                # Check if optimization succeeded
+                if not train_response.get("success", False):
+                    fold_results.append({
+                        "fold": fold_idx + 1,
+                        "train_size": len(train_indices),
+                        "test_size": len(test_indices),
+                        "test_loss": "Failed",
+                        "test_r2": "Failed",
+                        "error": f"Training optimization failed: {train_response.get('error', 'Unknown error')}"
+                    })
+                    continue
+                
+                # Get optimized parameters from training
+                optimized_params = train_response.get("parameters", [])
+                if not optimized_params:
+                    fold_results.append({
+                        "fold": fold_idx + 1,
+                        "train_size": len(train_indices),
+                        "test_size": len(test_indices),
+                        "test_loss": "Failed",
+                        "test_r2": "Failed",
+                        "error": "No optimized parameters returned from training"
+                    })
+                    continue
+                
+                # Create test data for this fold
+                test_input_data = []
+                for inp in input_data:
+                    test_magnitudes = [inp["magnitudes"][i] for i in test_indices]
+                    test_input_data.append({
+                        "name": inp["name"],
+                        "unit": inp["unit"],
+                        "magnitudes": test_magnitudes
+                    })
+                
+                test_output_magnitudes = [output_data["magnitudes"][i] for i in test_indices]
+                test_output_data = {
+                    "name": output_data["name"],
+                    "unit": output_data["unit"],
+                    "magnitudes": test_output_magnitudes
+                }
+                
+                # Build payload for loss evaluation on test data using optimized parameters
+                loss_payload = {
+                    "parameters": optimized_params,
+                    "bounds": fold_bounds,
+                    "constants": constants or [],
+                    "input": test_input_data,
+                    "target": test_output_data,
+                    "function_source": function_source,
+                    "function_name": function_name,
+                    "jit_compile": jit_compile,
+                    "cost_function_type": cost_function_type,
+                }
+                
+                # Evaluate loss on test fold
+                loss_response = evaluate_dt_model_loss(loss_payload)
+                test_loss = loss_response.get("cost_value")
+                
+                if test_loss is None:
+                    fold_results.append({
+                        "fold": fold_idx + 1,
+                        "train_size": len(train_indices),
+                        "test_size": len(test_indices),
+                        "test_loss": "Failed",
+                        "test_r2": "Failed",
+                        "error": "Test loss evaluation failed"
+                    })
+                    continue
+                
+                # Calculate R² for this fold
+                test_output_flat = np.array(test_output_magnitudes).flatten()
+                n_elements = len(test_output_flat)
+                
+                if n_elements == 0:
+                    r2 = float('nan')
+                else:
+                    ss_res = test_loss * n_elements
+                    y_mean = np.mean(test_output_flat)
+                    ss_tot = np.sum((test_output_flat - y_mean) ** 2)
+                    r2 = 1 - ss_res / ss_tot if ss_tot > 0 else (1.0 if test_loss == 0 else float('-inf'))
+                
+                # Store results
+                fold_results.append({
+                    "fold": fold_idx + 1,
+                    "train_size": len(train_indices),
+                    "test_size": len(test_indices),
+                    "test_loss": float(test_loss),
+                    "test_r2": float(r2)
+                })
+                
+                test_losses.append(test_loss)
+                test_r2s.append(r2)
+                
+            except Exception as fold_error:
+                fold_results.append({
+                    "fold": fold_idx + 1,
+                    "train_size": len(train_indices),
+                    "test_size": len(test_indices),
+                    "test_loss": "Failed",
+                    "test_r2": "Failed",
+                    "error": str(fold_error)
+                })
+        
+        # Calculate summary statistics
+        valid_losses = [x for x in test_losses if isinstance(x, (int, float)) and not np.isnan(x)]
+        valid_r2s = [x for x in test_r2s if isinstance(x, (int, float)) and not np.isnan(x)]
+        
+        # Format results
+        result_text = f"""# Cross-Validation Results: {model_name}
+
+## Validation Strategy
+- **Method:** {strategy_desc}
+- **Cost Function:** {cost_function_type}
+- **Successful Folds:** {len(valid_losses)}/{len(splits)}
+
+## Summary Statistics
+"""
+        
+        if valid_losses:
+            result_text += f"""- **Mean Test Loss:** {np.mean(valid_losses):.6e} ± {np.std(valid_losses):.6e}
+- **Mean Test R²:** {np.mean(valid_r2s):.6f} ± {np.std(valid_r2s):.6f}
+- **Min Test Loss:** {np.min(valid_losses):.6e}
+- **Max Test Loss:** {np.max(valid_losses):.6e}
+- **Min Test R²:** {np.min(valid_r2s):.6f}
+- **Max Test R²:** {np.max(valid_r2s):.6f}
+"""
+        else:
+            result_text += "- **No successful folds** - All validation attempts failed\n"
+
+        result_text += "\n## Fold-by-Fold Results\n"
+        
+        for result in fold_results:
+            if isinstance(result["test_loss"], (int, float)):
+                result_text += f"- **Fold {result['fold']}:** Loss={result['test_loss']:.6e}, R²={result['test_r2']:.6f} (train={result['train_size']}, test={result['test_size']})\n"
+            else:
+                error_msg = result.get('error', 'Unknown error')
+                result_text += f"- **Fold {result['fold']}:** ❌ Failed - {error_msg} (train={result['train_size']}, test={result['test_size']})\n"
+
+        # Model assessment
+        if valid_r2s:
+            mean_r2 = np.mean(valid_r2s)
+            result_text += "\n## Model Assessment\n"
+            if mean_r2 >= 0.9:
+                result_text += "- **Excellent generalization** (Mean R² ≥ 0.9)\n"
+            elif mean_r2 >= 0.7:
+                result_text += "- **Good generalization** (0.7 ≤ Mean R² < 0.9)\n"
+            elif mean_r2 >= 0.5:
+                result_text += "- **Moderate generalization** (0.5 ≤ Mean R² < 0.7)\n"
+            elif mean_r2 >= 0.0:
+                result_text += "- **Poor generalization** (0.0 ≤ Mean R² < 0.5)\n"
+            else:
+                result_text += "- **Very poor generalization** (Mean R² < 0.0)\n"
+            
+            if len(valid_r2s) > 1:
+                r2_std = np.std(valid_r2s)
+                if r2_std < 0.05:
+                    result_text += "- **Consistent performance** across folds (low R² variance)\n"
+                elif r2_std > 0.2:
+                    result_text += "- **Inconsistent performance** across folds (high R² variance) - possible overfitting\n"
+
+        return ToolResult(
+            content=[TextContent(type="text", text=result_text)],
+            structured_content={
+                "validation_strategy": strategy_desc,
+                "fold_results": fold_results,
+                "summary": {
+                    "mean_test_loss": float(np.mean(valid_losses)) if valid_losses else None,
+                    "std_test_loss": float(np.std(valid_losses)) if valid_losses else None,
+                    "mean_test_r2": float(np.mean(valid_r2s)) if valid_r2s else None,
+                    "std_test_r2": float(np.std(valid_r2s)) if valid_r2s else None,
+                    "successful_folds": len(valid_losses),
+                    "total_folds": len(splits)
+                }
+            }
+        )
+        
+    except ImportError:
+        return ToolResult(content=[TextContent(type="text", text="❌ **Cross-validation failed**: scikit-learn is required. Install with: pip install scikit-learn")])
+    
+    except Exception as e:
+        error_text = f"""❌ **Cross-validation failed**
+
+**Error:** {e!s}
+
+## Troubleshooting:
+- Ensure initial parameters have reasonable starting values
+- Check that input/output data have consistent lengths  
+- For custom splits, provide format: [{{'train': [0,1,2], 'test': [3,4]}}, ...]
+- Verify n_splits is appropriate for your data size
+- Consider increasing max_time if optimization fails on training folds
 """
         return ToolResult(content=[TextContent(type="text", text=error_text)])
 
