@@ -75,6 +75,10 @@ async def annotate_file(
     file_path: Annotated[Path, "The absolute path to the pdf file to annotate"],
     query: Annotated[str, "The specific instructions or query to use for annotating the file"],
 ) -> ToolResult:
+    return await annotate_file_main(file_path, query)
+
+
+async def annotate_file_main(file_path: Path, query: str) -> ToolResult:
     if not file_path.exists():
         raise FileNotFoundError(f"File not found: {file_path}")
     if file_path.suffix.lower() != ".pdf":
@@ -92,7 +96,9 @@ async def annotate_file(
             data=data,
         )
 
-        annotations_text = format_annotations(response.annotations) if response.annotations else "No annotations found for the given query."
+        # Parse the response to AnnotationsResponse
+        annotations_response = AnnotationsResponse.model_validate(response)
+        annotations_text = format_annotations(annotations_response.annotations) if annotations_response.annotations else "No annotations found for the given query."
 
         return ToolResult(
             content=[
@@ -105,7 +111,7 @@ async def annotate_file(
         raise ToolError(f"Failed to annotate file: {e!s}") from e
 
 
-def format_annotations(annotation_lines: list[str], annotations: list[PDFAnnotation]) -> str:
+def format_annotations(annotations: list[PDFAnnotation]) -> str:
     annotation_lines = []
 
     for i, annotation in enumerate(annotations):
@@ -129,3 +135,24 @@ def format_annotations(annotation_lines: list[str], annotations: list[PDFAnnotat
 
     annotations_text = "\n".join(annotation_lines)
     return annotations_text
+
+
+if __name__ == "__main__":
+    import asyncio
+    from dotenv import load_dotenv
+    load_dotenv()
+
+    async def main():
+        result = await annotate_file_main(
+            file_path=Path("/Users/carlosarribalzagajove/Desktop/Axiomatic AI/Working Projects/hackathon/ax-mcp/test.pdf"),
+            query="What is the main idea of the paper? Give me three annotations. One text, one equation, and one figure description."
+        )
+        print(result)
+
+        for content_item in result.content:
+                if hasattr(content_item, 'text'):
+                    print(content_item.text)
+                else:
+                    print(f"[Non-text content: {content_item}]")
+
+    asyncio.run(main())
