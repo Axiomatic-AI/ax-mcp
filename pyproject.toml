@@ -28,7 +28,8 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "httpx>=0.25.0",
     "debugpy>=1.8.0",
-    "numpy>=1.21.0"
+    "numpy>=1.21.0",
+    "scikit-learn>=1.0.0"
 ]
 
 [project.optional-dependencies]
