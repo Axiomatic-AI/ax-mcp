@@ -126,11 +126,11 @@ def aic_bic_from_loss(
     aicc_include_scale=True,
     df_effective=None,
     n_scale_params=1,
-): 
+):
     """Compute AIC and BIC from loss value using the likelihood for each loss family.
 
     Supported loss families:
-    - MSE (Gaussian): Uses general Gaussian likelihood with diagonal covariance Σ = σ²I 
+    - MSE (Gaussian): Uses general Gaussian likelihood with diagonal covariance Σ = σ²I
     - MAE (Laplace): Uses exact Laplace likelihood with scale b = MAE
 
     Mathematical Foundation:
@@ -141,18 +141,18 @@ def aic_bic_from_loss(
     - BIC = -2 log L + k_eff log(n)
     - AICc = AIC + 2k_aicc(k_aicc + 1)/(n - k_aicc - 1) [Gaussian only]
 
-    DIAGONAL COVARIANCE: Assumes Σ = σ²I (diagonal covariance with constant variance  
-    σ² across all observations). Requires user to provide σ from domain knowledge.  
+    DIAGONAL COVARIANCE: Assumes Σ = σ²I (diagonal covariance with constant variance
+    σ² across all observations). Requires user to provide σ from domain knowledge.
 
-    PARAMETER COUNTING: Since σ is user-provided (not estimated), include_scale_param  
-    should typically be False since σ is fixed, not fitted. 
+    PARAMETER COUNTING: Since σ is user-provided (not estimated), include_scale_param
+    should typically be False since σ is fixed, not fitted.
 
     Args:
         loss_value: Mean loss per observation (MSE for Gaussian, MAE for Laplace)
         loss_type: 'mse' or 'mae' (Huber/relative_mse not supported - use TIC/WAIC/CV)
         n_obs: count of (conditionally) independent scalar residuals
         k_params: parameters in the mean function (exclude scale); effective k may add +1
-        sigma: Noise standard deviation for diagonal covariance Σ = σ²I. REQUIRED for 'mse'.  
+        sigma: Noise standard deviation for diagonal covariance Σ = σ²I. REQUIRED for 'mse'.
                Not used for 'mae' (pass None).
         include_scale_param: If True, add 1 for scale parameter count. Should be False
                            when sigma is user-provided (not fitted).
@@ -164,7 +164,7 @@ def aic_bic_from_loss(
 
     Returns:
         dict: Contains 'aic', 'bic', 'aicc', 'neg2loglik', 'k', 'n', 'loss_type', 'sigma_used'
-    """ # noqa
+    """  # noqa
     if n_obs <= 0 or loss_value < 0:
         return {"aic": np.nan, "bic": np.nan, "aicc": np.nan, "neg2loglik": np.nan, "k": 0, "n": n_obs, "loss_type": loss_type}
 
@@ -258,13 +258,13 @@ def compute_aic_bic_from_loss_and_data(
         n_scale_params: Number of scale parameters to penalize when include_scale_param=True.
                For single-output models: use 1 (default). For multi-output models with separate
                noise scales per output dimension: use number_of_outputs.
-        sigma: REQUIRED noise standard deviation for diagonal covariance Σ = σ²I. 
+        sigma: REQUIRED noise standard deviation for diagonal covariance Σ = σ²I.
                For 'mse': must be provided from domain knowledge. For 'mae': pass None.
 
     Returns:
         dict: Comprehensive statistics including AIC, BIC, AICc, scale estimates, etc.
         Also includes 'assumes_independence' flag when n_obs was inferred.
-    """ # noqa
+    """  # noqa
     if n_obs is None:
         y_true = np.asarray(output_magnitudes)
         n_obs = int(y_true.size)
@@ -1241,16 +1241,17 @@ All templates are generic - adapt the function, parameters, and data to your spe
     - Relative MSE: Needs heteroscedastic Gaussian with predictions
 
     Features: Diagonal covariance support, proper parameter counting, AICc for small samples.
-    """, # noqa
+    """,  # noqa
     tags=["statistics", "model_selection", "information_criteria", "bayesian"],
-) 
+)
 async def calculate_aic_bic_criteria(
     loss_value: Annotated[float, "Mean loss value from optimization (MSE or MAE only)"],
     cost_function_type: Annotated[str, "Loss function type: 'mse' (Gaussian) or 'mae' (Laplace) only"],
     output_values: Annotated[list, "Output data used in optimization: 1D [1,2,3] or 2D [[1,2],[3,4]]"],
     n_parameters: Annotated[int, "Number of fitted parameters in mean function (scale param added automatically)"],
     sigma: Annotated[
-        float | str | None, "REQUIRED noise std dev for diagonal covariance Σ=σ²I. Specify from domain knowledge or estimate based on available data." # noqa
+        float | str | None,
+        "REQUIRED noise std dev for diagonal covariance Σ=σ²I. Specify from domain knowledge or estimate based on available data.",  # noqa
     ],
     include_scale_param: Annotated[bool, "Include scale parameter (σ² or b) in k count"] = False,
     n_obs: Annotated[int | None, "Explicit count of independent residuals. If None, infers from output_values"] = None,
@@ -1927,7 +1928,7 @@ async def cross_validate_digital_twin(
 async def compare_models_with_information_criteria(
     models: Annotated[
         list,
-        "List of model dicts: [{'name': 'Model1', 'loss_value': 0.01, 'cost_function_type': 'mse', 'n_parameters': 3, 'output_values': [1,2,3]}, ...]"
+        "List of model dicts: [{'name': 'Model1', 'loss_value': 0.01, 'cost_function_type': 'mse', 'n_parameters': 3, 'output_values': [1,2,3]}, ...]",  # noqa
     ],
     sigma: Annotated[
         float | str | None,
