@@ -47,7 +47,8 @@ Extract all equations and their parameters from the technical document at /docum
 
 ## Installation
 
-[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=axiomatic-annotations&config=eyJjb21tYW5kIjoidXZ4IC0tZnJvbSBheGlvbWF0aWMtbWNwIGF4aW9tYXRpYy1hbm5vdGF0aW9ucyIsImVudiI6eyJBWElPTUFUSUNfQVBJX0tFWSI6InlvdXItYXBpLWtleS1oZXJlIn19)
+[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=axiomatic-annotations&config=eyJjb21tYW5kIjoidXZ4IC0tZnJvbSBheGlvbWF0aWMtbWNwIGF4aW9tYXRpYy1hbm5vdGF0aW9ucyIsImVudiI6eyJBWElPTUFUSUNfQVBJX0tFWSI6IkFYSU9NQVRJQy1BUEktS0VZIn19)
+
 
 ### Quick Install (via PyPI)
 
