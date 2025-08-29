@@ -3,6 +3,7 @@
 import logging
 import os
 import sys
+import time
 from typing import Annotated
 
 import anthropic
@@ -110,8 +111,7 @@ def synthesize_claude_output(response):
 )
 async def formalize_statement(
     query: Annotated[str, "A natural language mathematical statement to formalize into Lean syntax"],
-    file_path: Annotated[str, "Absolute path to Lean file to analyze and prove"],
-    project_path: Annotated[str, "Path to the Lean project"] = "/Users/benjaminbreen/Desktop/ax-mcp/axiomatic_mcp/servers/leanclient/example",
+    file_path: Annotated[str | None, "Optional absolute path to Lean file. Must be within Lean project directory if provided"] = None,
     name: Annotated[str, "Agent name"] = "Autoformalizer",
     model: Annotated[str, "Claude model to use"] = "claude-sonnet-4-20250514",
     lean_tools_filter: Annotated[list[str] | None, "List of Lean tools to include (None = all tools)"] = None,
@@ -129,8 +129,23 @@ async def formalize_statement(
 
     logger.info(f"🔧 {name}: Start task")
 
+    # Copy environment variables
     env = os.environ.copy()
-    env["LEAN_PROJECT_PATH"] = project_path
+
+    # LEAN_PROJECT_PATH is the path to the Lean project directory
+    lean_project_path = env.get("LEAN_PROJECT_PATH", "").strip()
+    lean_project_path = os.path.abspath(lean_project_path)
+
+    # If file_path is provided, use it as the target file path
+    # Otherwise, use a default filename in the project directory
+    if file_path:
+        target_file_path = os.path.abspath(file_path)
+        if not target_file_path.startswith(lean_project_path):
+            raise ValueError(f"File must be within {lean_project_path}")
+    else:
+        target_file_path = os.path.join(lean_project_path, f"theorem_{int(time.time())}.lean")
+
+    logger.info(f"🔧 File: {target_file_path}")
 
     # Initialize Lean Tools MCP server (our standalone version)
     lean_params = StdioServerParameters(
@@ -189,7 +204,7 @@ async def formalize_statement(
     (3) Formalize the query into a Lean theorem statement with proper imports
     (4) Use lean_run_code to test your formalization and check for syntax errors
     (5) If there are syntax issues, fix them and test again with lean_run_code
-    (6) Once the syntax is correct, use lean_write_file to save to the target file: {file_path}
+    (6) Once the syntax is correct, use lean_write_file to save to the target file: {target_file_path}
     (7) Use lean_diagnostic_messages to verify the saved file
     (8) Return the final Lean theorem statement
 
@@ -278,7 +293,8 @@ async def formalize_statement(
 
 Agent: {name}
 Model: {model}
-Project: {project_path}
+Project: {lean_project_path or "Not specified"}
+File: {target_file_path}
 Iterations used: {iteration}/{max_iterations}
 
 Final Response:
