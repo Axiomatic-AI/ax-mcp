@@ -1,0 +1,14 @@
+name = "my_lean_project"
+version = "0.1.0"
+defaultTargets = ["my_lean_project"]
+
+[[lean_lib]]
+name = "MyLeanProject"
+
+[[lean_exe]]
+name = "my_lean_project"
+root = "Main"
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.16.0"

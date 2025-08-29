@@ -1,4 +1,4 @@
-"""Autoformalizer domain MCP server with dual-server capability."""
+"""Autoformalizer domain MCP server."""
 
 import logging
 import os
@@ -47,14 +47,12 @@ mcp = FastMCP(
     instructions="""The Autoformalizer server provides tools to transform natural language
         mathematical statements into Lean 4 theorem statements. Each generated theorem
         is returned in valid Lean syntax, with hypotheses formalized as parameters
-        and the proof body replaced by a `sorry` placeholder. This server combines the 
-        sophisticated Lean 4 development tools from leanclient with the unique project 
-        building capabilities from lean_tools. Use lean_search and lean_loogle to search 
-        for the statement in the project. Use lean_diagnostic_messages to check the file 
-        for any issues. The tool will automatically continue iterating until 
-        lean_diagnostic_messages reports no errors (or only acceptable 'sorry' warnings), 
-        ensuring the final result is a valid Lean theorem statement.""",
-    version="0.0.2",
+        and the proof body replaced by a `sorry` placeholder. Use the lean_tools to help you 
+        formalize the statement. Use lean_search and lean_loogle to search for the statement 
+        in the project. Use lean_diagnostic_messages to check the file for any issues. The tool
+        will automatically continue iterating until lean_diagnostic_messages reports no errors
+        (or only acceptable 'sorry' warnings), ensuring the final result is a valid Lean theorem statement.""",
+    version="0.0.1",
 )
 
 
@@ -84,7 +82,6 @@ def synthesize_claude_output(response):
     return claude_message
 
 
-### looks like lean_hammer_premise is the only tool that is not available in either lean_tools or leanclient. ####
 @mcp.tool(
     name="formalize_statement",
     description="""
@@ -92,28 +89,22 @@ def synthesize_claude_output(response):
                 declaration. The theorem is syntactically valid Lean, uses a descriptive snake_case name, 
                 introduces hypotheses as parameters, and ends with `:= by sorry` to mark the missing proof.
 
-    Available tools (14 total):
-    From leanclient (13 tools):
-    - lean_file_contents: Get contents of a Lean file and read Lean files with line numbers
+    Available tools:
+    - lean_file_contents: Read Lean files with line numbers
     - lean_write_file: Write content to Lean files (save solutions)
-    - lean_run_code: Executecomplete Lean code snippets for testing
-    - lean_diagnostic_messages: Get diagnostic messages for Lean files (errors, warnings)
+    - lean_run_code: Run complete Lean code snippets for testing
+    - lean_diagnostic_messages: Get diagnostic messages for Lean files
     - lean_goal: Get proof goals at specific locations
-    - lean_hover_info: Get hover information for symbols
-    - lean_completions: Get code completion suggestions
-    - lean_declaration_file: Find which file declares a symbol
+    - lean_hover_info: Get documentation for Lean terms
+    - lean_completions: Get code completions
     - lean_multi_attempt: Test multiple code approaches
-    - lean_leansearch: Search for theorems and lemmas using natural language
+    - lean_leansearch: Search for theorems using natural language
     - lean_loogle: Search for definitions by type signature
-    - lean_state_search: Search based on a particular proof state
-    - lean_term_goal: Get goal information for a term
-    
-    From lean_tools (1 unique tools):
-    - lean_build: Build Lean project using lake to build the Lean project
+    - lean_state_search: Search theorems based on proof state
 
     Workflow: Analyze query → Write lean theorem statement → Use lean_run_code to test → 
     Use lean_write_file to save to target file → Verify with lean_diagnostic_messages. 
-    If there are issues, iterate until clean. Use lean_build for project compilation when needed.
+    If there are issues, iterate until clean.
                 """,
     tags=["lean", "formalization", "mathematics"],
 )
@@ -123,7 +114,6 @@ async def formalize_statement(
     project_path: Annotated[str, "Path to the Lean project"] = "/Users/jacobmccarran_ax/ax-mcp/my_lean_project",
     name: Annotated[str, "Agent name"] = "Autoformalizer",
     model: Annotated[str, "Claude model to use"] = "claude-sonnet-4-20250514",
-    lean_client_filter: Annotated[list[str] | None, "List of Lean client tools to include (None = all tools)"] = None,
     lean_tools_filter: Annotated[list[str] | None, "List of Lean tools to include (None = all tools)"] = None,
     max_iterations: Annotated[int, "Maximum tool use iterations"] = 100,
     max_tokens: Annotated[int, "Maximum tokens per API call"] = 5000,
@@ -136,77 +126,48 @@ async def formalize_statement(
         raise ValueError("ANTHROPIC_API_KEY environment variable is required")
 
     # Use the module-level logger that's already configured
+
     logger.info(f"🔧 {name}: Start task")
 
     env = os.environ.copy()
     env["LEAN_PROJECT_PATH"] = project_path
 
-    # Add elan bin directory to PATH so lake command can be found (needed for lean_build)
-    current_path = env.get("PATH", "")
-    elan_path = "/Users/jacobmccarran_ax/.elan/bin"
-    if elan_path not in current_path:
-        env["PATH"] = f"{elan_path}:{current_path}"
-
-    # Initialize Lean Client MCP server (13 tools)
-    lean_client_params = StdioServerParameters(
+    # Initialize Lean Tools MCP server (our standalone version)
+    lean_params = StdioServerParameters(
         command=sys.executable,  # Use current Python executable
         args=["-m", "axiomatic_mcp.servers.leanclient", "--transport", "stdio"],
         env=env,
     )
 
-    # Initialize Lean Tools MCP server (2 unique tools)
-    lean_tools_params = StdioServerParameters(
-        command=sys.executable,  # Use current Python executable
-        args=["-m", "axiomatic_mcp.servers.lean_tools", "--transport", "stdio"],
-        env=env,
-    )
-
     try:
-        # Connect to both servers simultaneously
+        # Connect to lean_tools server
         async with (
-            stdio_client(lean_client_params) as (lean_client_read, lean_client_write),
-            ClientSession(lean_client_read, lean_client_write) as lean_client_session,
-            stdio_client(lean_tools_params) as (lean_tools_read, lean_tools_write),
-            ClientSession(lean_tools_read, lean_tools_write) as lean_tools_session,
+            stdio_client(lean_params) as (lean_read, lean_write),
+            ClientSession(lean_read, lean_write) as lean_session,
         ):
-            # Initialize both sessions
-            await lean_client_session.initialize()
-            await lean_tools_session.initialize()
+            # Initialize lean session
+            await lean_session.initialize()
 
-            # Get tools from both servers
-            lean_client_tools = await lean_client_session.list_tools()
-            lean_tools_tools = await lean_tools_session.list_tools()
+            # Get tools from lean server
+            lean_tools = await lean_session.list_tools()
 
-            logger.info(f"🔧 Lean client tools: {[tool.name for tool in lean_client_tools.tools]}")
-            logger.info(f"🔧 Lean tools: {[tool.name for tool in lean_tools_tools.tools]}")
+            logger.info(f"🔧 Lean tools: {[tool.name for tool in lean_tools.tools]}")
 
             client = anthropic.Anthropic(api_key=api_key)
 
             # Convert MCP tools to Claude format
             claude_tools = []
 
-            # Add lean client tools (filtered if specified)
-            for tool in lean_client_tools.tools:
-                if lean_client_filter is None or tool.name in lean_client_filter:
-                    claude_tools.append(
-                        {
-                            "name": tool.name,
-                            "description": f"[Lean Client] {tool.description}",
-                            "input_schema": tool.inputSchema,
-                        }
-                    )
-
             # Add lean tools (filtered if specified)
-            for tool in lean_tools_tools.tools:
+            for tool in lean_tools.tools:
                 if lean_tools_filter is None or tool.name in lean_tools_filter:
                     claude_tools.append(
                         {
                             "name": tool.name,
-                            "description": f"[Lean Tools] {tool.description}",
+                            "description": f"[Lean] {tool.description}",
                             "input_schema": tool.inputSchema,
                         }
                     )
-
             logger.info(f"✅ Total tools available to Claude: {len(claude_tools)}")
             logger.info(f"✅ Tool names: {[tool['name'] for tool in claude_tools]}")
 
@@ -230,8 +191,7 @@ async def formalize_statement(
     (5) If there are syntax issues, fix them and test again with lean_run_code
     (6) Once the syntax is correct, use lean_write_file to save to the target file: {file_path}
     (7) Use lean_diagnostic_messages to verify the saved file
-    (8) If needed, use lean_build to compile the project and check for any build issues
-    (9) Return the final Lean theorem statement
+    (8) Return the final Lean theorem statement
 
     For example, when working with this theorem:
 
@@ -251,6 +211,7 @@ async def formalize_statement(
 
             # append assistant's output to messages
             messages.append({"role": "assistant", "content": response.content})
+            # append assistant's output to
 
             # get printable message
             claude_message = synthesize_claude_output(response)
@@ -270,13 +231,8 @@ async def formalize_statement(
                         logger.info(f"🔧 Using tool: {content.name}")
                         logger.info(f"📥 Input: {content.input}")
 
-                        # Execute tool via appropriate MCP server
-                        if content.name in ["lean_build", "lean_loogle"]:
-                            # Use lean_tools server for these specific tools
-                            result = await lean_tools_session.call_tool(content.name, content.input)
-                        else:
-                            # Use leanclient server for all other tools
-                            result = await lean_client_session.call_tool(content.name, content.input)
+                        # Execute tool via lean server
+                        result = await lean_session.call_tool(content.name, content.input)
 
                         if result.isError:
                             # Handle the error - something went wrong
@@ -305,9 +261,7 @@ async def formalize_statement(
 
                 logger.info(f"🤖 {name} Claude: {claude_message}")
 
-                messages.append(
-                    {"role": "assistant", "content": response.content}
-                )
+                messages.append({"role": "assistant", "content": response.content})
 
             if iteration >= max_iterations:
                 logger.warning(f"⚠️ Maximum iterations reached. {name} may be incomplete.")
@@ -331,13 +285,13 @@ Final Response:
 {final_response}
 
 Tools available: {len(claude_tools)}
-Lean client filter: {lean_client_filter or "None (all tools)"}
 Lean tools filter: {lean_tools_filter or "None (all tools)"}"""
 
     except Exception as e:
-        logger.error(f"❌ {name} error: {str(e)}")
+        logger.error(f"❌ {name} error: {e!s}")
         logger.error(f"❌ Error type: {type(e).__name__}")
         import traceback
+
         logger.error(f"❌ Full traceback: {traceback.format_exc()}")
-        
-        return f"MCPAgent error: {str(e)}\n\nFull traceback:\n{traceback.format_exc()}"
+
+        return f"MCPAgent error: {e!s}\n\nFull traceback:\n{traceback.format_exc()}"

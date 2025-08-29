@@ -84,13 +84,24 @@ def synthesize_claude_output(response):
     name="mcp_agent_execute",
     description="""Execute MCPAgent to work with Lean files and prove theorems. Uses file-based workflow with available Lean tools.
 
-    Available tools:
+    Available tools (14 total):
+    From leanclient (13 tools):
     - lean_file_contents: Read Lean files with line numbers
     - lean_write_file: Write content to Lean files (save proof solutions)
+    - lean_run_code: Run complete Lean code snippets for testing
     - lean_diagnostic_messages: Get diagnostic messages for Lean files
-    - lean_goal: Get proof goals and context at specific line positions
-    - lean_leansearch: Search for theorems and lemmas using natural language  
-    - lean_loogle: Search for lemmas by type signature
+    - lean_goal: Get proof goals at specific locations
+    - lean_hover_info: Get documentation for Lean terms
+    - lean_completions: Get code completions
+    - lean_declaration_file: Get file contents where symbols are declared
+    - lean_multi_attempt: Test multiple code approaches
+    - lean_leansearch: Search for theorems using natural language
+    - lean_loogle: Search for definitions by type signature
+    - lean_state_search: Search theorems based on proof state
+    - lean_term_goal: Get expected type at specific location
+    
+    From lean_tools (1 unique tools):
+    - lean_build: Build Lean project using lake
 
     Workflow: Read file → Check goals at positions → Write improved proof → Verify with diagnostics. Use search tools when stuck.
     """,
@@ -98,9 +109,10 @@ def synthesize_claude_output(response):
 )
 async def mcp_agent_execute(
     file_path: Annotated[str, "Absolute path to Lean file to analyze and prove"],
-    project_path: Annotated[str, "Path to the Lean project"] = "/Users/benjaminbreen/Desktop/ax-mcp/axiomatic_mcp/servers/leanclient/example",
+    project_path: Annotated[str, "Path to the Lean project"] = "/Users/jacobmccarran_ax/ax-mcp/my_lean_project",
     name: Annotated[str, "Agent name"] = "Prover",
     model: Annotated[str, "Claude model to use"] = "claude-sonnet-4-20250514",
+    lean_client_filter: Annotated[list[str] | None, "List of Lean client tools to include (None = all tools)"] = None,
     lean_tools_filter: Annotated[list[str] | None, "List of Lean tools to include (None = all tools)"] = None,
     max_iterations: Annotated[int, "Maximum tool use iterations"] = 100,
     max_tokens: Annotated[int, "Maximum tokens per API call"] = 5000,
@@ -130,39 +142,68 @@ async def mcp_agent_execute(
     env = os.environ.copy()
     env["LEAN_PROJECT_PATH"] = project_path
 
-    # Initialize Lean Tools MCP server (our standalone version)
-    lean_params = StdioServerParameters(
+    # Add elan bin directory to PATH so lake command can be found (needed for lean_build)
+    current_path = env.get("PATH", "")
+    elan_path = "/Users/jacobmccarran_ax/.elan/bin"
+    if elan_path not in current_path:
+        env["PATH"] = f"{elan_path}:{current_path}"
+
+    # Initialize Lean Client MCP server (13 tools)
+    lean_client_params = StdioServerParameters(
         command=sys.executable,  # Use current Python executable
         args=["-m", "axiomatic_mcp.servers.leanclient", "--transport", "stdio"],
         env=env,
     )
 
+    # Initialize Lean Tools MCP server (2 unique tools)
+    lean_tools_params = StdioServerParameters(
+        command=sys.executable,  # Use current Python executable
+        args=["-m", "axiomatic_mcp.servers.lean_tools", "--transport", "stdio"],
+        env=env,
+    )
+
     try:
-        # Connect to lean_tools server
+        # Connect to both servers simultaneously
         async with (
-            stdio_client(lean_params) as (lean_read, lean_write),
-            ClientSession(lean_read, lean_write) as lean_session,
+            stdio_client(lean_client_params) as (lean_client_read, lean_client_write),
+            ClientSession(lean_client_read, lean_client_write) as lean_client_session,
+            stdio_client(lean_tools_params) as (lean_tools_read, lean_tools_write),
+            ClientSession(lean_tools_read, lean_tools_write) as lean_tools_session,
         ):
-            # Initialize lean session
-            await lean_session.initialize()
+            # Initialize both sessions
+            await lean_client_session.initialize()
+            await lean_tools_session.initialize()
 
-            # Get tools from lean server
-            lean_tools = await lean_session.list_tools()
+            # Get tools from both servers
+            lean_client_tools = await lean_client_session.list_tools()
+            lean_tools_tools = await lean_tools_session.list_tools()
 
-            logger.info(f"🔧 Lean tools: {[tool.name for tool in lean_tools.tools]}")
+            logger.info(f"🔧 Lean client tools: {[tool.name for tool in lean_client_tools.tools]}")
+            logger.info(f"🔧 Lean tools: {[tool.name for tool in lean_tools_tools.tools]}")
 
             client = anthropic.Anthropic(api_key=api_key)
 
             # Convert MCP tools to Claude format
             claude_tools = []
 
+            # Add lean client tools (filtered if specified)
+            for tool in lean_client_tools.tools:
+                if lean_client_filter is None or tool.name in lean_client_filter:
+                    claude_tools.append(
+                        {
+                            "name": tool.name,
+                            "description": f"[Lean Client] {tool.description}",
+                            "input_schema": tool.inputSchema,
+                        }
+                    )
+
             # Add lean tools (filtered if specified)
-            for tool in lean_tools.tools:
+            for tool in lean_tools_tools.tools:
                 if lean_tools_filter is None or tool.name in lean_tools_filter:
                     claude_tools.append(
                         {
                             "name": tool.name,
-                            "description": f"[Lean] {tool.description}",
+                            "description": f"[Lean Tools] {tool.description}",
                             "input_schema": tool.inputSchema,
                         }
                     )
@@ -265,8 +306,13 @@ WORKFLOW: lean_file_contents → lean_goal at sorry positions → work on proof 
                         logger.info(f"🔧 Using tool: {content.name}")
                         logger.info(f"📥 Input: {content.input}")
 
-                        # Execute tool via lean server
-                        result = await lean_session.call_tool(content.name, content.input)
+                        # Execute tool via appropriate MCP server
+                        if content.name in ["lean_build", "lean_loogle"]:
+                            # Use lean_tools server for these specific tools
+                            result = await lean_tools_session.call_tool(content.name, content.input)
+                        else:
+                            # Use leanclient server for all other tools
+                            result = await lean_client_session.call_tool(content.name, content.input)
 
                         if result.isError:
                             # Handle the error - something went wrong
@@ -319,6 +365,7 @@ Final Response:
 {final_response}
 
 Tools available: {len(claude_tools)}
+Lean client filter: {lean_client_filter or "None (all tools)"}
 Lean tools filter: {lean_tools_filter or "None (all tools)"}"""
 
     except Exception as e:
