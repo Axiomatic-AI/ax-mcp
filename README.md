@@ -33,6 +33,10 @@ Optimize mathematical models and digital twins using advanced algorithms and exp
 
 Create intelligent annotations for PDF documents with contextual analysis, equation extraction, and parameter identification.
 
+### 🔬 [Lean Client Server](./axiomatic_mcp/servers/leanclient/)
+
+Interactive Lean 4 theorem prover integration for formal mathematics. Provides tools for proof development, goal inspection, theorem search, and code completion within Lean projects.
+
 
 ## Getting an API Key
 
