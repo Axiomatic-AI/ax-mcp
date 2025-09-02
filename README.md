@@ -25,7 +25,7 @@ Extract numerical data from plot images for analysis and reproduction.
 Execute Python code in a secure environment with support for selected libraries (`gdsfactory`, `z3`, `json`).  
 Useful for photonic design workflows, symbolic reasoning, and structured data manipulation.
 
-### ⚙️ [Model Fitting Server](./axiomatic_mcp/servers/model-fitting/)
+### ⚙️ [Model Fitting Server](./axiomatic_mcp/servers/model_fitting/)
 
 Fit parametric models or digital twins to observational data using advanced statistical analysis and optimization algorithms.
 
