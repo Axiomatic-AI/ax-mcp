@@ -9,13 +9,12 @@ description = "Modular MCP servers for Axiomatic_AI"
 authors = [{name = "Axiomatic Team", email = "developers@axiomatic.ai"}]
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Software Development :: Libraries :: Python Modules",
@@ -27,10 +26,21 @@ dependencies = [
     "pydantic>=2.0.0",
     "python-dotenv>=1.0.0",
     "httpx>=0.25.0",
+    "gdsfactory>=9.7.0",
+    "cspdk>=1.0.1",
+    "kfactory>=1.7.3",
+    "klayout>=0.30.2",
+    "iklayout>=0.0.8",
+    "ipympl>=0.9.7",
+    "klujax>=0.4.3",
+    "sax>=0.14.5",
+    "plotly>=6.1.2",
+    "nbformat>=5.10.4",
     "debugpy>=1.8.0",
     "numpy>=1.21.0",
     "scikit-learn>=1.0.0"
 ]
+
 
 [project.optional-dependencies]
 dev = [
@@ -38,6 +48,7 @@ dev = [
     "black>=23.0.0",
     "ruff>=0.1.0",
     "mypy>=1.0.0",
+    "debugpy>=1.8.0"
 ]
 lean = [
     "leanclient==0.1.14",
@@ -67,7 +78,7 @@ target-version = "py310"
 select = ["E", "F", "I", "N", "UP", "B", "C4", "PTH", "SIM", "RUF"]
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.11"
 strict = true
 warn_return_any = true
 warn_unused_configs = true
