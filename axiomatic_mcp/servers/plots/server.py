@@ -1,5 +1,6 @@
 """Plot Parser MCP server"""
 
+import json
 import math
 import mimetypes
 import random
@@ -8,6 +9,8 @@ from typing import Annotated
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
+from fastmcp.tools.tool import ToolResult
+from mcp.types import TextContent
 from pydantic import BaseModel
 
 from ...shared import AxiomaticAPIClient
@@ -96,7 +99,7 @@ async def extract_data_from_plot_image(
         int,
         "Maximum points returned per series. Uses random sampling if plot contains more points than limit",
     ] = 100,
-) -> Annotated[SeriesPointsData, "Extracted plot data containing series and points from the plot image"]:
+) -> Annotated[ToolResult, "Extracted plot data containing series and points from the plot image"]:
     if not plot_path.is_file():
         raise FileNotFoundError(f"Image not found or is not a regular file: {plot_path}")
 
@@ -124,4 +127,18 @@ async def extract_data_from_plot_image(
         if "extracted_series" not in response:
             raise ToolError("Upstream service returned unexpected response format")
 
-    return process_plot_parser_output(response, max_points=max_number_points_per_series)
+    series_data = process_plot_parser_output(response, max_points=max_number_points_per_series)
+
+    json_path = plot_path.parent / (plot_path.stem + "_data.json")
+
+    with Path.open(json_path, "w", encoding="utf-8") as f:
+        json.dump(series_data.model_dump(), f, indent=2)
+
+    return ToolResult(
+        content=[
+            TextContent(
+                type="text",
+                text=f"Extracted plot data saved to: {json_path}\n\n```json\n{json.dumps(series_data.model_dump(), indent=2)}\n```",
+            )
+        ],
+    )
