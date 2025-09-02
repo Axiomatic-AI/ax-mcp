@@ -14,6 +14,7 @@ from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
 from ...shared import AxiomaticAPIClient
+from .data_file_utils import resolve_data_input, resolve_output_data_only
 
 
 def validate_optimization_inputs(input_data: list, output_data: dict, parameters: list, bounds: list, constants: list | None = None):
@@ -74,6 +75,23 @@ def prepare_bounds_for_optimization(bounds: list, input_names: list, const_names
         if var["name"] in input_names or var["name"] in const_names or var["name"] == output_name:
             var["lower"]["magnitude"] = -myinf
             var["upper"]["magnitude"] = myinf
+
+
+def check_initial_guess_consistency(parameters: list, bounds: list):
+    """Check if initial guesses are within bounds."""
+    for param in parameters:
+        param_name = param["name"]
+        bound = next((bound for bound in bounds if bound["name"] == param_name), None)
+        if bound is None:
+            raise ValueError(f"Parameter {param_name} has no bounds. Please add bounds.")
+        if param["value"]["magnitude"] < bound["lower"]["magnitude"] or param["value"]["magnitude"] > bound["upper"]["magnitude"]:
+            raise ValueError(
+                f"""Initial guess for {param_name} is not within bounds:
+- Initial guess: {param['value']['magnitude']}
+- Lower bound: {bound['lower']['magnitude']}
+- Upper bound: {bound['upper']['magnitude']}
+Adjust the initial guess!"""
+            )
 
 
 def compute_r_squared_from_mse_and_data(mse: float, output_magnitudes: list):
@@ -434,16 +452,27 @@ mcp = FastMCP(
     description="""Optimize a custom JAX mathematical model against experimental data.
 
     This tool fits user-defined mathematical models to data using numerical optimization.
-    It requires JAX functions, valid pint units, and parameter bounds. Use the `optimization_workflow` tool
-    to learn how to best apply this tool!
+    All data MUST be provided via files (CSV, Excel, JSON, Parquet) - no direct data input.
 
-    REQUIREMENTS:
-    - Functions must use JAX: jnp.exp(-b*x), jnp.sin(w*t), etc.
-    - Units must be valid pint: 'dimensionless', 'nanometer', 'volt', etc.
-    - All parameters need bounds for optimization
-    - Bounds must include constants, input, and output variables too
+    REQUIRED INPUTS:
+    1. data_file: Path to your data file (e.g., "/path/to/data.csv")
+    2. input_data: Maps file columns to input variables
+    3. output_data: Maps file columns to output variables
+    4. function_source: JAX function code using jnp operations
+    5. parameters: Initial parameter guesses with units
+    6. bounds: Bounds for ALL parameters, inputs, and outputs
 
-    RETURNS: Optimized parameters, fit quality metrics, and Python/JSON files
+    DATA MAPPING EXAMPLE:
+    - data_file: "/Users/data/experiment.csv"
+    - input_data: [{"column": "time_col", "name": "t", "unit": "second"}]
+    - output_data: {"columns": ["voltage"], "name": "v", "unit": "volt"}
+
+    FUNCTION REQUIREMENTS:
+    - MUST use JAX operations: jnp.exp(-rate*t), jnp.sin(freq*t), jnp.sqrt(x)
+    - Valid pint units: 'dimensionless', 'second', 'volt', 'meter', etc.
+    - All variables (parameters, inputs, outputs) need bounds
+
+    RETURNS: Optimized parameters, R², execution time, and result files
     """,
     tags=["optimization", "curve_fitting", "digital_twin", "jax"],
 )
@@ -457,8 +486,15 @@ async def optimize_digital_twin_model(
         list,
         "ALL parameter/input/output bounds: [{'name': 'a', 'lower': {'magnitude': 0, 'unit': 'dimensionless'}, 'upper': {'magnitude': 10, 'unit': 'dimensionless'}}]",  # noqa E501
     ],
-    input_data: Annotated[list, "Input data: [{'name': 'wavelength', 'unit': 'nanometer', 'magnitudes': [1550, 1551, ...]}, ...]"],
-    output_data: Annotated[dict, "Output data: {'name': 'transmission', 'unit': 'dimensionless', 'magnitudes': [0.8, 0.6, ...]}"],
+    # File-based data input (REQUIRED)
+    data_file: Annotated[str, "Path to data file (CSV, Excel, JSON, Parquet). All data must be provided via file."],
+    input_data: Annotated[
+        list, "Input column mappings: [{'column': 'time', 'name': 't', 'unit': 'second'}, {'column': 'x_col', 'name': 'x', 'unit': 'meter'}]"
+    ],
+    output_data: Annotated[
+        dict, "Output column mapping: {'columns': ['signal'], 'name': 'y', 'unit': 'volt'} OR {'columns': ['y1', 'y2'], 'name': 'y', 'unit': 'volt'}"
+    ],
+    file_format: Annotated[str | None, "File format: 'csv', 'excel', 'json', 'parquet' (auto-detect if None)"] = None,
     # Optional parameters with defaults
     constants: Annotated[list | None, "Fixed constants: [{'name': 'c', 'value': {'magnitude': 3.0, 'unit': 'meter'}}]"] = None,
     docstring: Annotated[str, "Brief description of the model"] = "",
@@ -471,11 +507,26 @@ async def optimize_digital_twin_model(
     """Optimize a digital twin model using the Axiomatic AI platform."""
 
     try:
+        # Resolve data input from file only
+        if data_file is None:
+            raise ValueError("data_file is required. All data must be provided via file.")
+        if input_data is None:
+            raise ValueError("input_data is required when using file-based input.")
+        if output_data is None:
+            raise ValueError("output_data is required when using file-based input.")
+
+        resolved_input_data, resolved_output_data = resolve_data_input(
+            data_file=data_file, input_data=input_data, output_data=output_data, file_format=file_format
+        )
+
         # Validate inputs using helper function
-        input_names, const_names, param_names, bounds_names, n = validate_optimization_inputs(input_data, output_data, parameters, bounds, constants)
+        input_names, const_names, param_names, bounds_names, n = validate_optimization_inputs(
+            resolved_input_data, resolved_output_data, parameters, bounds, constants
+        )
 
         # Prepare bounds using helper function
-        prepare_bounds_for_optimization(bounds, input_names, const_names, output_data["name"])
+        prepare_bounds_for_optimization(bounds, input_names, const_names, resolved_output_data["name"])
+        check_initial_guess_consistency(parameters, bounds)
 
     except ValueError as e:
         return ToolResult(content=[TextContent(type="text", text=str(e))])
@@ -490,8 +541,8 @@ async def optimize_digital_twin_model(
         "parameters": parameters,
         "bounds": bounds,
         "constants": constants,
-        "input": input_data,
-        "target": output_data,
+        "input": resolved_input_data,
+        "target": resolved_output_data,
         "function_source": function_source,
         "function_name": function_name,
         "docstring": docstring,
@@ -572,7 +623,8 @@ Use `get_optimization_examples` to see working examples.
 
 
 @mcp.prompt(
-    name="optimization_workflow", description="Generic workflow for digital twin optimization - works with many different mathematical models"
+    name="optimization_workflow",
+    description="Step-by-step guide for digital twin optimization. Shows complete workflow from model definition to optimization execution.",
 )
 def optimization_workflow() -> str:
     """Generate a generic optimization workflow guide."""
@@ -602,10 +654,12 @@ Pick the template closest to your model structure as context for the optimizatio
 - *Set realistic bounds for ALL PARAMETERS, ALL INPUTS, AND ALL OUTPUTS variables*
 - Use proper pint units ('dimensionless', 'nanometer', 'volt', 'second', etc.)
 
-### 4️⃣ **Ensure all Data is structured correctly following the Template**
+### 4️⃣ **Prepare Your Data File and Mapping**
+Create a CSV/Excel file with your data, then map columns to variables:
 ```python
-input_data = [{"name": "time", "unit": "second", "magnitudes": [0, 1, 2, 3, ...]}, ...]
-output_data = {"name": "concentration", "unit": "molar", "magnitudes": [1.0, 0.8, 0.6, ...]}
+data_file = "/path/to/your/data.csv"
+input_data = [{"column": "time_col", "name": "time", "unit": "second"}]
+output_data = {"columns": ["concentration_col"], "name": "concentration", "unit": "molar"}
 ```
 
 ### 5️⃣ **Run Optimization**
@@ -627,10 +681,16 @@ Ready to optimize? Get templates with `get_optimization_examples`!"""
 
 @mcp.tool(
     name="get_optimization_examples",
-    description="""Get working examples of digital twin optimization based on real usage.
+    description="""Get complete working examples for digital twin optimization.
 
-    Returns complete examples with proper JAX functions, pint units, and parameter bounds.
-    These are actual examples from successful optimizations.
+    Returns ready-to-use templates with:
+    - Proper JAX function syntax
+    - Correct pint units
+    - Realistic parameter bounds
+    - File-based data structure examples
+    
+    Use these as starting points - copy the structure and modify for your specific model.
+    Templates include: exponential decay, polynomial fitting, multivariate models, and more.
     """,
     tags=["examples", "tutorial", "templates"],
 )
@@ -659,8 +719,9 @@ async def get_optimization_examples() -> ToolResult:
                 {"name": "t", "lower": {"magnitude": 0.0, "unit": "dimensionless"}, "upper": {"magnitude": 10.0, "unit": "dimensionless"}},
                 {"name": "y", "lower": {"magnitude": -1.0, "unit": "dimensionless"}, "upper": {"magnitude": 10.0, "unit": "dimensionless"}},
             ],
-            "input_data": [{"name": "t", "unit": "dimensionless", "magnitudes": [0, 1, 2, 3, 4]}],
-            "output_data": {"name": "y", "unit": "dimensionless", "magnitudes": [2.0, 1.2, 0.8, 0.5, 0.4]},
+            "data_file": "data.csv",
+            "input_data": [{"column": "time", "name": "t", "unit": "dimensionless"}],
+            "output_data": {"columns": ["signal"], "name": "y", "unit": "dimensionless"},
             "optimizer_type": "nlopt",
             "cost_function_type": "mse",
             "max_time": 5,
@@ -687,8 +748,9 @@ async def get_optimization_examples() -> ToolResult:
                 {"name": "x", "lower": {"magnitude": -5.0, "unit": "dimensionless"}, "upper": {"magnitude": 5.0, "unit": "dimensionless"}},
                 {"name": "y", "lower": {"magnitude": -10.0, "unit": "dimensionless"}, "upper": {"magnitude": 50.0, "unit": "dimensionless"}},
             ],
-            "input_data": [{"name": "x", "unit": "dimensionless", "magnitudes": [-2, -1, 0, 1, 2]}],
-            "output_data": {"name": "y", "unit": "dimensionless", "magnitudes": [5, 2, 1, 2, 5]},
+            "data_file": "data.csv",
+            "input_data": [{"column": "x", "name": "x", "unit": "dimensionless"}],
+            "output_data": {"columns": ["y"], "name": "y", "unit": "dimensionless"},
             "optimizer_type": "nlopt",
             "cost_function_type": "mse",
             "max_time": 5,
@@ -720,11 +782,9 @@ async def get_optimization_examples() -> ToolResult:
                 {"name": "b", "lower": {"magnitude": -2.0, "unit": "dimensionless"}, "upper": {"magnitude": 2.0, "unit": "dimensionless"}},
                 {"name": "c", "lower": {"magnitude": -2.0, "unit": "dimensionless"}, "upper": {"magnitude": 2.0, "unit": "dimensionless"}},
             ],
-            "input_data": [
-                {"name": "x", "unit": "dimensionless", "magnitudes": [-1.0, -1 / 2, 0.0, 1 / 2, 1.0]},
-                {"name": "y", "unit": "dimensionless", "magnitudes": [-1.0, -1 / 2, 0.0, 1 / 2, 1.0]},
-            ],
-            "output_data": {"name": "f", "unit": "dimensionless", "magnitudes": [1.0, 1 / 4, 0.0, 1 / 4, 1.0]},
+            "data_file": "data.csv",
+            "input_data": [{"column": "x", "name": "x", "unit": "dimensionless"}, {"column": "y", "name": "y", "unit": "dimensionless"}],
+            "output_data": {"columns": ["f"], "name": "f", "unit": "dimensionless"},
             "optimizer_type": "nlopt",
             "cost_function_type": "mse",
             "max_time": 5,
@@ -753,8 +813,9 @@ async def get_optimization_examples() -> ToolResult:
                 {"name": "t", "lower": {"magnitude": 0.0, "unit": "dimensionless"}, "upper": {"magnitude": 10.0, "unit": "dimensionless"}},
                 {"name": "y", "lower": {"magnitude": -3.0, "unit": "dimensionless"}, "upper": {"magnitude": 3.0, "unit": "dimensionless"}},
             ],
-            "input_data": [{"name": "t", "unit": "dimensionless", "magnitudes": [0, 1, 2, 3, 4, 5]}],
-            "output_data": {"name": "y", "unit": "dimensionless", "magnitudes": [0, 1, 0, -1, 0, 1]},
+            "data_file": "data.csv",
+            "input_data": [{"column": "time", "name": "t", "unit": "dimensionless"}],
+            "output_data": {"columns": ["amplitude"], "name": "y", "unit": "dimensionless"},
             "optimizer_type": "nlopt",
             "cost_function_type": "mse",
             "max_time": 5,
@@ -852,60 +913,9 @@ def c_obs(ts, A0, B0, C0, D0, k1, k2, k3):
                 },
             ],
             "constants": [],
-            "input_data": [
-                {
-                    "name": "ts",
-                    "unit": "dimensionless",
-                    "magnitudes": [
-                        0.0,
-                        0.10101010101010102,
-                        0.20202020202020204,
-                        0.30303030303030304,
-                        0.4040404040404041,
-                        0.5050505050505051,
-                        0.6060606060606061,
-                        0.7070707070707072,
-                        0.8080808080808082,
-                        0.9090909090909092,
-                        1.0101010101010102,
-                        1.1111111111111112,
-                        1.2121212121212122,
-                        1.3131313131313131,
-                        1.4141414141414144,
-                        1.5151515151515154,
-                        1.6161616161616164,
-                        1.7171717171717173,
-                        1.8181818181818183,
-                        1.9191919191919193,
-                    ],  # Your existing ts_data
-                }
-            ],
-            "output_data": {
-                "name": "c_obs",
-                "unit": "dimensionless",
-                "magnitudes": [
-                    [2.0290484183578608, 0.00631150679115087],
-                    [1.7137258955755121, 0.024575748765676548],
-                    [1.5840517018153317, 0.04132967053685191],
-                    [1.4427320668271875, 0.0580385719584766],
-                    [1.4124148995486188, 0.1174516296450892],
-                    [1.368949685915051, 0.18962503257090013],
-                    [1.3856405186866874, 0.1932017018162794],
-                    [1.327393197993144, 0.2150159392837813],
-                    [1.320938305668656, 0.2418563193867974],
-                    [1.2936580207163744, 0.34709043855172905],
-                    [1.3265907557052494, 0.31604863425471974],
-                    [1.2772348154008333, 0.3753005607117635],
-                    [1.2905260802750524, 0.3824411022702551],
-                    [1.225388509509597, 0.4288665690240162],
-                    [1.2294967390654807, 0.472034492741107],
-                    [1.2352881942703335, 0.45098857640967654],
-                    [1.2728845501112902, 0.4682197703679211],
-                    [1.175889961410413, 0.5215439950855341],
-                    [1.2224806724593729, 0.5379143345300662],
-                    [1.1762241778536051, 0.5877739882163965],
-                ],  # Your existing 2D data array
-            },
+            "data_file": "data.csv",
+            "input_data": [{"column": "time", "name": "ts", "unit": "dimensionless"}],
+            "output_data": {"columns": ["concentration_A", "concentration_D"], "name": "c_obs", "unit": "dimensionless"},
             "optimizer_type": "nlopt",
             "cost_function_type": "mse",
             "max_time": 5,
@@ -952,220 +962,9 @@ def c_obs(ts, A0, B0, C0, D0, k1, k2, k3):
                 {"name": "coupling", "lower": {"magnitude": 0.0, "unit": "dimensionless"}, "upper": {"magnitude": 0.8, "unit": "dimensionless"}},
             ],
             "constants": [{"name": "wl0", "value": {"magnitude": 1.55, "unit": "dimensionless"}}],
-            "input_data": [
-                {
-                    "name": "wls",
-                    "unit": "dimensionless",
-                    "magnitudes": [
-                        1.5,
-                        1.5010101010101011,
-                        1.502020202020202,
-                        1.5030303030303032,
-                        1.504040404040404,
-                        1.5050505050505052,
-                        1.5060606060606059,
-                        1.507070707070707,
-                        1.5080808080808081,
-                        1.509090909090909,
-                        1.5101010101010102,
-                        1.511111111111111,
-                        1.5121212121212122,
-                        1.5131313131313133,
-                        1.5141414141414142,
-                        1.5151515151515151,
-                        1.5161616161616163,
-                        1.5171717171717172,
-                        1.518181818181818,
-                        1.5191919191919192,
-                        1.5202020202020203,
-                        1.5212121212121212,
-                        1.5222222222222224,
-                        1.5232323232323233,
-                        1.5242424242424244,
-                        1.5252525252525253,
-                        1.5262626262626262,
-                        1.5272727272727273,
-                        1.5282828282828282,
-                        1.5292929292929294,
-                        1.5303030303030303,
-                        1.5313131313131314,
-                        1.5323232323232323,
-                        1.5333333333333334,
-                        1.5343434343434343,
-                        1.5353535353535355,
-                        1.5363636363636364,
-                        1.5373737373737373,
-                        1.5383838383838384,
-                        1.5393939393939395,
-                        1.5404040404040404,
-                        1.5414141414141416,
-                        1.5424242424242425,
-                        1.5434343434343436,
-                        1.5444444444444445,
-                        1.5454545454545454,
-                        1.5464646464646465,
-                        1.5474747474747474,
-                        1.5484848484848486,
-                        1.5494949494949495,
-                        1.5505050505050506,
-                        1.5515151515151517,
-                        1.5525252525252526,
-                        1.5535353535353535,
-                        1.5545454545454547,
-                        1.5555555555555558,
-                        1.5565656565656567,
-                        1.5575757575757576,
-                        1.5585858585858587,
-                        1.5595959595959599,
-                        1.5606060606060608,
-                        1.561616161616162,
-                        1.5626262626262628,
-                        1.5636363636363637,
-                        1.5646464646464648,
-                        1.565656565656566,
-                        1.5666666666666669,
-                        1.5676767676767678,
-                        1.568686868686869,
-                        1.5696969696969698,
-                        1.5707070707070707,
-                        1.5717171717171718,
-                        1.5727272727272728,
-                        1.5737373737373739,
-                        1.5747474747474748,
-                        1.575757575757576,
-                        1.576767676767677,
-                        1.577777777777778,
-                        1.578787878787879,
-                        1.57979797979798,
-                        1.580808080808081,
-                        1.581818181818182,
-                        1.5828282828282831,
-                        1.5838383838383838,
-                        1.584848484848485,
-                        1.5858585858585859,
-                        1.586868686868687,
-                        1.5878787878787881,
-                        1.588888888888889,
-                        1.5898989898989901,
-                        1.590909090909091,
-                        1.5919191919191922,
-                        1.592929292929293,
-                        1.5939393939393942,
-                        1.5949494949494951,
-                        1.5959595959595962,
-                        1.5969696969696972,
-                        1.5979797979797983,
-                        1.5989898989898994,
-                        1.6,
-                    ],
-                }
-            ],
-            "output_data": {
-                "name": "T",
-                "unit": "dimensionless",
-                "magnitudes": [
-                    0.904241280016804,
-                    0.8536624963196564,
-                    0.8496138885603148,
-                    0.8739712111658338,
-                    0.9118759399420615,
-                    0.8444039149142649,
-                    0.7773201235481669,
-                    0.7897252550503019,
-                    0.8288783026529245,
-                    0.8257076483586439,
-                    0.7913411773380308,
-                    0.8796299441279187,
-                    0.8631170818661038,
-                    0.7451002919853057,
-                    0.709579049608385,
-                    0.6311655739161491,
-                    0.6421617894187424,
-                    0.493190679909603,
-                    0.4722800084550697,
-                    0.512581445429386,
-                    0.42157169277853934,
-                    0.2035233463423665,
-                    0.22731625515779752,
-                    0.2505058360127772,
-                    0.3498944667923746,
-                    0.32159706283175765,
-                    0.3737372189688781,
-                    0.5313740067164383,
-                    0.5587768341035023,
-                    0.7006807873111428,
-                    0.7030593424013207,
-                    0.6704997626944039,
-                    0.8889678359640563,
-                    0.7085282141207792,
-                    0.7125178991291509,
-                    0.8195891879569832,
-                    0.8777435332704606,
-                    0.827615190308908,
-                    0.7987688996207586,
-                    0.9124536927558623,
-                    0.8028472939642837,
-                    0.8614006766644936,
-                    0.8877631470742812,
-                    0.8928574773386482,
-                    0.9290793314913949,
-                    0.7619758891691822,
-                    0.8203996493632364,
-                    0.8643460126484712,
-                    0.8023840084360512,
-                    0.7306533691764754,
-                    0.7783260137617174,
-                    0.6561514275743944,
-                    0.6592481345009842,
-                    0.6295693216956619,
-                    0.6610107558149061,
-                    0.47063669598276614,
-                    0.4735005887963465,
-                    0.38062513743448423,
-                    0.3048580514302441,
-                    0.23767527243797137,
-                    0.24950690996198177,
-                    0.16890012666358611,
-                    0.22592742101362456,
-                    0.21842078804351578,
-                    0.41541123039464745,
-                    0.3845100859782246,
-                    0.4852688882012168,
-                    0.564797266127548,
-                    0.5833826381036511,
-                    0.7011131368745053,
-                    0.70620030687725,
-                    0.6980248504867897,
-                    0.81420049770356,
-                    0.7347373108562032,
-                    0.7710269370409817,
-                    0.726823921622769,
-                    0.8545859939015659,
-                    0.8659024959237303,
-                    0.7727252723551239,
-                    0.8622401037631862,
-                    0.9423138482940585,
-                    0.7956662381772481,
-                    0.7885574465093603,
-                    0.8667705604748398,
-                    0.7704967842560501,
-                    0.8343854229618474,
-                    0.8923758157578734,
-                    0.811192224582619,
-                    0.772191964061806,
-                    0.7951840019619582,
-                    0.819777790037869,
-                    0.7059109759654761,
-                    0.8314946518677577,
-                    0.6318857297610656,
-                    0.5996296204533382,
-                    0.600607728500936,
-                    0.5026332144511163,
-                    0.40930251088060815,
-                    0.26271908930686183,
-                    0.3074877028741569,
-                ],
-            },
+            "data_file": "data.csv",
+            "input_data": [{"column": "wavelength", "name": "wls", "unit": "dimensionless"}],
+            "output_data": {"columns": ["transmission"], "name": "T", "unit": "dimensionless"},
             "optimizer_type": "nlopt",
             "cost_function_type": "mse",
             "max_time": 5,
@@ -1220,41 +1019,47 @@ All templates are generic - adapt the function, parameters, and data to your spe
 
 @mcp.tool(
     name="calculate_aic_bic_criteria",
-    description="""Calculate AIC and BIC using statistically correct likelihood formulations.
+    description="""Calculate AIC and BIC information criteria for model selection.
 
-    STATISTICAL CORRECTNESS: Uses proper log-likelihood for each noise model,
-    avoiding incorrect conversions that can reverse model rankings.
+    REQUIRED INPUTS:
+    - loss_value: MSE or MAE value from your optimization
+    - cost_function_type: Either 'mse' or 'mae' only
+    - n_parameters: Number of fitted parameters in your model
+    - sigma: Noise standard deviation (REQUIRED for MSE, None for MAE)
+    - data_file: Path to your data file
+    - output_data: Which columns contain your output data
 
-    REQUIRED PARAMETER: sigma must be provided for MSE (Gaussian) calculations.
-    This ensures proper likelihood calculation with diagonal covariance Σ = σ²I.
+    WHEN TO USE:
+    - Compare different model architectures (linear vs exponential vs polynomial)
+    - Select best model complexity (avoid overfitting)
+    - Use AIC/BIC values: lower is better
 
-    SUPPORTED LOSS FUNCTIONS (with correct likelihoods):
-    - MSE: Gaussian noise → -2 log L = n*log(2π) + n*log(σ²) + RSS/σ²
-      (REQUIRES user-provided sigma from domain knowledge)
-    - MAE: Laplace noise → -2 log L = 2n[log(2b) + 1] (sigma should be None)
+    SIGMA PARAMETER:
+    - For MSE (Gaussian noise): Provide noise std dev from domain knowledge
+    - For MAE (Laplace noise): Set sigma to None
+    - Example: experimental measurement error ±0.1 volts → sigma=0.1
 
-    DIAGONAL COVARIANCE: Assumes Σ = σ²I (constant variance σ² across observations).
-    User must provide σ from domain knowledge, not empirical fit quality.
-
-    UNSUPPORTED (use TIC/WAIC/cross-validation instead):
-    - Huber: Requires explicit Huber density computation
-    - Relative MSE: Needs heteroscedastic Gaussian with predictions
-
-    Features: Diagonal covariance support, proper parameter counting, AICc for small samples.
-    """,  # noqa
+    RETURNS: AIC, BIC, AICc values with interpretable model comparison metrics.
+    """,
     tags=["statistics", "model_selection", "information_criteria", "bayesian"],
 )
 async def calculate_aic_bic_criteria(
     loss_value: Annotated[float, "Mean loss value from optimization (MSE or MAE only)"],
     cost_function_type: Annotated[str, "Loss function type: 'mse' (Gaussian) or 'mae' (Laplace) only"],
-    output_values: Annotated[list, "Output data used in optimization: 1D [1,2,3] or 2D [[1,2],[3,4]]"],
     n_parameters: Annotated[int, "Number of fitted parameters in mean function (scale param added automatically)"],
     sigma: Annotated[
         float | str | None,
         "REQUIRED noise std dev for diagonal covariance Σ=σ²I. Specify from domain knowledge or estimate based on available data.",  # noqa
     ],
+    # File-based data input (REQUIRED)
+    data_file: Annotated[str, "Path to data file (CSV, Excel, JSON, Parquet). All data must be provided via file."],
+    output_data: Annotated[
+        dict, "Output column mapping: {'columns': ['y'], 'name': 'y', 'unit': 'volt'} or {'columns': ['y1', 'y2'], 'name': 'y', 'unit': 'volt'}"
+    ],
+    file_format: Annotated[str | None, "File format: 'csv', 'excel', 'json', 'parquet' (auto-detect if None)"] = None,
+    # Other parameters
     include_scale_param: Annotated[bool, "Include scale parameter (σ² or b) in k count"] = False,
-    n_obs: Annotated[int | None, "Explicit count of independent residuals. If None, infers from output_values"] = None,
+    n_obs: Annotated[int | None, "Explicit count of independent residuals. If None, infers from output data"] = None,
     df_effective: Annotated[float | None, "Effective degrees of freedom for penalized models (EXCLUDING scale)"] = None,
     aicc_include_scale: Annotated[bool, "Include scale parameter in AICc correction (literature varies)"] = True,
     n_scale_params: Annotated[int, "Number of scale parameters: 1 for single-output, d for d-output with separate scales"] = 1,
@@ -1262,6 +1067,9 @@ async def calculate_aic_bic_criteria(
     """Calculate AIC and BIC information criteria for digital twin model selection."""
 
     try:
+        # Resolve output data from file only
+        resolved_output_values = resolve_output_data_only(data_file=data_file, output_data=output_data, file_format=file_format)
+
         # Handle string-to-float conversion for sigma (JSON might pass it as string)
         if sigma is not None:
             try:
@@ -1272,7 +1080,7 @@ async def calculate_aic_bic_criteria(
         if n_parameters <= 0:
             raise ValueError("Number of parameters must be positive")
 
-        if len(output_values) == 0:
+        if len(resolved_output_values) == 0:
             raise ValueError("Output values cannot be empty")
 
         if loss_value < 0:
@@ -1301,7 +1109,7 @@ async def calculate_aic_bic_criteria(
         result = compute_aic_bic_from_loss_and_data(
             loss_value,
             cost_function_type,
-            output_values,
+            resolved_output_values,
             n_parameters,
             sigma,
             include_scale_param,
@@ -1356,7 +1164,7 @@ async def calculate_aic_bic_criteria(
             result_text += f"""
 
 ⚠️  **Independence Assumption**: Sample size (n={n_total}) was inferred by counting all scalar values
-in output_values. This assumes each scalar is an independent residual, which may be incorrect for:
+in output data. This assumes each scalar is an independent residual, which may be incorrect for:
 - Multi-output models (correlated outputs)
 - Time series data (temporal correlation)
 - Spatial data (spatial correlation)
@@ -1385,7 +1193,7 @@ If residuals are not independent, the effective sample size is smaller and AIC/B
         if n_obs is not None:
             result_text += f"- **Sample Size:** Explicit n_obs = {n_obs} provided\n"
         else:
-            result_text += f"- **Sample Size:** Inferred n = {n_total} from output_values (independence assumed)\n"
+            result_text += f"- **Sample Size:** Inferred n = {n_total} from output data (independence assumed)\n"
 
         result_text += """
 
@@ -1465,7 +1273,7 @@ Where ΔAICᵢ = AICᵢ - AIC_best
 ## Troubleshooting:
 - Ensure loss_value is non-negative from a successful optimization
 - Verify cost_function_type is 'mse' (Gaussian) or 'mae' (Laplace) only
-- Check that output_values matches the data used in optimization
+- Check that output data matches the data used in optimization
 - Confirm n_parameters counts only the fitted parameters (not fixed constants)
 - For multidimensional data: [[sample1_dim1, sample1_dim2], [sample2_dim1, sample2_dim2], ...]
 
@@ -1484,38 +1292,53 @@ Where ΔAICᵢ = AICᵢ - AIC_best
 
 @mcp.tool(
     name="calculate_r_squared",
-    description="""Calculate R-squared (coefficient of determination) from MSE and output data.
+    description="""Calculate R-squared to measure how well your model fits the data.
 
-    Works with both 1D and multidimensional output data:
-    - 1D: [1.0, 0.8, 0.6]
-    - 2D: [[1.0, 0.5], [0.8, 0.3], [0.6, 0.2]]
+    SIMPLE USAGE:
+    - mse: The MSE value from your optimization result
+    - data_file: Path to your original data file
+    - output_data: Which columns contain your measured values
 
-    R² measures how well the model explains the variance in the data:
-    - R² = 1 - (SS_res / SS_tot)
-    - For multidimensional data, computes total variance across all dimensions
+    WHAT R² MEANS:
+    - R² = 1.0: Perfect fit (model explains 100% of variance)
+    - R² = 0.8: Good fit (model explains 80% of variance)
+    - R² = 0.0: Poor fit (model no better than just using the mean)
+    - R² < 0.0: Very poor fit (model worse than just using the mean)
 
-    Returns R² value, typically between 0 and 1 (higher is better fit). Negative values are possible but indicate a really poor fit.
+    WORKS WITH:
+    - Single output: output_data = {"columns": ["voltage"], "name": "v", "unit": "volt"}
+    - Multiple outputs: output_data = {"columns": ["x", "y"], "name": "position", "unit": "meter"}
+
+    Use this to quickly assess if your optimization produced a good fit.
     """,
     tags=["statistics", "model_evaluation", "goodness_of_fit"],
 )
 async def calculate_r_squared(
     mse: Annotated[float, "Mean squared error from the optimization"],
-    output_values: Annotated[list, "Output data: 1D list [1,2,3] or 2D list [[1,2],[3,4]] for multidimensional"],
+    # File-based data input (REQUIRED)
+    data_file: Annotated[str, "Path to data file (CSV, Excel, JSON, Parquet). All data must be provided via file."],
+    output_data: Annotated[
+        dict, "Output column mapping: {'columns': ['y'], 'name': 'y', 'unit': 'volt'} or {'columns': ['y1', 'y2'], 'name': 'y', 'unit': 'volt'}"
+    ],
+    file_format: Annotated[str | None, "File format: 'csv', 'excel', 'json', 'parquet' (auto-detect if None)"] = None,
 ) -> ToolResult:
     """Calculate R-squared coefficient of determination for 1D or multidimensional data."""
 
     try:
-        if len(output_values) == 0:
+        # Resolve output data from file only
+        resolved_output_values = resolve_output_data_only(data_file=data_file, output_data=output_data, file_format=file_format)
+
+        if len(resolved_output_values) == 0:
             raise ValueError("Output values cannot be empty")
 
         if mse < 0:
             raise ValueError("MSE cannot be negative")
 
         # Use helper function for R² calculation
-        r_squared = compute_r_squared_from_mse_and_data(mse, output_values)
+        r_squared = compute_r_squared_from_mse_and_data(mse, resolved_output_values)
 
         # Get data info for display
-        y_true = np.array(output_values)
+        y_true = np.array(resolved_output_values)
         n_total_elements = len(y_true.flatten())
 
         # Determine data structure for display
@@ -1559,7 +1382,7 @@ async def calculate_r_squared(
 
 ## Troubleshooting:
 - Ensure MSE is a positive number
-- Verify output_values is a non-empty list or nested list
+- Verify output data is properly specified in data file
 - For multidimensional data: [[sample1_dim1, sample1_dim2], [sample2_dim1, sample2_dim2], ...]
 - Check that output data matches what was used in optimization
 """
@@ -1568,14 +1391,28 @@ async def calculate_r_squared(
 
 @mcp.tool(
     name="cross_validate_digital_twin",
-    description="""Perform cross-validation to assess digital twin model performance.
+    description="""Test how well your model generalizes to new data using cross-validation.
 
-    Supports three validation strategies:
-    - KFold: Split data into K equal folds for systematic validation
-    - ShuffleSplit: Random splits with specified train/test proportions
-    - Custom: User-provided train/test indices for each fold
+    REQUIRED INPUTS (same as optimize_digital_twin_model):
+    - All model parameters: function_source, parameters, bounds, etc.
+    - data_file: Path to your data file
+    - input_data: Maps file columns to input variables
+    - output_data: Maps file columns to output variables
 
-    Returns test loss and R² values for each validation fold to assess model generalization.
+    VALIDATION TYPES:
+    - 'kfold': Split data into equal parts (good default)
+    - 'shuffle': Random train/test splits
+    - 'custom': Specify your own train/test indices
+
+    TYPICAL USAGE:
+    1. Use same parameters as your optimize_digital_twin_model call
+    2. Set validation_strategy='kfold' and n_splits=5
+    3. Check if test R² values are consistent across folds
+
+    INTERPRETATION:
+    - Consistent high R² across folds: Good generalization
+    - Large R² variation: Model may be overfitting
+    - Low average R²: Model not capturing data patterns well
     """,
     tags=["validation", "cross_validation", "model_evaluation", "statistics"],
 )
@@ -1586,8 +1423,15 @@ async def cross_validate_digital_twin(
     function_name: Annotated[str, "Function name that computes the model output"],
     initial_parameters: Annotated[list, "Initial parameter guesses for optimization on each fold"],
     bounds: Annotated[list, "Parameter/input/output bounds"],
-    input_data: Annotated[list, "Input data for validation"],
-    output_data: Annotated[dict, "Output data for validation"],
+    # File-based data input (REQUIRED)
+    data_file: Annotated[str, "Path to data file (CSV, Excel, JSON, Parquet). All data must be provided via file."],
+    input_data: Annotated[
+        list, "Input column mappings: [{'column': 'time', 'name': 't', 'unit': 'second'}, {'column': 'x_col', 'name': 'x', 'unit': 'meter'}]"
+    ],
+    output_data: Annotated[
+        dict, "Output column mapping: {'columns': ['signal'], 'name': 'y', 'unit': 'volt'} OR {'columns': ['y1', 'y2'], 'name': 'y', 'unit': 'volt'}"
+    ],
+    file_format: Annotated[str | None, "File format: 'csv', 'excel', 'json', 'parquet' (auto-detect if None)"] = None,
     constants: Annotated[list | None, "Fixed constants"] = None,
     # Validation strategy
     validation_strategy: Annotated[str, "Validation type: 'kfold', 'shuffle', or 'custom'"] = "kfold",
@@ -1605,11 +1449,16 @@ async def cross_validate_digital_twin(
     """Perform cross-validation on a digital twin model."""
 
     try:
+        # Resolve data input from file only
+        resolved_input_data, resolved_output_data = resolve_data_input(
+            data_file=data_file, input_data=input_data, output_data=output_data, file_format=file_format
+        )
+
         # Import scikit-learn here to avoid dependency if not used
         from sklearn.model_selection import KFold, ShuffleSplit
 
         # Get data dimensions
-        n_samples = len(output_data["magnitudes"])
+        n_samples = len(resolved_output_data["magnitudes"])
 
         # Create cross-validation splits - sklearn can work directly with n_samples
         splits = []
@@ -1654,12 +1503,16 @@ async def cross_validate_digital_twin(
             try:
                 # Create train data for this fold
                 train_input_data = []
-                for inp in input_data:
+                for inp in resolved_input_data:
                     train_magnitudes = [inp["magnitudes"][i] for i in train_indices]
                     train_input_data.append({"name": inp["name"], "unit": inp["unit"], "magnitudes": train_magnitudes})
 
-                train_output_magnitudes = [output_data["magnitudes"][i] for i in train_indices]
-                train_output_data = {"name": output_data["name"], "unit": output_data["unit"], "magnitudes": train_output_magnitudes}
+                train_output_magnitudes = [resolved_output_data["magnitudes"][i] for i in train_indices]
+                train_output_data = {
+                    "name": resolved_output_data["name"],
+                    "unit": resolved_output_data["unit"],
+                    "magnitudes": train_output_magnitudes,
+                }
 
                 # Validate training data and prepare bounds using helper functions
                 try:
@@ -1746,12 +1599,12 @@ async def cross_validate_digital_twin(
 
                 # Create test data for this fold
                 test_input_data = []
-                for inp in input_data:
+                for inp in resolved_input_data:
                     test_magnitudes = [inp["magnitudes"][i] for i in test_indices]
                     test_input_data.append({"name": inp["name"], "unit": inp["unit"], "magnitudes": test_magnitudes})
 
-                test_output_magnitudes = [output_data["magnitudes"][i] for i in test_indices]
-                test_output_data = {"name": output_data["name"], "unit": output_data["unit"], "magnitudes": test_output_magnitudes}
+                test_output_magnitudes = [resolved_output_data["magnitudes"][i] for i in test_indices]
+                test_output_data = {"name": resolved_output_data["name"], "unit": resolved_output_data["unit"], "magnitudes": test_output_magnitudes}
 
                 # Build payload for loss evaluation on test data using optimized parameters
                 loss_payload = {
@@ -1912,30 +1765,46 @@ async def cross_validate_digital_twin(
 
 @mcp.tool(
     name="compare_models_with_information_criteria",
-    description="""Compare multiple digital twin models using AIC, BIC, and Akaike weights.
+    description="""Compare multiple models to find the best one using statistical criteria.
 
-    Takes a list of models with their loss values and parameters, computes information criteria,
-    and provides comprehensive model comparison including:
-    - Relative model support (ΔIC values)
-    - Akaike weights
-    - Evidence ratios (how much better is best model)
-    - Model selection recommendations
+    USE CASE: You have several competing models (linear, exponential, polynomial) fitted to the same data.
+    This tool tells you which model is statistically best.
 
-    Essential for selecting the best digital twin architecture from competing models.
+    REQUIRED INPUTS:
+    - models: List of your fitted models with their loss values and parameter counts
+    - data_file: Path to your data file (same data used for all models)
+    - output_data: Which columns contain your output data
+    - sigma: Noise level (required for MSE models, None for MAE models)
+
+    EXAMPLE MODELS INPUT:
+    [
+        {"name": "Linear", "loss_value": 0.05, "cost_function_type": "mse", "n_parameters": 2},
+        {"name": "Exponential", "loss_value": 0.02, "cost_function_type": "mse", "n_parameters": 3}
+    ]
+
+    RETURNS: Ranked models with statistical evidence for which is best.
+    Lower AIC/BIC = better model. Akaike weights show relative model support.
     """,
     tags=["statistics", "model_selection", "model_comparison", "bayesian"],
 )
 async def compare_models_with_information_criteria(
     models: Annotated[
         list,
-        "List of model dicts: [{'name': 'Model1', 'loss_value': 0.01, 'cost_function_type': 'mse', 'n_parameters': 3, 'output_values': [1,2,3]}, ...]",  # noqa
+        "List of model dicts: [{'name': 'Model1', 'loss_value': 0.01, 'cost_function_type': 'mse', 'n_parameters': 3}, ...]",
     ],
+    # File-based data input (REQUIRED)
+    data_file: Annotated[str, "Path to data file (CSV, Excel, JSON, Parquet). All data must be provided via file."],
+    output_data: Annotated[
+        dict, "Output column mapping: {'columns': ['y'], 'name': 'y', 'unit': 'volt'} or {'columns': ['y1', 'y2'], 'name': 'y', 'unit': 'volt'}"
+    ],
+    file_format: Annotated[str | None, "File format: 'csv', 'excel', 'json', 'parquet' (auto-detect if None)"] = None,
+    # Other parameters
     sigma: Annotated[
         float | str | None,
         "REQUIRED noise std dev for diagonal covariance Σ=σ²I applied to ALL models. For mse: provide from domain knowledge. For mae: use None.",  # noqa
     ] = None,
     include_scale_param: Annotated[bool, "Include scale parameter (σ² or b) in k count"] = False,
-    n_obs: Annotated[int | None, "Explicit count of independent residuals for ALL models. If None, infers from output_values"] = None,
+    n_obs: Annotated[int | None, "Explicit count of independent residuals for ALL models. If None, infers from output data"] = None,
     df_effective: Annotated[float | None, "Effective degrees of freedom for penalized models (EXCLUDING scale) - applied to ALL models"] = None,
     aicc_include_scale: Annotated[bool, "Include scale parameter in AICc correction (literature varies)"] = True,
     n_scale_params: Annotated[int, "Number of scale parameters: 1 for single-output, d for d-output with separate scales"] = 1,
@@ -1943,6 +1812,9 @@ async def compare_models_with_information_criteria(
     """Compare multiple models using information criteria for digital twin model selection."""
 
     try:
+        # Resolve output data from file first
+        resolved_output_values = resolve_output_data_only(data_file=data_file, output_data=output_data, file_format=file_format)
+
         if sigma is not None:
             try:
                 sigma = float(sigma)
@@ -1968,17 +1840,17 @@ async def compare_models_with_information_criteria(
 
         for i, model in enumerate(models):
             try:
-                # Validate required fields
-                required_fields = ["name", "loss_value", "cost_function_type", "n_parameters", "output_values"]
+                # Validate required fields (removed output_values)
+                required_fields = ["name", "loss_value", "cost_function_type", "n_parameters"]
                 for field in required_fields:
                     if field not in model:
                         raise ValueError(f"Model {i + 1} missing required field: {field}")
 
-                # Calculate information criteria
+                # Calculate information criteria using resolved data
                 ic_result = compute_aic_bic_from_loss_and_data(
                     model["loss_value"],
                     model["cost_function_type"],
-                    model["output_values"],
+                    resolved_output_values,
                     model["n_parameters"],
                     sigma,
                     include_scale_param,
@@ -2086,7 +1958,7 @@ async def compare_models_with_information_criteria(
             result_text += f"""
 
 ⚠️  **Independence Assumption**: Sample sizes for the following models were inferred by counting
-scalar values in output_values: {", ".join(independence_models)}. This assumes each scalar is an
+scalar values in output data: {", ".join(independence_models)}. This assumes each scalar is an
 independent residual, which may be incorrect for multi-output, time series, spatial, or
 hierarchical data. If residuals are correlated, effective sample sizes are smaller and
 comparisons may be unreliable."""
@@ -2112,7 +1984,7 @@ comparisons may be unreliable."""
         if n_obs is not None:
             result_text += f"- **Sample Size:** Explicit n_obs = {n_obs} used for all models\n"
         else:
-            result_text += "- **Sample Size:** Inferred from each model's output_values (independence assumed)\n"
+            result_text += "- **Sample Size:** Inferred from each model's output data (independence assumed)\n"
 
         result_text += """
 
@@ -2221,8 +2093,6 @@ Each model must include:
 - **loss_value**: Final loss from optimization (float ≥ 0)
 - **cost_function_type**: Either 'mse' (Gaussian) or 'mae' (Laplace)
 - **n_parameters**: Number of fitted parameters (int > 0)
-- **output_values**: Data used in optimization (list)
-
 ## Example:
 ```python
 models = [
@@ -2230,17 +2100,17 @@ models = [
         "name": "ExponentialModel",
         "loss_value": 0.01,
         "cost_function_type": "mse",
-        "n_parameters": 3,
-        "output_values": [1.0, 0.8, 0.6, 0.4]
+        "n_parameters": 3
     }},
     {{
         "name": "PolynomialModel",
         "loss_value": 0.02,
-        "cost_function_type": "mse",
-        "n_parameters": 4,
-        "output_values": [1.0, 0.8, 0.6, 0.4]
+        "cost_function_type": "mse", 
+        "n_parameters": 4
     }}
 ]
+data_file = "data.csv"
+output_data = {{"columns": ["y"], "name": "y", "unit": "dimensionless"}}
 ```
 """
         return ToolResult(content=[TextContent(type="text", text=error_text)])
