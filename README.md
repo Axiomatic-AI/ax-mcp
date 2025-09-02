@@ -47,6 +47,13 @@ All Axiomatic MCP servers require an API key:
 
 ## Installation
 
+### System requirements
+
+- Python
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
+
+### Individual MCP server installation
+
 Installation instructions can be found for each specific server in their README.
 
 ### Setting up MCP Servers in AI Clients
