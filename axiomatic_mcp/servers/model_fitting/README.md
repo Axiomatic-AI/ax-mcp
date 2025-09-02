@@ -186,7 +186,7 @@ For development or local modifications:
 
 ```json
 {
-  "axiomatic-dt-model-fitter": {
+  "axiomatic-model-fitter": {
     "command": "python",
     "args": ["-m", "axiomatic_mcp.servers.model_fitter"],
     "env": {
