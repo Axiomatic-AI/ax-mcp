@@ -10,6 +10,24 @@ from axiomatic_mcp.shared.documents.pdf_to_markdown import pdf_to_markdown
 
 from ...shared import AxiomaticAPIClient
 
+
+async def _get_document_content(document: Path | str) -> str:
+    """Helper function to extract document content from either a file path or direct content."""
+    if isinstance(document, Path):
+        if document.exists() and document.suffix.lower() == ".pdf":
+            response = await pdf_to_markdown(document)
+            return response.markdown
+        else:
+            raise ValueError(f"PDF file not found or invalid: {document}")
+
+    potential_path = Path(document)
+    if potential_path.exists() and potential_path.suffix.lower() == ".pdf":
+        response = await pdf_to_markdown(potential_path)
+        return response.markdown
+    else:
+        return document
+
+
 mcp = FastMCP(
     name="Axiomatic Equations Server",
     instructions="""This server provides tools to compose and analyze equations.""",
@@ -18,34 +36,64 @@ mcp = FastMCP(
 
 
 @mcp.tool(
-    name="compose_expression",
+    name="function_finder",
     description=(
-        "Compose an expression of your interest given the information form the source documents "
-        "and equations residing there. Provide descrption of the expression you want to compose."
+        "Compose an expression of your interest given the information from the source documents "
+        "and equations residing there. Provide description of the expression you want to compose."
     ),
-    tags=["equations", "compose"],
+    tags=["equations", "compose", "derive", "find", "function-finder"],
 )
-async def compose_expression(
-    file_path: Annotated[Path, "The absolute path to the PDF file to analyze"], task: Annotated[str, "The task to be done for expression composition"]
+async def find_expression(
+    document: Annotated[Path | str, "Either a file path to a PDF document or the document content as a string"],
+    task: Annotated[str, "The task to be done for expression composition"],
 ) -> ToolResult:
-    """If you have scientific text with equations, but you dont see the equation you're
-    interested in then use this tool and simply say: >>Express the energy in terms of
-     valocity and position<<, or something like that. The tool will return the desired expression
-     together with sympy code that explain how it was derived."""
+    """If you have scientific text with equations, but you don't see the equation you're
+    interested in then use this tool and simply say: 'Express the energy in terms of
+    velocity and position', or something like that. The tool will return the desired expression
+    together with sympy code that explains how it was derived."""
     try:
-        response = await pdf_to_markdown(file_path)
-
-        input_body = {"source_doc": response.markdown, "task": task}
-
-        response = AxiomaticAPIClient().post("/document/expression/compose", data=input_body)
+        doc_content = await _get_document_content(document)
+        input_body = {"markdown": doc_content, "task": task}
+        response = AxiomaticAPIClient().post("/document/expression/compose/markdown", data=input_body)
 
         return ToolResult(
             content=[
-                TextContent(type="text", text=f"Composed expression: {response.get('composed_expression')}"),
-                TextContent(type="text", text=f"Comments: {response.get('comments')}"),
-                TextContent(type="text", text=f"Composition code: {response.get('composition_code')}"),
+                TextContent(type="text", text=f"Comments: {response.get('comments', '')}"),
+                TextContent(type="text", text=f"Composition code: {response.get('composition_code', '')}"),
             ]
         )
 
     except Exception as e:
-        raise ToolError(f"Failed to analyze PDF document: {e!s}") from e
+        raise ToolError(f"Failed to analyze document: {e!s}") from e
+
+
+@mcp.tool(
+    name="equation_checker",
+    description=(
+        "Ask the agent to check the correctness of the equation or correct potential errors. "
+        "This tool validates equations and provides corrections if needed."
+    ),
+    tags=["equations", "check", "error-correction", "validate"],
+)
+async def check_equation(
+    document: Annotated[Path | str, "Either a file path to a PDF document or the document content as a string"],
+    task: Annotated[str, "The task to be done for equation checking (e.g., 'check if E=mc² is correct')"],
+) -> ToolResult:
+    """Use this tool to validate equations or check for errors in mathematical expressions.
+    For example: 'Check if the equation F = ma is dimensionally consistent' or
+    'Verify the correctness of the Maxwell equations in the document'."""
+    try:
+        doc_content = await _get_document_content(document)
+        input_body = {"markdown": doc_content, "task": task}
+        # Note: Using the same endpoint for now, but this could be changed to a dedicated checking endpoint
+        response = AxiomaticAPIClient().post("/document/expression/compose/markdown", data=input_body)
+
+        return ToolResult(
+            content=[
+                TextContent(type="text", text=f"Validation Results: {response.get('validation_results', response.get('comments', ''))}"),
+                TextContent(type="text", text=f"Corrections: {response.get('corrections', response.get('composition_code', ''))}"),
+            ]
+        )
+
+    except Exception as e:
+        raise ToolError(f"Failed to check equations in document: {e!s}") from e
