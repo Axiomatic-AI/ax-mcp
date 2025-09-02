@@ -375,7 +375,7 @@ def evaluate_dt_model(payload: dict) -> dict:
 
 
 mcp = FastMCP(
-    name="Axiomatic Digital Twin Optimizer",
+    name="Axiomatic Model Fitting Server",
     instructions="""This server provides digital twin optimization using the Axiomatic AI platform.
 
     OPTIMIZATION WORKFLOW - FOLLOW THESE STEPS:
@@ -388,7 +388,7 @@ mcp = FastMCP(
     ```
 
     2️⃣ GET TEMPLATES
-    Use `get_optimization_examples` to see working templates:
+    Use `get_fitting_examples` to see working templates:
     • Analytical functions (exponential, polynomial, trigonometric)
     • ODE systems (population dynamics, chemical kinetics)
 
@@ -406,7 +406,7 @@ mcp = FastMCP(
     ```
 
     5️⃣ RUN OPTIMIZATION
-    Use `optimize_digital_twin_model` with your adapted template.
+    Use `fit_model` with your adapted template.
 
     For detailed guidance, use the `optimization_workflow` prompt.
 
@@ -448,7 +448,7 @@ mcp = FastMCP(
 
 
 @mcp.tool(
-    name="optimize_digital_twin_model",
+    name="fit_model",
     description="""Optimize a custom JAX mathematical model against experimental data.
 
     This tool fits user-defined mathematical models to data using numerical optimization.
@@ -474,9 +474,9 @@ mcp = FastMCP(
 
     RETURNS: Optimized parameters, R², execution time, and result files
     """,
-    tags=["optimization", "curve_fitting", "digital_twin", "jax"],
+    tags=["parameter_estimation", "model_fitting", "curve_fitting", "digital_twin", "jax", "optimization"],
 )
-async def optimize_digital_twin_model(
+async def fit_model(
     # Required parameters first
     model_name: Annotated[str, "Model name (e.g., 'ExponentialDecay', 'RingResonator')"],
     function_source: Annotated[str, "JAX function source code. MUST use jnp operations: jnp.exp, jnp.sin, etc."],
@@ -617,7 +617,7 @@ async def optimize_digital_twin_model(
 5. **Data Alignment:** Input and output data should have same length
 
 ## Need Help? Try the example tool:
-Use `get_optimization_examples` to see working examples.
+Use `get_fitting_examples` to see working examples.
 """
         return ToolResult(content=[TextContent(type="text", text=error_details)])
 
@@ -642,7 +642,7 @@ def output_variable_name(input_var, param1, param2, ...):
 ```
 
 ### 2️⃣ **Choose a Template**
-Call `get_optimization_examples` to see available templates:
+Call `get_fitting_examples` to see available templates:
 - **Analytical functions** (exponential, polynomial, trigonometric)
 - **ODE systems** (population dynamics, chemical kinetics)
 
@@ -663,7 +663,7 @@ output_data = {"columns": ["concentration_col"], "name": "concentration", "unit"
 ```
 
 ### 5️⃣ **Run Optimization**
-Use `optimize_digital_twin_model` with your adapted template.
+Use `fit_model` with your adapted template.
 
 ## Template Selection Guide:
 1. **Simple analytical?** → Use polynomial/exponential templates
@@ -676,11 +676,11 @@ Use `optimize_digital_twin_model` with your adapted template.
 - Every parameter needs bounds (reasonable ranges)
 - Input AND output variables need bounds too
 
-Ready to optimize? Get templates with `get_optimization_examples`!"""
+Ready to optimize? Get templates with `get_fitting_examples`!"""
 
 
 @mcp.tool(
-    name="get_optimization_examples",
+    name="get_fitting_examples",
     description="""Get complete working examples for digital twin optimization.
 
     Returns ready-to-use templates with:
@@ -694,8 +694,8 @@ Ready to optimize? Get templates with `get_optimization_examples`!"""
     """,
     tags=["examples", "tutorial", "templates"],
 )
-async def get_optimization_examples() -> ToolResult:
-    """Get clean JSON examples ready to use with optimize_digital_twin_model."""
+async def get_fitting_examples() -> ToolResult:
+    """Get clean JSON examples ready to use with fit_model."""
 
     # Generic templates covering different model categories
     templates = {
@@ -1003,7 +1003,7 @@ def c_obs(ts, A0, B0, C0, D0, k1, k2, k3):
 2. **Replace the function** with your mathematical model
 3. **Update parameters** and bounds for your system
 4. **Replace data** with your experimental measurements
-5. **Run optimization** with `optimize_digital_twin_model`
+5. **Run optimization** with `fit_model`
 
 ## Template Details:
 {json.dumps(template_summary, indent=2)}
@@ -1018,7 +1018,7 @@ All templates are generic - adapt the function, parameters, and data to your spe
 
 
 @mcp.tool(
-    name="calculate_aic_bic_criteria",
+    name="calculate_information_criteria",
     description="""Calculate AIC and BIC information criteria for model selection.
 
     REQUIRED INPUTS:
@@ -1043,7 +1043,7 @@ All templates are generic - adapt the function, parameters, and data to your spe
     """,
     tags=["statistics", "model_selection", "information_criteria", "bayesian"],
 )
-async def calculate_aic_bic_criteria(
+async def calculate_information_criteria(
     loss_value: Annotated[float, "Mean loss value from optimization (MSE or MAE only)"],
     cost_function_type: Annotated[str, "Loss function type: 'mse' (Gaussian) or 'mae' (Laplace) only"],
     n_parameters: Annotated[int, "Number of fitted parameters in mean function (scale param added automatically)"],
@@ -1390,10 +1390,10 @@ async def calculate_r_squared(
 
 
 @mcp.tool(
-    name="cross_validate_digital_twin",
+    name="cross_validate_model",
     description="""Test how well your model generalizes to new data using cross-validation.
 
-    REQUIRED INPUTS (same as optimize_digital_twin_model):
+    REQUIRED INPUTS (same as fit_model):
     - All model parameters: function_source, parameters, bounds, etc.
     - data_file: Path to your data file
     - input_data: Maps file columns to input variables
@@ -1405,7 +1405,7 @@ async def calculate_r_squared(
     - 'custom': Specify your own train/test indices
 
     TYPICAL USAGE:
-    1. Use same parameters as your optimize_digital_twin_model call
+    1. Use same parameters as your fit_model call
     2. Set validation_strategy='kfold' and n_splits=5
     3. Check if test R² values are consistent across folds
 
@@ -1416,7 +1416,7 @@ async def calculate_r_squared(
     """,
     tags=["validation", "cross_validation", "model_evaluation", "statistics"],
 )
-async def cross_validate_digital_twin(
+async def cross_validate_model(
     # Model definition parameters
     model_name: Annotated[str, "Model name for identification"],
     function_source: Annotated[str, "JAX function source code using jnp operations"],
@@ -1764,7 +1764,7 @@ async def cross_validate_digital_twin(
 
 
 @mcp.tool(
-    name="compare_models_with_information_criteria",
+    name="compare_models",
     description="""Compare multiple models to find the best one using statistical criteria.
 
     USE CASE: You have several competing models (linear, exponential, polynomial) fitted to the same data.
@@ -1787,7 +1787,7 @@ async def cross_validate_digital_twin(
     """,
     tags=["statistics", "model_selection", "model_comparison", "bayesian"],
 )
-async def compare_models_with_information_criteria(
+async def compare_models(
     models: Annotated[
         list,
         "List of model dicts: [{'name': 'Model1', 'loss_value': 0.01, 'cost_function_type': 'mse', 'n_parameters': 3}, ...]",
@@ -2117,5 +2117,5 @@ output_data = {{"columns": ["y"], "name": "y", "unit": "dimensionless"}}
 
 
 def main():
-    """Main entry point for the dt_optimizer MCP server."""
+    """Main entry point for the model fitting MCP server."""
     mcp.run()

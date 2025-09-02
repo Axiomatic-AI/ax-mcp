@@ -25,9 +25,9 @@ Extract numerical data from plot images for analysis and reproduction.
 Execute Python code in a secure environment with support for selected libraries (`gdsfactory`, `z3`, `json`).  
 Useful for photonic design workflows, symbolic reasoning, and structured data manipulation.
 
-### ⚙️ [Digital Twin Optimizer Server](./axiomatic_mcp/servers/dt_optimizer/)
+### ⚙️ [Model Fitting Server](./axiomatic_mcp/servers/dt_optimizer/)
 
-Optimize mathematical models and digital twins using advanced algorithms and experimental data fitting.
+Fit parametric models or digital twins to observational data using advanced statistical analysis and optimization algorithms.
 
 ### 📝 [Annotations Server](./axiomatic_mcp/servers/annotations/)
 
