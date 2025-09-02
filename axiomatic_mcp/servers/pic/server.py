@@ -11,6 +11,7 @@ from mcp.types import TextContent
 from ...shared import AxiomaticAPIClient
 from .services.circuit_service import CircuitService
 from .services.notebook_service import NotebookService
+from .services.pdk_service import PdkService
 from .services.simulation_service import SimulationService
 
 mcp = FastMCP(
@@ -23,6 +24,7 @@ mcp = FastMCP(
 circuit_service = CircuitService.get_instance()
 simulation_service = SimulationService.get_instance()
 notebook_service = NotebookService.get_instance()
+pdk_service = PdkService.get_instance()
 
 
 @mcp.tool(
@@ -115,3 +117,23 @@ async def simulate_circuit(
         "notebook": notebook_json,
         "wavelengths": wavelengths,
     }
+
+
+@mcp.tool(
+    name="list_available_pdks",
+    description="Get a list of all available PDKs that the user has access to.",
+    tags=["design", "pdk"],
+)
+async def list_pdks():
+    all_pdks = pdk_service.list_pdks()
+    return ToolResult(structured_content=all_pdks)
+
+
+@mcp.tool(
+    name="get_pdk_info",
+    description="Get detailed information about a specific PDK, including cross sections, components, and circuit library.",
+    tags=["design", "pdk"],
+)
+async def get_pdk_info(pdk_type: str):
+    response = pdk_service.get_pdk_info(pdk_type)
+    return ToolResult(structured_content=response)
