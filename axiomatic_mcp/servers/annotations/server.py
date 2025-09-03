@@ -9,7 +9,7 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from ...shared.api_client import AxiomaticAPIClient
 
@@ -18,6 +18,7 @@ class AnnotationType(str, Enum):
     TEXT = "text"
     EQUATION = "equation"
     FIGURE_DESCRIPTION = "figure_description"
+    PARAMETER = "parameter"
 
 
 class Annotation(BaseModel):
@@ -34,9 +35,53 @@ class Annotation(BaseModel):
     description: str = Field(..., description="Broader contextual description of the citation")
     tags: list[str] = Field(default_factory=list, description="Tags for categorization")
     created_at: datetime = Field(default_factory=datetime.now, description="When annotation was created")
+    equation: str | None = Field(
+        None,
+        description="The equation in LaTeX format that is relevant to the annotation",
+    )
+    parameter_name: str | None = Field(
+        None,
+        description="The name of the parameter that is relevant to the annotation",
+    )
+    parameter_value: float | None = Field(
+        None,
+        description="The value of the parameter that is relevant to the annotation",
+    )
+    parameter_unit: str | None = Field(
+        None,
+        description="The unit of the parameter that is relevant to the annotation",
+    )
+    reference: str = Field(
+        ...,
+        description="The reference to the source that is relevant to the annotation. In APA format.",
+    )
 
 
 class PDFAnnotation(Annotation):
+    """
+    PDF-specific annotation that includes page location.
+    """
+
+    page_number: int = Field(..., description="The page number of the source")
+
+
+class AnnotationOld(BaseModel):
+    """
+    Represents an annotation with citation and contextual description.
+    An annotation provides broader context and explanation for a citation.
+    """
+
+    id: str = Field(
+        default_factory=lambda: str(uuid.uuid4()),
+        description="Unique identifier for the annotation",
+    )
+    annotation_type: AnnotationType = Field(..., description="Type of annotation")
+    description: str = Field(..., description="Broader contextual description of the citation")
+    tags: list[str] = Field(default_factory=list, description="Tags for categorization")
+    created_at: datetime = Field(default_factory=datetime.now, description="When annotation was created")
+
+
+class PDFAnnotationOld(AnnotationOld):
     """
     Represents an annotation with citation and contextual description.
     An annotation provides broader context and explanation for a citation.
@@ -56,7 +101,22 @@ class PDFAnnotation(Annotation):
 
 
 class AnnotationsResponse(BaseModel):
-    annotations: list[PDFAnnotation]
+    annotations: list[PDFAnnotation] | list[PDFAnnotationOld]
+
+    @field_validator("annotations", mode="before")
+    @classmethod
+    def validate_annotations(cls, v):
+        if not v:
+            return v
+
+        # Check if it's old format (no reference field) or new format (has reference field)
+        first_item = v[0] if v else {}
+        has_reference = "reference" in first_item
+
+        if has_reference:
+            return [PDFAnnotation.model_validate(item) for item in v]
+        else:
+            return [PDFAnnotationOld.model_validate(item) for item in v]
 
 
 mcp = FastMCP(
@@ -113,12 +173,13 @@ async def annotate_file_main(file_path: Path, query: str) -> ToolResult:
         raise ToolError(f"Failed to annotate file: {e!s}") from e
 
 
-def format_annotations(annotations: list[PDFAnnotation]) -> str:
+def format_annotations(annotations: list[PDFAnnotation] | list[PDFAnnotationOld]) -> str:
     annotation_lines = []
 
     for i, annotation in enumerate(annotations):
         annotation_lines.append(f"**Annotation {i}** (Page {annotation.page_number}):")
         annotation_lines.append(f"Type: {annotation.annotation_type}")
+
         annotation_lines.append(f"Description: {annotation.description}")
 
         if annotation.equation:
@@ -129,9 +190,13 @@ def format_annotations(annotations: list[PDFAnnotation]) -> str:
                 param_info += f" = {annotation.parameter_value}"
             if annotation.parameter_unit:
                 param_info += f" {annotation.parameter_unit}"
+
             annotation_lines.append(param_info)
         if annotation.tags:
             annotation_lines.append(f"Tags: {', '.join(annotation.tags)}")
+
+        if hasattr(annotation, "reference") and annotation.reference:
+            annotation_lines.append(f"Reference: {annotation.reference}")
 
         annotation_lines.append("")
 
