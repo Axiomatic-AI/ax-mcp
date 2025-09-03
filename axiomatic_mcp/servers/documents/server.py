@@ -55,9 +55,15 @@ async def document_to_markdown(
             content=[
                 TextContent(
                     type="text",
-                    text=f"Generated markdown for: {name}\nImages saved in: {file_path.parent}\n\n```markdown\n{markdown}\n```",
+                    text=f"Generated markdown at: {name}\nImages saved in: {file_path.parent}",
                 )
             ],
+            structured_content={
+                "markdown_path": name,
+                "markdown_preview": markdown[:1000],
+                "images_path": file_path.parent,
+                "images_count": len(response.images),
+            },
         )
     except Exception as e:
         raise ToolError(f"Failed to analyze PDF document: {e!s}") from e
