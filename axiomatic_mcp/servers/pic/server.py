@@ -1,6 +1,7 @@
 """PIC (Photonic Integrated Circuit) domain MCP server."""
 
 import asyncio
+import json
 from pathlib import Path
 from typing import Annotated
 
@@ -8,7 +9,6 @@ from fastmcp import FastMCP
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
-from ...shared import AxiomaticAPIClient
 from .services.circuit_service import CircuitService
 from .services.notebook_service import NotebookService
 from .services.pdk_service import PdkService
@@ -29,32 +29,58 @@ pdk_service = PdkService.get_instance()
 
 @mcp.tool(
     name="design_circuit",
-    description="Design a photonic integrated circuit and optionally create a Python file",
+    description="Designs a photonic integrated circuit using python and gdsfactory. Saves the generated code and formalized statements as files.",
     tags=["design", "gfsfactory"],
 )
 async def design(
     query: Annotated[str, "The query to design the circuit"],
     existing_code: Annotated[str | None, "Existing code to use as a reference to refine"] = None,
+    output_path: Annotated[
+        Path | None, "The path to save the circuit and statements files. If not provided, the files will be saved in the current working directory."
+    ] = None,
 ) -> ToolResult:
     """Design a photonic integrated circuit."""
-    data = {
+    refine_body = {
         "query": query,
+        "pdk_type": "cspdk.si220.cband",  # TODO: Make this a parameter
     }
 
     if existing_code:
-        data["code"] = existing_code
+        refine_body["code"] = existing_code
 
-    response = AxiomaticAPIClient().post("/pic/circuit/refine", data=data)
-    code: str = response["code"]
+    refine_response = circuit_service.generate_pic_circuit(refine_body)
+    code: str = refine_response["code"]
 
-    file_name = "circuit.py"
+    formalize_body = {
+        "pdk": "cspdk.si220.cband",  # TODO: Make this a parameter
+        "query": query,
+        "statements": [],
+    }
+
+    formalize_response = circuit_service.get_statements(formalize_body)
+
+    file_path = output_path or Path.cwd()
+
+    if not file_path.exists():
+        file_path.mkdir(parents=True)
+
+    circuit_file_path = file_path / "circuit.py"
+
+    with Path.open(circuit_file_path, "w") as f:
+        f.write(code)
+
+    statements_file_path = file_path / "statements.json"
+
+    with Path.open(statements_file_path, "w") as f:
+        json.dump(formalize_response, f)
 
     return ToolResult(
-        content=[TextContent(type="text", text=f"Generated photonic circuit design for: {file_name}\n\n```python\n{code}\n```")],
+        content=[TextContent(type="text", text=(f"Generated circuit at {circuit_file_path}, statements at {statements_file_path}"))],
         structured_content={
-            "suggestions": [
-                {"type": "create_file", "path": file_name, "content": code, "description": f"Create {file_name} with the generated circuit design"}
-            ]
+            "circuit_file_path": str(circuit_file_path),
+            "code": code,
+            "statements_file_path": str(statements_file_path),
+            "statements": formalize_response,
         },
     )
 
@@ -112,11 +138,19 @@ async def simulate_circuit(
     with notebook_path.open("w", encoding="utf-8") as f:
         f.write(notebook_json)
 
-    return {
-        "message": f"Simulation notebook saved at {notebook_path}",
-        "notebook": notebook_json,
-        "wavelengths": wavelengths,
-    }
+    return ToolResult(
+        content=[
+            TextContent(
+                type="text",
+                text=f"Simulation completed. Notebook saved at {notebook_path}",
+            )
+        ],
+        structured_content={
+            "notebook_path": str(notebook_path),
+            "notebook": notebook_json,
+            "wavelengths": wavelengths,
+        },
+    )
 
 
 @mcp.tool(
@@ -126,7 +160,10 @@ async def simulate_circuit(
 )
 async def list_pdks():
     all_pdks = pdk_service.list_pdks()
-    return ToolResult(structured_content=all_pdks)
+    return ToolResult(
+        content=[TextContent(type="text", text="Listing available PDKs")],
+        structured_content=all_pdks,
+    )
 
 
 @mcp.tool(
@@ -138,4 +175,7 @@ async def get_pdk_info(
     pdk_type: Annotated[str, "The name of the PDK. This is either provided by the user, or provided by the list_available_pdks tool"],
 ):
     response = pdk_service.get_pdk_info(pdk_type)
-    return ToolResult(structured_content=response)
+    return ToolResult(
+        content=[TextContent(type="text", text=f"Retrieved information for PDK: {pdk_type}")],
+        structured_content=response,
+    )

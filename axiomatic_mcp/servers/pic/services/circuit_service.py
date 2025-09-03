@@ -4,6 +4,7 @@ import json
 from importlib.resources import files
 from typing import Any, Optional
 
+from ....shared import AxiomaticAPIClient
 from ...constants.api_constants import ApiRoutes
 
 
@@ -46,5 +47,8 @@ class CircuitService:
         except json.JSONDecodeError as e:
             raise RuntimeError(f"Failed to parse template output: {stdout}") from e
 
-    async def generate_pic_circuit(self, body: dict) -> Any:
-        return await self.api_client.post(ApiRoutes.REFINE_CIRCUIT, body)
+    def generate_pic_circuit(self, body: dict) -> Any:
+        return AxiomaticAPIClient().post(ApiRoutes.REFINE_CIRCUIT, body)
+
+    def get_statements(self, body: dict) -> Any:
+        return AxiomaticAPIClient().post(ApiRoutes.FORMALIZE_CIRCUIT, body)
