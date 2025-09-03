@@ -56,11 +56,30 @@ async def find_expression(
         input_body = {"markdown": doc_content, "task": task}
         response = AxiomaticAPIClient().post("/document/expression/compose/markdown", data=input_body)
 
+        code = response.get("composition_code", "")
+
+        if not code:
+            raise ToolError("No composition_code returned from service")
+
+        code = response.get("composition_code", "")
+
+        if isinstance(document, Path) or (isinstance(document, str) and Path(document).exists()):
+            doc_path = Path(document)
+            file_path = doc_path.parent / f"{doc_path.stem}_code.py"
+        else:
+            file_path = Path.cwd() / "expression_code.py"
+
+        with Path.open(file_path, "w", encoding="utf-8") as f:
+            f.write(code)
+
         return ToolResult(
             content=[
-                TextContent(type="text", text=f"Comments: {response.get('comments', '')}"),
-                TextContent(type="text", text=f"Composition code: {response.get('composition_code', '')}"),
-            ]
+                TextContent(
+                    type="text",
+                    text=f"Generated expression composition for: {file_path}\n\n```python\n{code}\n```",
+                )
+            ],
+            structured_content={"result": {"status": "success", "path": str(file_path), "message": f"Equation code written to {file_path}"}},
         )
 
     except Exception as e:
