@@ -134,6 +134,8 @@ async def list_pdks():
     description="Get detailed information about a specific PDK, including cross sections, components, and circuit library.",
     tags=["design", "pdk"],
 )
-async def get_pdk_info(pdk_type: str):
+async def get_pdk_info(
+    pdk_type: Annotated[str, "The name of the PDK. This is either provided by the user, or provided by the list_available_pdks tool"],
+):
     response = pdk_service.get_pdk_info(pdk_type)
     return ToolResult(structured_content=response)
