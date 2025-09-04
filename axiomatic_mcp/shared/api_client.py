@@ -4,6 +4,7 @@ from typing import Any
 import httpx
 
 API_URL = "https://api.axiomatic-ai.com"
+
 TIMEOUT = 1000
 
 
