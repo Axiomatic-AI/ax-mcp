@@ -38,9 +38,12 @@ class AxiomaticAPIClient:
         files: dict[str, Any] | None = None,
         params: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        response = (
-            self.client.post(endpoint, files=files, data=data, params=params) if files else self.client.post(endpoint, json=data, params=params)
-        )
+        if files:
+            # When uploading files, use multipart/form-data
+            response = self.client.post(endpoint, files=files, data=data, params=params)
+        else:
+            # For JSON data, use application/json
+            response = self.client.post(endpoint, json=data, params=params)
         response.raise_for_status()
         return response.json()
 

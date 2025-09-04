@@ -87,9 +87,9 @@ def check_initial_guess_consistency(parameters: list, bounds: list):
         if param["value"]["magnitude"] < bound["lower"]["magnitude"] or param["value"]["magnitude"] > bound["upper"]["magnitude"]:
             raise ValueError(
                 f"""Initial guess for {param_name} is not within bounds:
-- Initial guess: {param['value']['magnitude']}
-- Lower bound: {bound['lower']['magnitude']}
-- Upper bound: {bound['upper']['magnitude']}
+- Initial guess: {param["value"]["magnitude"]}
+- Lower bound: {bound["lower"]["magnitude"]}
+- Upper bound: {bound["upper"]["magnitude"]}
 Adjust the initial guess!"""
             )
 

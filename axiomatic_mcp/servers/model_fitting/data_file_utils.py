@@ -81,7 +81,7 @@ def load_data_file(file_path: str, file_format: str | None = None) -> pd.DataFra
         elif file_format == "parquet":
             df = pd.read_parquet(file_path)
         else:
-            raise ValueError(f"Unsupported file format: {file_format}. " f"Supported formats: csv, excel, json, parquet")
+            raise ValueError(f"Unsupported file format: {file_format}. Supported formats: csv, excel, json, parquet")
     except Exception as e:
         raise Exception(f"Error loading {file_format} file {file_path}: {e!s}") from e
 
@@ -119,11 +119,11 @@ def validate_column_mapping(df: pd.DataFrame, input_data: list[dict], output_dat
 
         required_keys = {"column", "name", "unit"}
         if not all(key in input_spec for key in required_keys):
-            raise ValueError(f"Input mapping {i} must contain keys: {required_keys}. " f"Got: {set(input_spec.keys())}")
+            raise ValueError(f"Input mapping {i} must contain keys: {required_keys}. Got: {set(input_spec.keys())}")
 
         column = input_spec["column"]
         if column not in df.columns:
-            raise ValueError(f"Input column '{column}' not found in data file. " f"Available columns: {list(df.columns)}")
+            raise ValueError(f"Input column '{column}' not found in data file. Available columns: {list(df.columns)}")
 
     # Validate output column mapping
     output = output_data
@@ -155,7 +155,7 @@ def validate_column_mapping(df: pd.DataFrame, input_data: list[dict], output_dat
     # Validate all specified columns exist in the DataFrame
     for column in columns_list:
         if column not in df.columns:
-            raise ValueError(f"Output column '{column}' not found in data file. " f"Available columns: {list(df.columns)}")
+            raise ValueError(f"Output column '{column}' not found in data file. Available columns: {list(df.columns)}")
 
 
 def transform_file_to_optimization_format(df: pd.DataFrame, input_data: list[dict], output_data: dict) -> tuple[list[dict], dict]:
@@ -183,7 +183,7 @@ def transform_file_to_optimization_format(df: pd.DataFrame, input_data: list[dic
 
         # Check for missing values
         if df[column].isnull().any():
-            raise ValueError(f"Input column '{column}' contains missing values. " f"Please clean the data before optimization.")
+            raise ValueError(f"Input column '{column}' contains missing values. Please clean the data before optimization.")
 
         # Convert to list, handling various pandas dtypes
         try:
@@ -203,7 +203,7 @@ def transform_file_to_optimization_format(df: pd.DataFrame, input_data: list[dic
         column = columns
 
         if df[column].isnull().any():
-            raise ValueError(f"Output column '{column}' contains missing values. " f"Please clean the data before optimization.")
+            raise ValueError(f"Output column '{column}' contains missing values. Please clean the data before optimization.")
 
         try:
             magnitudes = df[column].astype(float).tolist()
@@ -216,7 +216,7 @@ def transform_file_to_optimization_format(df: pd.DataFrame, input_data: list[dic
             column = columns[0]
 
             if df[column].isnull().any():
-                raise ValueError(f"Output column '{column}' contains missing values. " f"Please clean the data before optimization.")
+                raise ValueError(f"Output column '{column}' contains missing values. Please clean the data before optimization.")
 
             try:
                 magnitudes = df[column].astype(float).tolist()
@@ -228,7 +228,7 @@ def transform_file_to_optimization_format(df: pd.DataFrame, input_data: list[dic
 
             for column in columns:
                 if df[column].isnull().any():
-                    raise ValueError(f"Output column '{column}' contains missing values. " f"Please clean the data before optimization.")
+                    raise ValueError(f"Output column '{column}' contains missing values. Please clean the data before optimization.")
 
                 try:
                     col_data = df[column].astype(float).values
@@ -284,10 +284,10 @@ def resolve_output_data_only(data_file: str, output_data: dict, file_format: str
         # Single column output
         column = columns
         if column not in df.columns:
-            raise ValueError(f"Output column '{column}' not found in data file. " f"Available columns: {list(df.columns)}")
+            raise ValueError(f"Output column '{column}' not found in data file. Available columns: {list(df.columns)}")
 
         if df[column].isnull().any():
-            raise ValueError(f"Output column '{column}' contains missing values. " f"Please clean the data before calculation.")
+            raise ValueError(f"Output column '{column}' contains missing values. Please clean the data before calculation.")
 
         try:
             magnitudes = df[column].astype(float).tolist()
@@ -302,10 +302,10 @@ def resolve_output_data_only(data_file: str, output_data: dict, file_format: str
             # Single column specified as list - return flat list
             column = columns[0]
             if column not in df.columns:
-                raise ValueError(f"Output column '{column}' not found in data file. " f"Available columns: {list(df.columns)}")
+                raise ValueError(f"Output column '{column}' not found in data file. Available columns: {list(df.columns)}")
 
             if df[column].isnull().any():
-                raise ValueError(f"Output column '{column}' contains missing values. " f"Please clean the data before calculation.")
+                raise ValueError(f"Output column '{column}' contains missing values. Please clean the data before calculation.")
 
             try:
                 magnitudes = df[column].astype(float).tolist()
@@ -316,10 +316,10 @@ def resolve_output_data_only(data_file: str, output_data: dict, file_format: str
             output_arrays = []
             for column in columns:
                 if column not in df.columns:
-                    raise ValueError(f"Output column '{column}' not found in data file. " f"Available columns: {list(df.columns)}")
+                    raise ValueError(f"Output column '{column}' not found in data file. Available columns: {list(df.columns)}")
 
                 if df[column].isnull().any():
-                    raise ValueError(f"Output column '{column}' contains missing values. " f"Please clean the data before calculation.")
+                    raise ValueError(f"Output column '{column}' contains missing values. Please clean the data before calculation.")
 
                 try:
                     col_data = df[column].astype(float).values

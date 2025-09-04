@@ -64,6 +64,7 @@ axiomatic-equations = "axiomatic_mcp.servers.equations:main"
 axiomatic-leanclient = "axiomatic_mcp.servers.leanclient:main"
 axiomatic-model-fitting = "axiomatic_mcp.servers.model_fitting:main"
 axiomatic-annotations = "axiomatic_mcp.servers.annotations:main"
+axiomatic-model-builder = "axiomatic_mcp.servers.model_builder:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
