@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from typing import Annotated
 
-from fastmcp import FastMCP
+from fastmcp import Context, FastMCP
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
@@ -14,6 +14,7 @@ from .services.notebook_service import NotebookService
 from .services.optimization_service import OptimizationService
 from .services.pdk_service import PdkService
 from .services.simulation_service import SimulationService
+from .utils.pdk import flatten_pdks_response
 
 mcp = FastMCP(
     name="Axiomatic PIC Designer",
@@ -35,14 +36,23 @@ optimization_service = OptimizationService.get_instance()
     tags=["design", "gfsfactory"],
 )
 async def design(
+    ctx: Context,
     query: Annotated[str, "The query to design the circuit"],
-    pdk_type: Annotated[str, "The PDK to use for the circuit from the list of available PDKs"],
     existing_code: Annotated[str | None, "Existing code to use as a reference to refine"] = None,
     output_path: Annotated[
         Path | None, "The path to save the circuit and statements files. If not provided, the files will be saved in the current working directory."
     ] = None,
+    pdk_type: Annotated[Path | None, "The user's selected PDK. If none is passed, we will prompt the user for one."] = None,
 ) -> ToolResult:
     """Design a photonic integrated circuit."""
+    if not pdk_type:
+        try:
+            pdk_types = pdk_service.list_pdks()
+            flattened_pdks = flatten_pdks_response(pdk_types)
+            pdk_type = await ctx.elicit(message="Please select a PDK to generate the circuit", response_type=flattened_pdks)
+        except Exception:
+            pdk_type = "cspdk.si220.cband"
+
     refine_body = {
         "query": query,
         "pdk_type": pdk_type,
