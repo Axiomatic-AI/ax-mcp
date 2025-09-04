@@ -1,18 +1,11 @@
-from typing import Any, Optional
+from typing import Any
 
 from ....shared import AxiomaticAPIClient
+from ....shared.models.singleton_base import SingletonBase
 from ...constants.api_constants import ApiRoutes
 
 
-class OptimizationService:
-    _instance: Optional["OptimizationService"] = None
-
-    @classmethod
-    def get_instance(cls) -> "OptimizationService":
-        if cls._instance is None:
-            cls._instance = OptimizationService()
-        return cls._instance
-
+class OptimizationService(SingletonBase):
     async def optimize_code(self, query: dict[str, Any]) -> dict[str, Any]:
         """
         Call the GET_OPTIMIZED_CODE API endpoint with optimization request.

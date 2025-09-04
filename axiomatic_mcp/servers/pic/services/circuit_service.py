@@ -2,21 +2,14 @@ import contextlib
 import io
 import json
 from importlib.resources import files
-from typing import Any, Optional
+from typing import Any
 
 from ....shared import AxiomaticAPIClient
+from ....shared.models.singleton_base import SingletonBase
 from ...constants.api_constants import ApiRoutes
 
 
-class CircuitService:
-    _instance: Optional["CircuitService"] = None
-
-    @classmethod
-    def get_instance(cls) -> "CircuitService":
-        if cls._instance is None:
-            cls._instance = CircuitService()
-        return cls._instance
-
+class CircuitService(SingletonBase):
     async def get_netlist_from_code(self, current_file_content: str) -> dict:
         """
         Executes the given code + the get_netlist template in a sandboxed namespace,

@@ -36,6 +36,8 @@ Simulates a previously generated circuit and produces both the **wavelengths** u
 **Parameters:**
 
 - `file_path` (Path, required): Absolute path to the Python file (`circuit.py`) containing the circuit design.
+- `statements_file_path` (Path, optional): Absolute path to a JSON statements file to define the wavelength range
+- `wavelength_range` (tuple[float, float, int], optional): wavelength range (start, end, number of points) in um. Overridden by statements_file_path
 
 **Outputs:**
 

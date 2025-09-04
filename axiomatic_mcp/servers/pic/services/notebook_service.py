@@ -1,24 +1,14 @@
 import json
-from typing import Any, Optional
+from typing import Any
 
 import nbformat
 
+from ....shared.models.singleton_base import SingletonBase
 from ....templates.analysis_cells_template import AnalysisCellsTemplate
 
 
-class NotebookService:
-    _instance: Optional["NotebookService"] = None
-
-    def __init__(self) -> None:
-        pass
-
-    @classmethod
-    def get_instance(cls) -> "NotebookService":
-        if cls._instance is None:
-            cls._instance = NotebookService()
-        return cls._instance
-
-    async def create_simulation_notebook(
+class NotebookService(SingletonBase):
+    def create_simulation_notebook(
         self,
         response: dict[str, Any],
         wavelengths: list[float],
@@ -35,7 +25,6 @@ class NotebookService:
         """
         nb = nbformat.v4.new_notebook()
 
-        # Core setup cells (data injection)
         setup_cells = [
             nbformat.v4.new_markdown_cell("# Photonic Circuit Simulation Results"),
             nbformat.v4.new_code_cell(
@@ -43,11 +32,13 @@ class NotebookService:
             ),
         ]
 
-        # Inject analysis cells from the template
         analysis_cells = AnalysisCellsTemplate.get_cells()
 
-        # Final notebook cells
         nb.cells = setup_cells + analysis_cells
+        return nbformat.writes(nb)
 
-        # Return notebook as serialized JSON string
+    def get_analysis_notebook_content(self) -> str:
+        """Builds a notebook containing only the analysis cells, without simulation values."""
+        nb = nbformat.v4.new_notebook()
+        nb.cells = AnalysisCellsTemplate.get_cells()
         return nbformat.writes(nb)

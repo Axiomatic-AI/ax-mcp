@@ -1,18 +1,11 @@
-from typing import Any, Optional
+from typing import Any
 
 from ....shared import AxiomaticAPIClient
+from ....shared.models.singleton_base import SingletonBase
 from ...constants.api_constants import ApiRoutes
 
 
-class SimulationService:
-    _instance: Optional["SimulationService"] = None
-
-    @classmethod
-    def get_instance(cls) -> "SimulationService":
-        if cls._instance is None:
-            cls._instance = SimulationService()
-        return cls._instance
-
+class SimulationService(SingletonBase):
     async def simulate_from_code(self, query: dict[str, Any]) -> dict[str, Any]:
         """
         Call the GET_SAX_SPECTRUM API endpoint with a simulation request.

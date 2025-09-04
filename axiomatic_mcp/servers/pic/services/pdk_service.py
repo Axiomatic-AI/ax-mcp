@@ -1,19 +1,12 @@
-from typing import Any, Optional
+from typing import Any
 
 from axiomatic_mcp.servers.constants.api_constants import ApiRoutes
 
 from ....shared import AxiomaticAPIClient
+from ....shared.models.singleton_base import SingletonBase
 
 
-class PdkService:
-    _instance: Optional["PdkService"] = None
-
-    @classmethod
-    def get_instance(cls) -> "PdkService":
-        if cls._instance is None:
-            cls._instance = PdkService()
-        return cls._instance
-
+class PdkService(SingletonBase):
     def list_pdks(self) -> dict[str, Any]:
         all_pdks = AxiomaticAPIClient().get(ApiRoutes.PDK_LIST)
         available_pdks = AxiomaticAPIClient().get(ApiRoutes.PDK_PERMISSION)

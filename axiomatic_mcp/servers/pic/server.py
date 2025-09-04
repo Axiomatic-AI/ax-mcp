@@ -15,6 +15,7 @@ from .services.optimization_service import OptimizationService
 from .services.pdk_service import PdkService
 from .services.simulation_service import SimulationService
 from .utils.pdk import flatten_pdks_response
+from .utils.wavelengths import get_default_wavelength_range, get_wavelengths_from_bounds, get_wavelengths_from_statements
 
 mcp = FastMCP(
     name="Axiomatic PIC Designer",
@@ -23,11 +24,12 @@ mcp = FastMCP(
     version="0.0.1",
 )
 
-circuit_service = CircuitService.get_instance()
-simulation_service = SimulationService.get_instance()
-notebook_service = NotebookService.get_instance()
-pdk_service = PdkService.get_instance()
-optimization_service = OptimizationService.get_instance()
+
+circuit_service = CircuitService()
+simulation_service = SimulationService()
+notebook_service = NotebookService()
+pdk_service = PdkService()
+optimization_service = OptimizationService()
 
 
 @mcp.tool(
@@ -104,18 +106,24 @@ async def design(
 )
 async def simulate_circuit(
     file_path: Annotated[Path, "The absolute path to the python file to analyze"],
-) -> dict:
-    """
-    Parameters:
-        code: str - Python code (GDSFactory or similar) that defines the circuit
-        statements: list[dict] - statements that may contain wavelength info
+    statements_file_path: Annotated[Path | None, "Optional path to a JSON statements file to define the wavelength range"] = None,
+    wavelength_range: Annotated[
+        tuple[float, float, int] | None, "Optional wavelength range (start, end, number of points) in um. Overridden by statements_file_path."
+    ] = None,
+) -> ToolResult:
+    """Simulates a circuit and saves the results in a Jupyter notebook.
+
+    The wavelength range is determined from the statements file, the wavelength_range parameter,
+    or a default value, in that order of priority.
+
+    Args:
+        file_path: Path to the Python circuit file.
+        statements_file_path: Optional path to a JSON file to extract the wavelength range.
+        wavelength_range: Optional tuple for the simulation wavelength.
 
     Returns:
-        dict with:
-            - "notebook": nbformat JSON of the simulation results
-            - "wavelengths": list of floats used in the simulation
+        A ToolResult object with the path to the generated notebook and simulation output.
     """
-    # Get the code from the file_path
     if not file_path.exists():
         raise FileNotFoundError(f"Code not found: {file_path}")
 
@@ -126,10 +134,19 @@ async def simulate_circuit(
     netlist = await circuit_service.get_netlist_from_code(code)
 
     wavelengths = None
+    if statements_file_path:
+        if not statements_file_path.exists():
+            raise FileNotFoundError(f"Statement file not found: {file_path}")
+        statements_raw = await asyncio.to_thread(statements_file_path.read_bytes)
+        statement_dict = json.loads(statements_raw)
+        statements = statement_dict.get("statements", [])
+        wavelengths = get_wavelengths_from_statements(statements)
+
+    if wavelengths is None and wavelength_range:
+        wavelengths = get_wavelengths_from_bounds(*wavelength_range)
+
     if wavelengths is None:
-        base = 1.25
-        delta = base * 0.1
-        wavelengths = [round(base - delta + i * (2 * delta / 100), 6) for i in range(101)]
+        wavelengths = get_default_wavelength_range()
 
     response = await simulation_service.simulate_from_code(
         {
@@ -141,7 +158,7 @@ async def simulate_circuit(
     if not response:
         raise RuntimeError("Simulation service returned no response")
 
-    notebook_json = await notebook_service.create_simulation_notebook(
+    notebook_json = notebook_service.create_simulation_notebook(
         response=response,
         wavelengths=wavelengths,
     )
@@ -150,6 +167,9 @@ async def simulate_circuit(
     notebook_path = file_path.parent / f"{file_path.stem}_simulation.ipynb"
     with notebook_path.open("w", encoding="utf-8") as f:
         f.write(notebook_json)
+
+    # We dont send the full simulation data to save context
+    analysis_notebook_json = notebook_service.get_analysis_notebook_content()
 
     return ToolResult(
         content=[
@@ -160,8 +180,12 @@ async def simulate_circuit(
         ],
         structured_content={
             "notebook_path": str(notebook_path),
-            "notebook": notebook_json,
-            "wavelengths": wavelengths,
+            "notebook": analysis_notebook_json,
+            "wavelengths": {
+                "start": min(wavelengths),
+                "end": max(wavelengths),
+                "points": len(wavelengths),
+            },
         },
     )
 
