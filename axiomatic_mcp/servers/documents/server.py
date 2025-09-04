@@ -37,11 +37,11 @@ async def document_to_markdown(
         markdown = response.markdown
         name = file_path.parent / (file_path.stem + ".md")
 
-        with Path.open(name, "w", encoding="utf-8") as f:
-            f.write(markdown)
-
+        counter = 1
         for image_name, base64_string in response.images.items():
-            image_path = file_path.parent / image_name
+            renamed_image = f"{file_path.stem}_fig_{counter}.png"
+
+            image_path = file_path.parent / renamed_image
 
             if base64_string.startswith("data:image/"):
                 image_data = re.match(r"data:image/[^;]+;base64,(.*)", base64_string).group(1)
@@ -50,6 +50,12 @@ async def document_to_markdown(
 
             with Path.open(image_path, "wb") as image_file:
                 image_file.write(base64.b64decode(image_data))
+
+            markdown = markdown.replace(image_name, renamed_image)
+            counter += 1
+
+        with Path.open(name, "w", encoding="utf-8") as f:
+            f.write(markdown)
 
         return ToolResult(
             content=[

@@ -36,6 +36,7 @@ optimization_service = OptimizationService.get_instance()
 )
 async def design(
     query: Annotated[str, "The query to design the circuit"],
+    pdk_type: Annotated[str, "The PDK to use for the circuit from the list of available PDKs"],
     existing_code: Annotated[str | None, "Existing code to use as a reference to refine"] = None,
     output_path: Annotated[
         Path | None, "The path to save the circuit and statements files. If not provided, the files will be saved in the current working directory."
@@ -44,7 +45,7 @@ async def design(
     """Design a photonic integrated circuit."""
     refine_body = {
         "query": query,
-        "pdk_type": "cspdk.si220.cband",  # TODO: Make this a parameter
+        "pdk_type": pdk_type,
     }
 
     if existing_code:
@@ -54,7 +55,7 @@ async def design(
     code: str = refine_response["code"]
 
     formalize_body = {
-        "pdk": "cspdk.si220.cband",  # TODO: Make this a parameter
+        "pdk": pdk_type,
         "query": query,
         "statements": [],
     }
