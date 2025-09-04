@@ -37,6 +37,9 @@ Create intelligent annotations for PDF documents with contextual analysis, equat
 
 Interactive Lean 4 theorem prover integration for formal mathematics. Provides tools for proof development, goal inspection, theorem search, and code completion within Lean projects.
 
+### 📝 [Model Builder Server](./axiomatic_mcp/servers/model_builder/)
+
+Build physics models from scientific literature and experimental data.
 
 ## Getting an API Key
 
