@@ -84,12 +84,16 @@ async def _build_model_impl(
 
         physics_model_path = get_unique_filename(file_path.parent, "physics_model.py")
         parameters_path = get_unique_filename(file_path.parent, "parameters.json")
+        optimization_results_path = get_unique_filename(file_path.parent, "optimization_results.txt")
 
         with Path.open(physics_model_path, "w", encoding="utf-8") as f:
             f.write(validated_response.physics_model_code)
 
         with Path.open(parameters_path, "w", encoding="utf-8") as f:
             json.dump(validated_response.parameters, f)
+
+        with Path.open(optimization_results_path, "w", encoding="utf-8") as f:
+            f.write(validated_response.optimization_results)
 
         return ToolResult(
             content=[TextContent(type="text", text=f"Successfully built model: \n {formatted_response}")],
