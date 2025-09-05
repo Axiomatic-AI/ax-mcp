@@ -1,10 +1,10 @@
-# Axiomatic Model Fitting Server
+# AxModelFitter
 
-An MCP server for fitting mathematical models to experimental data using the Axiomatic AI platform's optimization algorithms and mathematical modeling capabilities.
+An MCP server for fitting mathematical models to experimental data using the Axiomatic AI platform's optimization algorithms.
 
-The Model Fitting server enables AI assistants to fit mathematical models against experimental or simulation data using various optimization algorithms and to perform statistical analyses to assess fit quality, avoid overfitting, and select among competing models.
+AxModelFitter enables AI assistants to fit mathematical models against experimental or simulation data using various optimization algorithms. The tools provided also enable the AI assistants to perform statistical analyses to assess fit quality, ensure the data is neither over- nor underfit, and select the best among multiple competing models.
 
-## Tools Available
+## Model Fitting Tools
 
 > **Note**: All data must now be provided via files (CSV, Excel, JSON, Parquet). Direct data input is no longer supported.
 
@@ -44,7 +44,7 @@ Provides template examples for common model fitting scenarios to guide developme
   - **Analytical Functions**
   - **Dynamic Systems**
 
-### `optimization_workflow`
+### `get_workflow_prompt`
 
 Provides step-by-step guidance for setting up and executing model fitting workflows.
 
@@ -53,15 +53,15 @@ Provides step-by-step guidance for setting up and executing model fitting workfl
 - Structured workflow covering:
   1. Model formulation and JAX implementation
   2. Parameter bounds and initial value selection
-  3. **File-based data preparation** and unit consistency
+  3. File-based data loading and unit consistency checking
   4. Optimizer and cost function selection
 
-### Additional Analysis Tools
+### Statistical Analysis Tools
 
-- **`calculate_r_squared`** - Calculate R² (coefficient of determination) for model evaluation
-- **`cross_validate_model`** - Perform cross-validation to assess model generalization  
-- **`calculate_information_criteria`** - Compute AIC/BIC for model comparison
-- **`compare_models`** - Statistical comparison of multiple models
+- **`calculate_r_squared`** - Calculate R² (coefficient of determination) for evaluating quality of model fit. 
+- **`cross_validate_model`** - Perform cross-validation to assess model generalization capabilities and ensure data is neither over nor underfit.  
+- **`calculate_information_criteria`** - Compute Akaike and Bayesian information criteria (AIC/BIC) for model comparison
+- **`compare_models`** - Statistical comparison of multiple models based on AIC/BIC
 
 **Example Usage:**
 
@@ -142,18 +142,15 @@ x,y
 ## Data Requirements
 
 ### File-Based Data Input
-All tools now require data to be provided via files. Supported formats:
+All tools require tabular data to be provided via files. Ideally the column names indicate the units of the quantities. Otherwise, the units must be made explicitly clear in the user prompt. 
+
+Supported formats:
 
 - **CSV** (`.csv`) - Most common, easy to create
 - **Excel** (`.xlsx`, `.xls`) - Spreadsheet format
 - **JSON** (`.json`) - Structured data format  
 - **Parquet** (`.parquet`) - Efficient columnar format
 
-### Data Mapping
-Specify how file columns map to model variables:
-
-- **`input_data`**: List of `{"column": "col_name", "name": "var_name", "unit": "unit"}`
-- **`output_data`**: `{"columns": ["col1", "col2"], "name": "var_name", "unit": "unit"}`
 
 **Examples:**
 - Single input: `[{"column": "time", "name": "t", "unit": "second"}]`
@@ -162,7 +159,7 @@ Specify how file columns map to model variables:
 
 ## Installation
 
-[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=axiomatic-model-fitting&config=eyJjb21tYW5kIjoidXZ4IC0tZnJvbSBheGlvbWF0aWMtbWNwIGF4aW9tYXRpYy1tb2RlbC1maXR0aW5nIiwiZW52Ijp7IkFYSU9NQVRJQ19BUElfS0VZIjoieW91ci1hcGkta2V5LWhlcmUifX0%3D)
+[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](cursor://anysphere.cursor-deeplink/mcp/install?name=AxModelFitter&config=eyJjb21tYW5kIjoidXZ4IC0tZnJvbSBheGlvbWF0aWMtbWNwIGF4bW9kZWxmaXR0ZXIiLCJlbnYiOnsiQVhJT01BVElDX0FQSV9LRVkiOiJ5b3VyLWFwaS1rZXktaGVyZSJ9fQ%3D%3D)
 
 ### Quick Install (via PyPI)
 
@@ -170,9 +167,9 @@ Add to your MCP client configuration:
 
 ```json
 {
-  "axiomatic-model-fitting": {
+  "AxModelFitter": {
     "command": "uvx",
-    "args": ["--from", "axiomatic-mcp", "axiomatic-model-fitting"],
+    "args": ["--from", "axiomatic-mcp", "axmodelfitter"],
     "env": {
       "AXIOMATIC_API_KEY": "your-api-key-here"
     }
@@ -186,9 +183,9 @@ For development or local modifications:
 
 ```json
 {
-  "axiomatic-model-fitter": {
+  "AxModelFitter": {
     "command": "python",
-    "args": ["-m", "axiomatic_mcp.servers.model_fitter"],
+    "args": ["-m", "axiomatic_mcp.servers.axmodelfitter"],
     "env": {
       "AXIOMATIC_API_KEY": "your-api-key-here"
     }

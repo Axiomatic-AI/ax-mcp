@@ -1,7 +1,7 @@
-"""Digital Twin Optimizer MCP server using the Axiomatic API.
+"""AxModelFitter MCP server using the Axiomatic API.
 
 This server provides tools for fitting custom mathematical models to experimental data
-using the Axiomatic AI platform's digital twin optimization API. It includes comprehensive
+using the Axiomatic AI platform's optimization API. It includes comprehensive
 guidance, examples, and validation to help LLMs use the API correctly.
 """
 
@@ -338,8 +338,8 @@ def compute_aic_bic_from_loss_and_data(
     }
 
 
-def evaluate_dt_model_loss(payload: dict) -> dict:
-    """Evaluate the loss/cost of a digital twin model using the provided payload.
+def evaluate_loss(payload: dict) -> dict:
+    """Evaluate the loss/cost of a model using the provided payload.
 
     Args:
         payload: Complete request payload for the cost evaluation API
@@ -356,8 +356,8 @@ def evaluate_dt_model_loss(payload: dict) -> dict:
     return response
 
 
-def evaluate_dt_model(payload: dict) -> dict:
-    """Evaluate/predict outputs of a digital twin model using the provided payload.
+def evaluate_model(payload: dict) -> dict:
+    """Evaluate/predict outputs of a model using the provided payload.
 
     Args:
         payload: Complete request payload for the model evaluation API
@@ -375,8 +375,8 @@ def evaluate_dt_model(payload: dict) -> dict:
 
 
 mcp = FastMCP(
-    name="Axiomatic Model Fitting Server",
-    instructions="""This server provides digital twin optimization using the Axiomatic AI platform.
+    name="AxModelFitter",
+    instructions="""This server provides mathematical model fitting using the Axiomatic AI platform.
 
     OPTIMIZATION WORKFLOW - FOLLOW THESE STEPS:
 
@@ -449,7 +449,7 @@ mcp = FastMCP(
 
 @mcp.tool(
     name="fit_model",
-    description="""Optimize a custom JAX mathematical model against experimental data.
+    description="""Fit a custom JAX mathematical model against experimental data.
 
     This tool fits user-defined mathematical models to data using numerical optimization.
     All data MUST be provided via files (CSV, Excel, JSON, Parquet) - no direct data input.
@@ -504,7 +504,7 @@ async def fit_model(
     jit_compile: Annotated[bool, "Enable JIT compilation for performance"] = True,
     optimizer_config: Annotated[dict | None, "Optimizer config: {'use_gradient': True, 'tol': 1e-6, 'max_function_eval': 1000000}"] = None,
 ) -> ToolResult:
-    """Optimize a digital twin model using the Axiomatic AI platform."""
+    """Fit a model against data using the Axiomatic AI platform."""
 
     try:
         # Resolve data input from file only
@@ -623,13 +623,13 @@ Use `get_fitting_examples` to see working examples.
 
 
 @mcp.prompt(
-    name="optimization_workflow",
-    description="Step-by-step guide for digital twin optimization. Shows complete workflow from model definition to optimization execution.",
+    name="get_workflow_prompt",
+    description="Step-by-step guide for model fitting with the AxModelFitter. Shows complete workflow from model definition to optimization execution.",
 )
-def optimization_workflow() -> str:
+def get_workflow_prompt() -> str:
     """Generate a generic optimization workflow guide."""
 
-    return """# Digital Twin Optimization Workflow
+    return """# Model Fitting Workflow
 
 ## Step-by-Step Process:
 
@@ -681,7 +681,7 @@ Ready to optimize? Get templates with `get_fitting_examples`!"""
 
 @mcp.tool(
     name="get_fitting_examples",
-    description="""Get complete working examples for digital twin optimization.
+    description="""Get complete working examples for model fitting with the AxModelFitter.
 
     Returns ready-to-use templates with:
     - Proper JAX function syntax
@@ -989,7 +989,7 @@ def c_obs(ts, A0, B0, C0, D0, k1, k2, k3):
             "optimizer_config": template["optimizer_config"],
         }
 
-    summary_text = f"""# 🧬 Digital Twin Optimization Templates
+    summary_text = f"""# fit Templates
 
 ## Available Template Categories:
 
@@ -1446,7 +1446,7 @@ async def cross_validate_model(
     max_time: Annotated[int, "Maximum optimization time in seconds per fold"] = 5,
     optimizer_config: Annotated[dict | None, "Optimizer config: {'use_gradient': True, 'tol': 1e-6, 'max_function_eval': 1000000}"] = None,
 ) -> ToolResult:
-    """Perform cross-validation on a digital twin model."""
+    """Perform cross-validation on model."""
 
     try:
         # Resolve data input from file only
@@ -1620,7 +1620,7 @@ async def cross_validate_model(
                 }
 
                 # Evaluate loss on test fold
-                loss_response = evaluate_dt_model_loss(loss_payload)
+                loss_response = evaluate_loss(loss_payload)
                 test_loss = loss_response.get("cost_value")
 
                 if test_loss is None:
@@ -1809,7 +1809,7 @@ async def compare_models(
     aicc_include_scale: Annotated[bool, "Include scale parameter in AICc correction (literature varies)"] = True,
     n_scale_params: Annotated[int, "Number of scale parameters: 1 for single-output, d for d-output with separate scales"] = 1,
 ) -> ToolResult:
-    """Compare multiple models using information criteria for digital twin model selection."""
+    """Compare multiple models using information criteria for model selection."""
 
     try:
         # Resolve output data from file first

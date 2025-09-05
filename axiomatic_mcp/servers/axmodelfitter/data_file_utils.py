@@ -1,4 +1,4 @@
-"""Data file utilities for the DT Optimizer MCP server.
+"""Data file utilities for the AxModelFitter MCP server.
 
 This module provides helper functions for loading and transforming tabular data files
 into the format required by the Axiomatic API optimization tools.
