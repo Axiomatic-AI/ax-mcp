@@ -4,6 +4,36 @@ An MCP server for fitting mathematical models to experimental data using the Axi
 
 AxModelFitter enables AI assistants to fit mathematical models against experimental or simulation data using various optimization algorithms. The tools provided also enable the AI assistants to perform statistical analyses to assess fit quality, to ensure the data is neither over- nor underfit, and to select the best among multiple competing models.
 
+## Installation
+
+[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](cursor://anysphere.cursor-deeplink/mcp/install?name=AxModelFitter&config=eyJjb21tYW5kIjoidXZ4IC0tZnJvbSBheGlvbWF0aWMtbWNwIGF4bW9kZWxmaXR0ZXIiLCJlbnYiOnsiQVhJT01BVElDX0FQSV9LRVkiOiJ5b3VyLWFwaS1rZXktaGVyZSJ9fQ%3D%3D)
+
+### Quick Install (via PyPI)
+
+Add to your MCP client configuration:
+
+```json
+{
+  "AxModelFitter": {
+    "command": "uvx",
+    "args": ["--from", "axiomatic-mcp", "axmodelfitter"],
+    "env": {
+      "AXIOMATIC_API_KEY": "your-api-key-here"
+    }
+  }
+}
+```
+
+
+### Configuration
+
+Required Environment Variables
+
+- `AXIOMATIC_API_KEY`: Your Axiomatic AI API key (required)
+
+See the [main README](../../../README.md#getting-an-api-key) for instructions on obtaining an API key.
+
+
 ## Model Fitting Tools
 
 ### `fit_model`
@@ -61,7 +91,21 @@ Provides step-by-step guidance for setting up and executing model fitting workfl
 - **`calculate_information_criteria`** - Compute Akaike and Bayesian information criteria (AIC/BIC) for model comparison
 - **`compare_models`** - Statistical comparison of multiple models based on AIC/BIC
 
-**Example Usage:**
+
+## Data Requirements
+
+### File-Based Data Input
+All tools require tabular data to be provided via files. Ideally the column names indicate the units of the quantities. Otherwise, the units must be made explicitly clear in the user prompt. 
+
+Supported formats:
+
+- **CSV** (`.csv`) - Most common, easy to create
+- **Excel** (`.xlsx`, `.xls`) - Spreadsheet format
+- **JSON** (`.json`) - Structured data format  
+- **Parquet** (`.parquet`) - Efficient columnar format
+
+
+## Example Usage
 
 Via an LLM client such as Claude Desktop:
 
@@ -136,68 +180,6 @@ x,y
   "max_time": 10
 }
 ```
-
-## Data Requirements
-
-### File-Based Data Input
-All tools require tabular data to be provided via files. Ideally the column names indicate the units of the quantities. Otherwise, the units must be made explicitly clear in the user prompt. 
-
-Supported formats:
-
-- **CSV** (`.csv`) - Most common, easy to create
-- **Excel** (`.xlsx`, `.xls`) - Spreadsheet format
-- **JSON** (`.json`) - Structured data format  
-- **Parquet** (`.parquet`) - Efficient columnar format
-
-
-**Examples:**
-- Single input: `[{"column": "time", "name": "t", "unit": "second"}]`
-- Single output: `{"columns": ["voltage"], "name": "v", "unit": "volt"}`
-- Multi-output: `{"columns": ["x", "y"], "name": "position", "unit": "meter"}`
-
-## Installation
-
-[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](cursor://anysphere.cursor-deeplink/mcp/install?name=AxModelFitter&config=eyJjb21tYW5kIjoidXZ4IC0tZnJvbSBheGlvbWF0aWMtbWNwIGF4bW9kZWxmaXR0ZXIiLCJlbnYiOnsiQVhJT01BVElDX0FQSV9LRVkiOiJ5b3VyLWFwaS1rZXktaGVyZSJ9fQ%3D%3D)
-
-### Quick Install (via PyPI)
-
-Add to your MCP client configuration:
-
-```json
-{
-  "AxModelFitter": {
-    "command": "uvx",
-    "args": ["--from", "axiomatic-mcp", "axmodelfitter"],
-    "env": {
-      "AXIOMATIC_API_KEY": "your-api-key-here"
-    }
-  }
-}
-```
-
-### Development Install
-
-For development or local modifications:
-
-```json
-{
-  "AxModelFitter": {
-    "command": "python",
-    "args": ["-m", "axiomatic_mcp.servers.axmodelfitter"],
-    "env": {
-      "AXIOMATIC_API_KEY": "your-api-key-here"
-    }
-  }
-}
-```
-
-## Configuration
-
-### Required Environment Variables
-
-- `AXIOMATIC_API_KEY`: Your Axiomatic AI API key (required)
-
-See the [main README](../../../README.md#getting-an-api-key) for instructions on obtaining an API key.
 
 ## Optimization Algorithms
 
