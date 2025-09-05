@@ -378,7 +378,7 @@ mcp = FastMCP(
     name="AxModelFitter",
     instructions="""This server provides mathematical model fitting using the Axiomatic AI platform.
 
-    OPTIMIZATION WORKFLOW - FOLLOW THESE STEPS:
+    Fitting Workflow - FOLLOW THESE STEPS:
 
     1️⃣ DEFINE YOUR MATHEMATICAL MODEL
     Write your model as a JAX function using jnp operations:
@@ -408,7 +408,7 @@ mcp = FastMCP(
     5️⃣ RUN OPTIMIZATION
     Use `fit_model` with your adapted template.
 
-    For detailed guidance, use the `optimization_workflow` prompt.
+    For detailed guidance, use the `get_workflow_prompt` prompt.
 
     CRITICAL REQUIREMENTS for all function calls:
     1. ALL functions must use JAX operations: jnp.exp, jnp.sin, jnp.cos, jnp.sqrt, etc.
@@ -1008,7 +1008,7 @@ def c_obs(ts, A0, B0, C0, D0, k1, k2, k3):
 ## Template Details:
 {json.dumps(template_summary, indent=2)}
 
-Use `optimization_workflow` prompt for detailed step-by-step guidance!
+Use `get_workflow_prompt` prompt for detailed step-by-step guidance!
 All templates are generic - adapt the function, parameters, and data to your specific model."""
 
     return ToolResult(
