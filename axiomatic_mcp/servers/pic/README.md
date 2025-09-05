@@ -1,4 +1,4 @@
-# Axiomatic PIC Designer Server
+# AxPhotonicsPreview
 
 An MCP server for designing, optimizing, and simulating Photonic Integrated Circuits (PICs) using the Axiomatic AI platform.
 
