@@ -624,7 +624,7 @@ Use `get_fitting_examples` to see working examples.
 
 @mcp.prompt(
     name="get_workflow_prompt",
-    description="Step-by-step guide for model fitting with the AxModelFitter. Shows complete workflow from model definition to optimization execution.",
+    description="Step-by-step guide for model fitting with the AxModelFitter. Shows complete workflow from model definition to optimization execution.", #noqa
 )
 def get_workflow_prompt() -> str:
     """Generate a generic optimization workflow guide."""
