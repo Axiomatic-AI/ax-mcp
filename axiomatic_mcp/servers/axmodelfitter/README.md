@@ -2,11 +2,9 @@
 
 An MCP server for fitting mathematical models to experimental data using the Axiomatic AI platform's optimization algorithms.
 
-AxModelFitter enables AI assistants to fit mathematical models against experimental or simulation data using various optimization algorithms. The tools provided also enable the AI assistants to perform statistical analyses to assess fit quality, ensure the data is neither over- nor underfit, and select the best among multiple competing models.
+AxModelFitter enables AI assistants to fit mathematical models against experimental or simulation data using various optimization algorithms. The tools provided also enable the AI assistants to perform statistical analyses to assess fit quality, to ensure the data is neither over- nor underfit, and to select the best among multiple competing models.
 
 ## Model Fitting Tools
-
-> **Note**: All data must now be provided via files (CSV, Excel, JSON, Parquet). Direct data input is no longer supported.
 
 ### `fit_model`
 
