@@ -147,3 +147,4 @@ For issues or questions:
 
 - GitHub Issues: https://github.com/axiomatic/ax-mcp/issues
 - Email: developers@axiomatic.ai
+
