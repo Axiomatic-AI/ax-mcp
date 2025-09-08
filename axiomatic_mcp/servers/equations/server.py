@@ -6,10 +6,9 @@ from fastmcp.exceptions import ToolError
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
-from axiomatic_mcp.shared.api_client import AxiomaticAPIClient
-from axiomatic_mcp.shared.documents.pdf_to_markdown import pdf_to_markdown
-
 from ...providers.moesif_provider import add_moesif_middleware
+from ...shared.api_client import AxiomaticAPIClient
+from ...shared.documents.pdf_to_markdown import pdf_to_markdown
 
 
 async def _get_document_content(document: Path | str) -> str:
