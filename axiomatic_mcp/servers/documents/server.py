@@ -30,11 +30,12 @@ mcp = FastMCP(
     tags=["document", "filesystem", "analyze"],
 )
 async def document_to_markdown(
-    file_path: Annotated[Path, "The absolute path to the PDF file to analyze"],
+    file_path: Annotated[str, "The absolute path to the PDF file to analyze"],
 ) -> ToolResult:
     try:
         response = await pdf_to_markdown(file_path)
         markdown = response.markdown
+        file_path = Path(file_path)
         name = file_path.parent / (file_path.stem + ".md")
 
         counter = 1
@@ -65,9 +66,9 @@ async def document_to_markdown(
                 )
             ],
             structured_content={
-                "markdown_path": name,
+                "markdown_path": str(name),
                 "markdown_preview": markdown[:1000],
-                "images_path": file_path.parent,
+                "images_path": str(file_path.parent),
                 "images_count": len(response.images),
             },
         )

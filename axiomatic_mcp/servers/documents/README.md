@@ -14,7 +14,7 @@ Converts a PDF document to markdown using Axiomatic's advanced OCR technology.
 
 **Parameters:**
 
-- `file_path` (Path, required): The absolute path to the PDF file to analyze
+- `file_path` (str, required): The absolute path to the PDF file to analyze
 
 **Returns:**
 
