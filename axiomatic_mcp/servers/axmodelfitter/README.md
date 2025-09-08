@@ -1,16 +1,19 @@
-# AxModelFitter Server
+# AxModelFitter
 
 An MCP server for fitting mathematical models to experimental data using the Axiomatic AI platform's optimization algorithms.
 
-The AxModelFitter enables AI assistants to fit mathematical models against experimental or simulation data using various optimization algorithms and to perform statistical analyses to assess fit quality, avoid overfitting, and select among competing models.
+AxModelFitter enables AI assistants to fit mathematical models against experimental or simulation data using various optimization algorithms. The tools provided also enable the AI assistants to perform statistical analyses to assess fit quality, to ensure the data is neither over- nor underfit, and to select the best among multiple competing models.
 
-## Installation
+## Quick Start
+
+### Installation (via PyPI)
+
+If you are using Cursor, click the buttom below for 1-click installation.
 
 [![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](cursor://anysphere.cursor-deeplink/mcp/install?name=AxModelFitter&config=eyJjb21tYW5kIjoidXZ4IC0tZnJvbSBheGlvbWF0aWMtbWNwIGF4bW9kZWxmaXR0ZXIiLCJlbnYiOnsiQVhJT01BVElDX0FQSV9LRVkiOiJ5b3VyLWFwaS1rZXktaGVyZSJ9fQ%3D%3D)
 
-### Quick Install (via PyPI)
 
-Add to your MCP client configuration:
+Otherwise, add to the MCP client configuration of your preferred IDE or langauge model app:
 
 ```json
 {
@@ -24,14 +27,16 @@ Add to your MCP client configuration:
 }
 ```
 
-
 ### Configuration
 
-Required Environment Variables
+You require an Axiomatic API key and must configure the following environment variables:
 
 - `AXIOMATIC_API_KEY`: Your Axiomatic AI API key (required)
 
 See the [main README](../../../README.md#getting-an-api-key) for instructions on obtaining an API key.
+
+### Getting started
+A number of lightweight demos showcasing common use cases and workflow integrations of AxModelFitter can be found [here](../../../examples/axmodelfitter/README.md).
 
 
 ## Model Fitting Tools

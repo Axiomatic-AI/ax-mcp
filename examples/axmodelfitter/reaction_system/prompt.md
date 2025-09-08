@@ -1,0 +1,5 @@
+# Demo: Reaction system
+
+The file `data.csv` contains non-dimensionalized concentration measurements of chemical species $A$ and $D$ in a closed reactor over time. The proposed reaction mechanism is $A+B \leftrightharpoons C \rightarrow D$. Assuming elementary reactions obeying mass-action kinetics, a well-mixed reactor vessel, and an isothermal and isochoric reaction, formulate a model for this reaction and fit it to the data with *AxModelFitter MCP*. 
+
+Compute the $R^2$ of the model fit and use the parameter estimates to simulate the reaction system on a fine timegrid and plot the trajectories (including the concentration profiles of the unobserved species) against the data to visualize the goodness-of-fit. Write a summary of your results, including visualizations, into a response.md file. 
