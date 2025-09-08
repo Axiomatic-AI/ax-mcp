@@ -94,12 +94,13 @@ plots = FastMCP(
     tags={"plot", "filesystem", "analyze"},
 )
 async def extract_data_from_plot_image(
-    plot_path: Annotated[Path, "The absolute path to the image file of the plot to analyze. Supports only PNG for now"],
+    plot_path: Annotated[str, "The absolute path to the image file of the plot to analyze. Supports only PNG for now"],
     max_number_points_per_series: Annotated[
         int,
         "Maximum points returned per series. Uses random sampling if plot contains more points than limit",
     ] = 100,
 ) -> Annotated[ToolResult, "Extracted plot data containing series and points from the plot image"]:
+    plot_path = Path(plot_path)
     if not plot_path.is_file():
         raise FileNotFoundError(f"Image not found or is not a regular file: {plot_path}")
 
@@ -129,7 +130,7 @@ async def extract_data_from_plot_image(
 
     series_data = process_plot_parser_output(response, max_points=max_number_points_per_series)
 
-    json_path = plot_path.parent / (plot_path.stem + "_data.json")
+    json_path = str(plot_path.parent / (plot_path.stem + "_data.json"))
 
     with Path.open(json_path, "w", encoding="utf-8") as f:
         json.dump(series_data.model_dump(), f, indent=2)

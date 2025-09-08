@@ -14,7 +14,7 @@ Analyzes images of line and scatter plots to extract precise numerical data poin
 
 **Parameters:**
 
-- `plot_path` (Path, required): The absolute path to the plot image file (PNG format)
+- `plot_path` (str, required): The absolute path to the plot image file (PNG format)
 - `max_number_points_per_series` (int, optional, default=100): Maximum points returned per series using random sampling if needed
 
 **Returns:**
