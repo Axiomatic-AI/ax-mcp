@@ -11,15 +11,8 @@ from axiomatic_mcp.shared.documents.pdf_to_markdown import pdf_to_markdown
 from ...shared import AxiomaticAPIClient
 
 
-async def _get_document_content(document: Path | str) -> str:
+async def _get_document_content(document: str) -> str:
     """Helper function to extract document content from either a file path or direct content."""
-    if isinstance(document, Path):
-        if document.exists() and document.suffix.lower() == ".pdf":
-            response = await pdf_to_markdown(document)
-            return response.markdown
-        else:
-            raise ValueError(f"PDF file not found or invalid: {document}")
-
     potential_path = Path(document)
     if potential_path.exists() and potential_path.suffix.lower() == ".pdf":
         response = await pdf_to_markdown(potential_path)
@@ -44,7 +37,7 @@ mcp = FastMCP(
     tags=["equations", "compose", "derive", "find", "function-finder"],
 )
 async def find_expression(
-    document: Annotated[Path | str, "Either a file path to a PDF document or the document content as a string"],
+    document: Annotated[str, "Either the full absolute path to a PDF document or the document content as a string"],
     task: Annotated[str, "The task to be done for expression composition"],
 ) -> ToolResult:
     """If you have scientific text with equations, but you don't see the equation you're
@@ -95,7 +88,7 @@ async def find_expression(
     tags=["equations", "check", "error-correction", "validate"],
 )
 async def check_equation(
-    document: Annotated[Path | str, "Either a file path to a PDF document or the document content as a string"],
+    document: Annotated[str, "Either a file path to a PDF document or the document content as a string"],
     task: Annotated[str, "The task to be done for equation checking (e.g., 'check if E=mc² is correct')"],
 ) -> ToolResult:
     """Use this tool to validate equations or check for errors in mathematical expressions.
