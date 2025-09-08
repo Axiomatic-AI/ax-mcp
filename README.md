@@ -138,10 +138,10 @@ Have an idea for a new feature? We'd love to hear it! [Submit a feature request]
 - 🐛 [Report a Bug](https://github.com/Axiomatic-AI/ax-mcp/issues/new?template=bug_report.md)
 - 💡 [Request a Feature](https://github.com/Axiomatic-AI/ax-mcp/issues/new?template=feature_request.md)
 - 📋 [View All Issues](https://github.com/Axiomatic-AI/ax-mcp/issues)
-- 💬 [Discord Server](https://discord.gg/v8Nk4syD)
+- 💬 [Discord Server](https://discord.gg/KKU97ZR5)
 
 ## Support
 
-- **Join our [Discord Server](https://discord.gg/v8Nk4syD)**
+- **Join our [Discord Server](https://discord.gg/KKU97ZR5)**
 - **Issues**: [GitHub Issues](https://github.com/Axiomatic-AI/ax-mcp/issues)
 - **Email**: developers@axiomatic-ai.com
