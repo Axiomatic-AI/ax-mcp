@@ -1,5 +1,5 @@
-
 # AxPlotToData Server
+
 An MCP server for extracting numerical data from plot images using the Axiomatic AI platform's advanced computer vision capabilities.
 
 ## Overview
@@ -101,7 +101,6 @@ See the [main README](../../../README.md#getting-an-api-key) for instructions on
 - **Performance Analysis**: Extract performance curves from datasheets
 - **Calibration Data**: Digitize calibration curves from equipment manuals
 - **Quality Control**: Compare measured vs. reference plots
-- **Design Optimization**: Extract design space data from parametric studies
 
 ### Data Processing
 
