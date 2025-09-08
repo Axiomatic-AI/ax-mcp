@@ -44,7 +44,7 @@ async def design(
     output_path: Annotated[
         Path | None, "The path to save the circuit and statements files. If not provided, the files will be saved in the current working directory."
     ] = None,
-    pdk_type: Annotated[Path | None, "The user's selected PDK. If none is passed, we will prompt the user for one."] = None,
+    pdk_type: Annotated[str | None, "The user's selected PDK. If none is passed, we will prompt the user for one."] = None,
 ) -> ToolResult:
     """Design a photonic integrated circuit."""
     if not pdk_type:
