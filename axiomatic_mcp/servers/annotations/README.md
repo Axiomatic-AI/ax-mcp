@@ -1,10 +1,10 @@
-# Axiomatic Annotations Server
+# AxDocumentAnnotator Server
 
 An MCP server that provides intelligent annotation capabilities for PDF documents using the Axiomatic AI platform's advanced document analysis and understanding models.
 
 ## Overview
 
-The Annotations server enables AI assistants to create detailed, contextual annotations for PDF documents based on specific queries or instructions. It extracts relevant information, equations, parameters, and contextual descriptions to provide comprehensive analysis of document content.
+The AxDocumentAnnotator server enables AI assistants to create detailed, contextual annotations for PDF documents based on specific queries or instructions. It extracts relevant information, equations, parameters, and contextual descriptions to provide comprehensive analysis of document content.
 
 ## Tools Available
 
@@ -49,7 +49,6 @@ Extract all equations and their parameters from the technical document at /docum
 
 [![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=axiomatic-annotations&config=eyJjb21tYW5kIjoidXZ4IC0tZnJvbSBheGlvbWF0aWMtbWNwIGF4aW9tYXRpYy1hbm5vdGF0aW9ucyIsImVudiI6eyJBWElPTUFUSUNfQVBJX0tFWSI6IkFYSU9NQVRJQy1BUEktS0VZIn19)
 
-
 ### Quick Install (via PyPI)
 
 Add to your MCP client configuration:
@@ -60,7 +59,7 @@ Add to your MCP client configuration:
     "command": "uvx",
     "args": ["--from", "axiomatic-mcp", "axiomatic-annotations"],
     "env": {
-      "AXIOMATIC_API_KEY": "your-api-key-here",
+      "AXIOMATIC_API_KEY": "your-api-key-here"
     }
   }
 }
@@ -76,7 +75,7 @@ For development or local modifications:
     "command": "python",
     "args": ["-m", "axiomatic_mcp.servers.annotations"],
     "env": {
-      "AXIOMATIC_API_KEY": "your-api-key-here",
+      "AXIOMATIC_API_KEY": "your-api-key-here"
     }
   }
 }
@@ -104,7 +103,6 @@ See the [main README](../../../README.md#getting-an-api-key) for instructions on
 - **Specification Analysis**: Extract technical requirements and parameters from engineering documents
 - **Compliance Review**: Identify critical sections and requirements in regulatory documents
 - **Knowledge Extraction**: Convert complex technical content into structured annotations
-
 
 ### Educational Applications
 
@@ -139,4 +137,3 @@ For issues or questions:
 
 - GitHub Issues: https://github.com/axiomatic/ax-mcp/issues
 - Email: developers@axiomatic.ai
-

@@ -1,8 +1,8 @@
-# Axiomatic Model Fitting Server
+# AxModelFitter Server
 
 An MCP server for fitting mathematical models to experimental data using the Axiomatic AI platform's optimization algorithms and mathematical modeling capabilities.
 
-The Model Fitting server enables AI assistants to fit mathematical models against experimental or simulation data using various optimization algorithms and to perform statistical analyses to assess fit quality, avoid overfitting, and select among competing models.
+The AxModelFitter enables AI assistants to fit mathematical models against experimental or simulation data using various optimization algorithms and to perform statistical analyses to assess fit quality, avoid overfitting, and select among competing models.
 
 ## Tools Available
 
@@ -18,9 +18,9 @@ Fits mathematical models to experimental data using various optimization algorit
 - `function_source`: JAX-compatible function source code
 - `function_name`: Function name (e.g., 'y')
 - `parameters`: Initial parameter guesses
-- `bounds`:  ALL parameter/input/output bounds
+- `bounds`: ALL parameter/input/output bounds
 - `data_file`: Path to your data file (CSV, Excel, JSON, Parquet)
-- `input_data`: List mapping file columns to input variables  
+- `input_data`: List mapping file columns to input variables
 - `output_data`: Dictionary mapping file columns to output variables
 
 **Selected optional arguments**
@@ -59,7 +59,7 @@ Provides step-by-step guidance for setting up and executing model fitting workfl
 ### Additional Analysis Tools
 
 - **`calculate_r_squared`** - Calculate R² (coefficient of determination) for model evaluation
-- **`cross_validate_model`** - Perform cross-validation to assess model generalization  
+- **`cross_validate_model`** - Perform cross-validation to assess model generalization
 - **`calculate_information_criteria`** - Compute AIC/BIC for model comparison
 - **`compare_models`** - Statistical comparison of multiple models
 
@@ -72,6 +72,7 @@ Via an LLM client such as Claude Desktop:
 Example input for testing with the MCP Inspector (using file-based data):
 
 **First, create a CSV file** (e.g., `quadratic_data.csv`):
+
 ```csv
 x,y
 -5,71.63
@@ -107,30 +108,49 @@ x,y
 ```
 
 **Then use the `fit_model` tool**:
+
 ```json
 {
   "model_name": "SimpleQuadratic",
   "function_source": "def y(x, a, b, c): return a * x**2 + b * x + c",
   "function_name": "y",
   "parameters": [
-    {"name": "a", "value": {"magnitude": 1.0, "unit": "dimensionless"}},
-    {"name": "b", "value": {"magnitude": 2.0, "unit": "dimensionless"}},
-    {"name": "c", "value": {"magnitude": -5.0, "unit": "dimensionless"}}
+    { "name": "a", "value": { "magnitude": 1.0, "unit": "dimensionless" } },
+    { "name": "b", "value": { "magnitude": 2.0, "unit": "dimensionless" } },
+    { "name": "c", "value": { "magnitude": -5.0, "unit": "dimensionless" } }
   ],
   "bounds": [
-    {"name": "a", "lower": {"magnitude": 0.5, "unit": "dimensionless"}, "upper": {"magnitude": 5.0, "unit": "dimensionless"}},
-    {"name": "b", "lower": {"magnitude": -5.0, "unit": "dimensionless"}, "upper": {"magnitude": 5.0, "unit": "dimensionless"}},
-    {"name": "c", "lower": {"magnitude": -10.0, "unit": "dimensionless"}, "upper": {"magnitude": 10.0, "unit": "dimensionless"}},
-    {"name": "x", "lower": {"magnitude": -5.0, "unit": "dimensionless"}, "upper": {"magnitude": 5.0, "unit": "dimensionless"}},
-    {"name": "y", "lower": {"magnitude": 2.8, "unit": "dimensionless"}, "upper": {"magnitude": 72.0, "unit": "dimensionless"}}
+    {
+      "name": "a",
+      "lower": { "magnitude": 0.5, "unit": "dimensionless" },
+      "upper": { "magnitude": 5.0, "unit": "dimensionless" }
+    },
+    {
+      "name": "b",
+      "lower": { "magnitude": -5.0, "unit": "dimensionless" },
+      "upper": { "magnitude": 5.0, "unit": "dimensionless" }
+    },
+    {
+      "name": "c",
+      "lower": { "magnitude": -10.0, "unit": "dimensionless" },
+      "upper": { "magnitude": 10.0, "unit": "dimensionless" }
+    },
+    {
+      "name": "x",
+      "lower": { "magnitude": -5.0, "unit": "dimensionless" },
+      "upper": { "magnitude": 5.0, "unit": "dimensionless" }
+    },
+    {
+      "name": "y",
+      "lower": { "magnitude": 2.8, "unit": "dimensionless" },
+      "upper": { "magnitude": 72.0, "unit": "dimensionless" }
+    }
   ],
   "data_file": "/path/to/quadratic_data.csv",
-  "input_data": [
-    {"column": "x", "name": "x", "unit": "dimensionless"}
-  ],
+  "input_data": [{ "column": "x", "name": "x", "unit": "dimensionless" }],
   "output_data": {
-    "columns": ["y"], 
-    "name": "y", 
+    "columns": ["y"],
+    "name": "y",
     "unit": "dimensionless"
   },
   "optimizer_type": "nlopt",
@@ -142,20 +162,23 @@ x,y
 ## Data Requirements
 
 ### File-Based Data Input
+
 All tools now require data to be provided via files. Supported formats:
 
 - **CSV** (`.csv`) - Most common, easy to create
 - **Excel** (`.xlsx`, `.xls`) - Spreadsheet format
-- **JSON** (`.json`) - Structured data format  
+- **JSON** (`.json`) - Structured data format
 - **Parquet** (`.parquet`) - Efficient columnar format
 
 ### Data Mapping
+
 Specify how file columns map to model variables:
 
 - **`input_data`**: List of `{"column": "col_name", "name": "var_name", "unit": "unit"}`
 - **`output_data`**: `{"columns": ["col1", "col2"], "name": "var_name", "unit": "unit"}`
 
 **Examples:**
+
 - Single input: `[{"column": "time", "name": "t", "unit": "second"}]`
 - Single output: `{"columns": ["voltage"], "name": "v", "unit": "volt"}`
 - Multi-output: `{"columns": ["x", "y"], "name": "position", "unit": "meter"}`
@@ -206,7 +229,7 @@ See the [main README](../../../README.md#getting-an-api-key) for instructions on
 
 ## Optimization Algorithms
 
-- **NLopt (Default)**:  Global search, gradient-based and gradient-free optimization, constraint support
+- **NLopt (Default)**: Global search, gradient-based and gradient-free optimization, constraint support
 - **SciPy**: Fast local search. easy tasks
 - **Nevergrad**: Global optimization, gradient-free
 
@@ -219,9 +242,9 @@ See the [main README](../../../README.md#getting-an-api-key) for instructions on
 
 ## Best Practices
 
-1. **Model Formulation**: Use JAX operations (jnp.*) for all mathematical functions
+1. **Model Formulation**: Use JAX operations (jnp.\*) for all mathematical functions
 2. **Data Preparation**: Create clean CSV/Excel files with clear column names
-3. **Parameter Bounds**: Set realistic bounds based on physical constraints  
+3. **Parameter Bounds**: Set realistic bounds based on physical constraints
 4. **Initial Values**: Choose initial parameters close to expected values
 5. **File Formats**: Use CSV for simplicity, Parquet for large datasets
 

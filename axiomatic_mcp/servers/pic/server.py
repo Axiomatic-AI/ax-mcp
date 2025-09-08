@@ -18,7 +18,7 @@ from .utils.pdk import flatten_pdks_response
 from .utils.wavelengths import get_default_wavelength_range, get_wavelengths_from_bounds, get_wavelengths_from_statements
 
 mcp = FastMCP(
-    name="AxPhotonicsPreview",
+    name="AxPhotonicsPreview Server",
     instructions="""This server provides tools to design, optimize,
     and simulate photonic integrated circuits.""",
     version="0.0.1",

@@ -1,4 +1,4 @@
-"""Digital Twin Optimizer MCP server using the Axiomatic API.
+"""AxModelFitter server using the Axiomatic API.
 
 This server provides tools for fitting custom mathematical models to experimental data
 using the Axiomatic AI platform's digital twin optimization API. It includes comprehensive
@@ -375,7 +375,7 @@ def evaluate_dt_model(payload: dict) -> dict:
 
 
 mcp = FastMCP(
-    name="Axiomatic Model Fitting Server",
+    name="AxModelFitter Server",
     instructions="""This server provides digital twin optimization using the Axiomatic AI platform.
 
     OPTIMIZATION WORKFLOW - FOLLOW THESE STEPS:

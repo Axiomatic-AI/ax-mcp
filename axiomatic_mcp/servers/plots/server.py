@@ -1,4 +1,4 @@
-"""Plot Parser MCP server"""
+"""AxPlotToData MCP server"""
 
 import json
 import math
@@ -82,7 +82,7 @@ PLOTS_SERVER_INSTRUCTIONS = """This server hosts tools for extracting numerical 
 It can analyze line plots and scatter plots and convert visual data points into a structured numerical format."""
 
 plots = FastMCP(
-    name="Axiomatic plots tools server",
+    name="AxPlotToData server",
     instructions=PLOTS_SERVER_INSTRUCTIONS,
     version="0.0.1",
 )

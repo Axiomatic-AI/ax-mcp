@@ -1,4 +1,4 @@
-# Axiomatic Equations Server
+# AxEquationExplorer Server
 
 An MCP server that provides equation composition and validation capabilities using the Axiomatic AI platform, with a focus on creating custom equations together with derivation recipes.
 

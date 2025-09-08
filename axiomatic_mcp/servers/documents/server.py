@@ -13,7 +13,7 @@ from mcp.types import TextContent
 from ...shared.documents.pdf_to_markdown import pdf_to_markdown
 
 mcp = FastMCP(
-    name="Axiomatic Documents Server",
+    name="AxDocumentParser Server",
     instructions="""This server provides tools to read, analyze, and process documents
     from the filesystem using the Axiomatic_AI Platform.""",
     version="0.0.1",

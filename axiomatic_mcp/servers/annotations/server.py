@@ -121,7 +121,7 @@ class AnnotationsResponse(BaseModel):
 
 
 mcp = FastMCP(
-    name="Axiomatic Annotations",
+    name="AxDocumentAnnotator Server",
     instructions="""This server provides tools to annotate pdfs with detailed analysis.""",
     version="0.0.1",
 )

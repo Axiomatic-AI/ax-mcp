@@ -29,7 +29,7 @@ async def _get_document_content(document: Path | str) -> str:
 
 
 mcp = FastMCP(
-    name="Axiomatic Equations Server",
+    name="AxEquationExplorer Server",
     instructions="""This server provides tools to compose and analyze equations.""",
     version="0.0.1",
 )
