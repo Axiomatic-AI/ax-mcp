@@ -103,7 +103,7 @@ We love pull requests! If you'd like to contribute code:
 
 ### Reporting Bugs
 
-Found a bug? Please help us fix it by [creating a bug report](https://github.com/axiomatic/ax-mcp/issues/new?template=bug_report.md). When reporting bugs:
+Found a bug? Please help us fix it by [creating a bug report](https://github.com/Axiomatic-AI/ax-mcp/issues/new?template=bug_report.md). When reporting bugs:
 
 - Use the bug report template to provide all necessary information
 - Include steps to reproduce the issue
@@ -112,7 +112,7 @@ Found a bug? Please help us fix it by [creating a bug report](https://github.com
 
 ### Requesting Features
 
-Have an idea for a new feature? We'd love to hear it! [Submit a feature request](https://github.com/axiomatic/ax-mcp/issues/new?template=feature_request.md) and:
+Have an idea for a new feature? We'd love to hear it! [Submit a feature request](https://github.com/Axiomatic-AI/ax-mcp/issues/new?template=feature_request.md) and:
 
 - Describe the problem your feature would solve
 - Explain your proposed solution
@@ -121,11 +121,11 @@ Have an idea for a new feature? We'd love to hear it! [Submit a feature request]
 
 ### Quick Links
 
-- 🐛 [Report a Bug](https://github.com/axiomatic/ax-mcp/issues/new?template=bug_report.md)
-- 💡 [Request a Feature](https://github.com/axiomatic/ax-mcp/issues/new?template=feature_request.md)
-- 📋 [View All Issues](https://github.com/axiomatic/ax-mcp/issues)
+- 🐛 [Report a Bug](https://github.com/Axiomatic-AI/ax-mcp/issues/new?template=bug_report.md)
+- 💡 [Request a Feature](https://github.com/Axiomatic-AI/ax-mcp/issues/new?template=feature_request.md)
+- 📋 [View All Issues](https://github.com/Axiomatic-AI/ax-mcp/issues)
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/axiomatic/ax-mcp/issues)
+- **Issues**: [GitHub Issues](https://github.com/Axiomatic-AI/ax-mcp/issues)
 - **Email**: developers@axiomatic-ai.com
