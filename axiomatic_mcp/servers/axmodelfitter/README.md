@@ -1,12 +1,40 @@
 # AxModelFitter Server
 
-An MCP server for fitting mathematical models to experimental data using the Axiomatic AI platform's optimization algorithms and mathematical modeling capabilities.
+An MCP server for fitting mathematical models to experimental data using the Axiomatic AI platform's optimization algorithms.
 
 The AxModelFitter enables AI assistants to fit mathematical models against experimental or simulation data using various optimization algorithms and to perform statistical analyses to assess fit quality, avoid overfitting, and select among competing models.
 
-## Tools Available
+## Installation
 
-> **Note**: All data must now be provided via files (CSV, Excel, JSON, Parquet). Direct data input is no longer supported.
+[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](cursor://anysphere.cursor-deeplink/mcp/install?name=AxModelFitter&config=eyJjb21tYW5kIjoidXZ4IC0tZnJvbSBheGlvbWF0aWMtbWNwIGF4bW9kZWxmaXR0ZXIiLCJlbnYiOnsiQVhJT01BVElDX0FQSV9LRVkiOiJ5b3VyLWFwaS1rZXktaGVyZSJ9fQ%3D%3D)
+
+### Quick Install (via PyPI)
+
+Add to your MCP client configuration:
+
+```json
+{
+  "AxModelFitter": {
+    "command": "uvx",
+    "args": ["--from", "axiomatic-mcp", "axmodelfitter"],
+    "env": {
+      "AXIOMATIC_API_KEY": "your-api-key-here"
+    }
+  }
+}
+```
+
+
+### Configuration
+
+Required Environment Variables
+
+- `AXIOMATIC_API_KEY`: Your Axiomatic AI API key (required)
+
+See the [main README](../../../README.md#getting-an-api-key) for instructions on obtaining an API key.
+
+
+## Model Fitting Tools
 
 ### `fit_model`
 
@@ -44,7 +72,7 @@ Provides template examples for common model fitting scenarios to guide developme
   - **Analytical Functions**
   - **Dynamic Systems**
 
-### `optimization_workflow`
+### `get_workflow_prompt`
 
 Provides step-by-step guidance for setting up and executing model fitting workflows.
 
@@ -53,17 +81,31 @@ Provides step-by-step guidance for setting up and executing model fitting workfl
 - Structured workflow covering:
   1. Model formulation and JAX implementation
   2. Parameter bounds and initial value selection
-  3. **File-based data preparation** and unit consistency
+  3. File-based data loading and unit consistency checking
   4. Optimizer and cost function selection
 
-### Additional Analysis Tools
+### Statistical Analysis Tools
 
 - **`calculate_r_squared`** - Calculate R² (coefficient of determination) for model evaluation
 - **`cross_validate_model`** - Perform cross-validation to assess model generalization
 - **`calculate_information_criteria`** - Compute AIC/BIC for model comparison
 - **`compare_models`** - Statistical comparison of multiple models
 
-**Example Usage:**
+
+## Data Requirements
+
+### File-Based Data Input
+All tools require tabular data to be provided via files. Ideally the column names indicate the units of the quantities. Otherwise, the units must be made explicitly clear in the user prompt. 
+
+Supported formats:
+
+- **CSV** (`.csv`) - Most common, easy to create
+- **Excel** (`.xlsx`, `.xls`) - Spreadsheet format
+- **JSON** (`.json`) - Structured data format  
+- **Parquet** (`.parquet`) - Efficient columnar format
+
+
+## Example Usage
 
 Via an LLM client such as Claude Desktop:
 
@@ -158,74 +200,6 @@ x,y
   "max_time": 10
 }
 ```
-
-## Data Requirements
-
-### File-Based Data Input
-
-All tools now require data to be provided via files. Supported formats:
-
-- **CSV** (`.csv`) - Most common, easy to create
-- **Excel** (`.xlsx`, `.xls`) - Spreadsheet format
-- **JSON** (`.json`) - Structured data format
-- **Parquet** (`.parquet`) - Efficient columnar format
-
-### Data Mapping
-
-Specify how file columns map to model variables:
-
-- **`input_data`**: List of `{"column": "col_name", "name": "var_name", "unit": "unit"}`
-- **`output_data`**: `{"columns": ["col1", "col2"], "name": "var_name", "unit": "unit"}`
-
-**Examples:**
-
-- Single input: `[{"column": "time", "name": "t", "unit": "second"}]`
-- Single output: `{"columns": ["voltage"], "name": "v", "unit": "volt"}`
-- Multi-output: `{"columns": ["x", "y"], "name": "position", "unit": "meter"}`
-
-## Installation
-
-[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=axiomatic-model-fitting&config=eyJjb21tYW5kIjoidXZ4IC0tZnJvbSBheGlvbWF0aWMtbWNwIGF4aW9tYXRpYy1tb2RlbC1maXR0aW5nIiwiZW52Ijp7IkFYSU9NQVRJQ19BUElfS0VZIjoieW91ci1hcGkta2V5LWhlcmUifX0%3D)
-
-### Quick Install (via PyPI)
-
-Add to your MCP client configuration:
-
-```json
-{
-  "axiomatic-model-fitting": {
-    "command": "uvx",
-    "args": ["--from", "axiomatic-mcp", "axiomatic-model-fitting"],
-    "env": {
-      "AXIOMATIC_API_KEY": "your-api-key-here"
-    }
-  }
-}
-```
-
-### Development Install
-
-For development or local modifications:
-
-```json
-{
-  "axiomatic-model-fitter": {
-    "command": "python",
-    "args": ["-m", "axiomatic_mcp.servers.model_fitter"],
-    "env": {
-      "AXIOMATIC_API_KEY": "your-api-key-here"
-    }
-  }
-}
-```
-
-## Configuration
-
-### Required Environment Variables
-
-- `AXIOMATIC_API_KEY`: Your Axiomatic AI API key (required)
-
-See the [main README](../../../README.md#getting-an-api-key) for instructions on obtaining an API key.
 
 ## Optimization Algorithms
 

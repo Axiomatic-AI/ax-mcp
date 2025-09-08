@@ -74,7 +74,7 @@ axiomatic-pic = "axiomatic_mcp.servers.pic:main"
 axiomatic-documents = "axiomatic_mcp.servers.documents:main"
 axiomatic-plots = "axiomatic_mcp.servers.plots:main"
 axiomatic-equations = "axiomatic_mcp.servers.equations:main"
-axiomatic-model-fitting = "axiomatic_mcp.servers.model_fitting:main"
+axiomatic-axmodelfitter = "axiomatic_mcp.servers.axmodelfitter:main"
 axiomatic-annotations = "axiomatic_mcp.servers.annotations:main"
 
 [tool.setuptools.packages.find]

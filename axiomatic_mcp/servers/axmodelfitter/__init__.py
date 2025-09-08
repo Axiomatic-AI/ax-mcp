@@ -1,5 +1,5 @@
 def main():
-    """Main entry point for the DT Optimizer server."""
+    """Main entry point for the AxModelFitter server."""
     from .server import mcp
 
     mcp.run(transport="stdio")
