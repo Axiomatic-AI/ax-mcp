@@ -31,7 +31,7 @@ Designs a photonic integrated circuit based on natural language descriptions and
 
 ### `simulate_circuit`
 
-Simulates a previously generated circuit and produces both the **wavelengths** used in the simulation and a **Jupyter Notebook** with the results.
+Simulates a previously generated circuit and returns both the wavelength range (**wavelengths**) used in the simulation and a **Jupyter Notebook** with the results.
 
 **Parameters:**
 
@@ -44,22 +44,6 @@ Simulates a previously generated circuit and produces both the **wavelengths** u
 - **Wavelengths**: A list of sampled wavelengths (default range around 1.25 μm ± 10%).
 - **Jupyter Notebook (`*_simulation.ipynb`)**: Notebook containing the simulation results.
 - **Structured Output**: Includes the notebook JSON and the wavelength list.
-
-**Example Usage:**
-
-```text
-Simulate the circuit.py generated for a ring resonator
-```
-
-**Sample Output (structured):**
-
-```json
-{
-  "notebook_path": "/path/to/circuit_simulation.ipynb",
-  "notebook": "{... Jupyter notebook JSON ...}",
-  "wavelengths": [1.125, 1.1275, 1.13, ..., 1.375]
-}
-```
 
 ---
 
@@ -75,41 +59,6 @@ Gets a list of all available Process Design Kits (PDKs), with its granted status
 
 - A list of existing PDKs, with name, description and granted status
 
-**Example Usage:**
-
-```
-Give me a list of available PDKs
-```
-
-**Sample Output (structured):**
-
-```json
-{
-  "pdks": [
-    {
-      "pdk_type": "cspdk.si220.cband",
-      "description": "Cornerstone PDK on platform Si220 for C-band",
-      "granted": true
-    },
-    {
-      "pdk_type": "cspdk.si220.oband",
-      "description": "Cornerstone PDK on platform Si220 for O-band",
-      "granted": true
-    },
-    {
-      "pdk_type": "amf.cband",
-      "description": "AMF PDK for C-band",
-      "granted": false
-    },
-    {
-      "pdk_type": "amf.oband",
-      "description": "AMF PDK for O-band",
-      "granted": false
-    }
-  ]
-}
-```
-
 ---
 
 ### `get_pdk_info`
@@ -124,11 +73,6 @@ Gets detailed information about a specific PDK, including its available cross-se
 
 - Detailed information for the specified PDK, including components and cross-sections.
 
-**Example Usage:**
-
-```
-Give me more information about the cspdk.si220.cband PDK
-```
 
 ## Features
 
@@ -231,6 +175,12 @@ See the [main README](https://github.com/Axiomatic-AI/ax-mcp#getting-an-api-key)
 1. **Design Generation**: Use the MCP server to create initial designs
 2. **Local Execution**: Run generated code with GDSFactory
 3. **Simulation**: Use `simulate_circuit` to generate wavelength sweeps and notebook results
+
+---
+
+## Examples
+
+Please find several use cases to walk you through [here](https://github.com/Axiomatic-AI/ax-mcp/examples/pic/README.md/).
 
 ---
 
