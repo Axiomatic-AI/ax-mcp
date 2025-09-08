@@ -14,7 +14,7 @@ from .services.notebook_service import NotebookService
 from .services.optimization_service import OptimizationService
 from .services.pdk_service import PdkService
 from .services.simulation_service import SimulationService
-from .utils.pdk import flatten_pdks_response
+from .utils.pdk import extract_pdk_type_from_code, flatten_pdks_response
 from .utils.wavelengths import get_default_wavelength_range, get_wavelengths_from_bounds, get_wavelengths_from_statements
 
 mcp = FastMCP(
@@ -132,7 +132,7 @@ async def simulate_circuit(
 
     code = await asyncio.to_thread(file_path.read_bytes)
     netlist = await circuit_service.get_netlist_from_code(code)
-
+    pdk_type = extract_pdk_type_from_code(code.decode("utf-8")) or "cspdk.si220.cband"
     wavelengths = None
     if statements_file_path:
         if not statements_file_path.exists():
@@ -146,7 +146,7 @@ async def simulate_circuit(
         wavelengths = get_wavelengths_from_bounds(*wavelength_range)
 
     if wavelengths is None:
-        wavelengths = get_default_wavelength_range()
+        wavelengths = get_default_wavelength_range(pdk_type=pdk_type)
 
     response = await simulation_service.simulate_from_code(
         {
