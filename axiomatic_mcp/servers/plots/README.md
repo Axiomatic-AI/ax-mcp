@@ -128,6 +128,8 @@ See the [main README](../../../README.md#getting-an-api-key) for instructions on
 
 ## Integration Examples
 
+A number of demos for the plots mcp can be found [here](../../../examples/plots/README.md).
+
 ### Python Integration
 
 ```python

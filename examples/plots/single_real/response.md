@@ -1,0 +1,416 @@
+Extracted plot data saved to: /Users/bryanpyo/Documents/ax-mcp/examples/plots/single_real/plot_data.json
+
+```json
+{
+  "series_points": [
+    {
+      "series_unique_id": 0,
+      "points": [
+        {
+          "x_value": 126.21,
+          "y_value": 0.99698
+        },
+        {
+          "x_value": 4.5307,
+          "y_value": 0.51118
+        },
+        {
+          "x_value": 16.828,
+          "y_value": 0.71057
+        },
+        {
+          "x_value": 70.55,
+          "y_value": 0.98973
+        },
+        {
+          "x_value": 36.246,
+          "y_value": 0.81208
+        },
+        {
+          "x_value": 179.29,
+          "y_value": 0.99698
+        },
+        {
+          "x_value": 77.023,
+          "y_value": 0.98973
+        },
+        {
+          "x_value": 80.906,
+          "y_value": 0.98973
+        },
+        {
+          "x_value": 90.615,
+          "y_value": 0.99698
+        },
+        {
+          "x_value": 113.27,
+          "y_value": 0.99698
+        },
+        {
+          "x_value": 84.142,
+          "y_value": 0.98973
+        },
+        {
+          "x_value": 61.489,
+          "y_value": 0.99698
+        },
+        {
+          "x_value": 7.767,
+          "y_value": 0.57281
+        },
+        {
+          "x_value": 23.948,
+          "y_value": 0.75045
+        },
+        {
+          "x_value": 74.434,
+          "y_value": 0.99698
+        },
+        {
+          "x_value": 21.359,
+          "y_value": 0.7432
+        },
+        {
+          "x_value": 93.851,
+          "y_value": 0.99698
+        },
+        {
+          "x_value": 9.7087,
+          "y_value": 0.60181
+        },
+        {
+          "x_value": 70.55,
+          "y_value": 0.99698
+        },
+        {
+          "x_value": 34.951,
+          "y_value": 0.76495
+        },
+        {
+          "x_value": 33.01,
+          "y_value": 0.76133
+        },
+        {
+          "x_value": 17.476,
+          "y_value": 0.68157
+        },
+        {
+          "x_value": 97.087,
+          "y_value": 0.98973
+        },
+        {
+          "x_value": 14.887,
+          "y_value": 0.61631
+        },
+        {
+          "x_value": 16.181,
+          "y_value": 0.69607
+        },
+        {
+          "x_value": 12.298,
+          "y_value": 0.60544
+        },
+        {
+          "x_value": 67.314,
+          "y_value": 0.99698
+        },
+        {
+          "x_value": 38.188,
+          "y_value": 0.80846
+        },
+        {
+          "x_value": 35.599,
+          "y_value": 0.79396
+        },
+        {
+          "x_value": 44.013,
+          "y_value": 0.82659
+        },
+        {
+          "x_value": 64.078,
+          "y_value": 0.98973
+        },
+        {
+          "x_value": 99.676,
+          "y_value": 0.99698
+        },
+        {
+          "x_value": 17.476,
+          "y_value": 0.6997
+        },
+        {
+          "x_value": 60.194,
+          "y_value": 0.9426
+        },
+        {
+          "x_value": 19.417,
+          "y_value": 0.73595
+        },
+        {
+          "x_value": 3.8835,
+          "y_value": 0.47492
+        },
+        {
+          "x_value": 165.7,
+          "y_value": 0.99698
+        },
+        {
+          "x_value": 20.712,
+          "y_value": 0.75045
+        },
+        {
+          "x_value": 30.421,
+          "y_value": 0.75045
+        },
+        {
+          "x_value": 55.663,
+          "y_value": 0.90997
+        },
+        {
+          "x_value": 5.8252,
+          "y_value": 0.5148
+        },
+        {
+          "x_value": 49.191,
+          "y_value": 0.85559
+        },
+        {
+          "x_value": 5.8252,
+          "y_value": 0.54018
+        },
+        {
+          "x_value": 102.91,
+          "y_value": 0.99698
+        },
+        {
+          "x_value": 33.657,
+          "y_value": 0.75045
+        },
+        {
+          "x_value": 18.77,
+          "y_value": 0.7432
+        },
+        {
+          "x_value": 172.82,
+          "y_value": 0.99698
+        },
+        {
+          "x_value": 7.1197,
+          "y_value": 0.55468
+        },
+        {
+          "x_value": 143.04,
+          "y_value": 0.99698
+        },
+        {
+          "x_value": 44.66,
+          "y_value": 0.81208
+        },
+        {
+          "x_value": 51.78,
+          "y_value": 0.85559
+        },
+        {
+          "x_value": 189.0,
+          "y_value": 1.0006
+        },
+        {
+          "x_value": 57.605,
+          "y_value": 0.9281
+        },
+        {
+          "x_value": 10.356,
+          "y_value": 0.59094
+        },
+        {
+          "x_value": 60.841,
+          "y_value": 0.96073
+        },
+        {
+          "x_value": 188.35,
+          "y_value": 1.0042
+        },
+        {
+          "x_value": 67.314,
+          "y_value": 0.98973
+        },
+        {
+          "x_value": 77.67,
+          "y_value": 0.99698
+        },
+        {
+          "x_value": 27.184,
+          "y_value": 0.75045
+        },
+        {
+          "x_value": 136.57,
+          "y_value": 0.99698
+        },
+        {
+          "x_value": 169.58,
+          "y_value": 0.99698
+        },
+        {
+          "x_value": 4.5307,
+          "y_value": 0.52931
+        },
+        {
+          "x_value": 27.832,
+          "y_value": 0.7432
+        },
+        {
+          "x_value": 14.239,
+          "y_value": 0.64532
+        },
+        {
+          "x_value": 61.489,
+          "y_value": 0.94622
+        },
+        {
+          "x_value": 55.663,
+          "y_value": 0.89184
+        },
+        {
+          "x_value": 182.52,
+          "y_value": 0.99698
+        },
+        {
+          "x_value": 146.28,
+          "y_value": 0.99698
+        },
+        {
+          "x_value": 49.191,
+          "y_value": 0.86284
+        },
+        {
+          "x_value": 36.893,
+          "y_value": 0.79758
+        },
+        {
+          "x_value": 55.016,
+          "y_value": 0.85921
+        },
+        {
+          "x_value": 162.46,
+          "y_value": 0.99698
+        },
+        {
+          "x_value": 24.595,
+          "y_value": 0.7432
+        },
+        {
+          "x_value": 122.98,
+          "y_value": 0.99698
+        },
+        {
+          "x_value": 5.8252,
+          "y_value": 0.52931
+        },
+        {
+          "x_value": 87.379,
+          "y_value": 0.98973
+        },
+        {
+          "x_value": 176.05,
+          "y_value": 0.99698
+        },
+        {
+          "x_value": 34.304,
+          "y_value": 0.77946
+        },
+        {
+          "x_value": 60.194,
+          "y_value": 0.9281
+        },
+        {
+          "x_value": 97.087,
+          "y_value": 0.99698
+        },
+        {
+          "x_value": 47.249,
+          "y_value": 0.84109
+        },
+        {
+          "x_value": 15.534,
+          "y_value": 0.64894
+        },
+        {
+          "x_value": 129.45,
+          "y_value": 0.99698
+        },
+        {
+          "x_value": 4.5307,
+          "y_value": 0.49305
+        },
+        {
+          "x_value": 14.887,
+          "y_value": 0.65982
+        },
+        {
+          "x_value": 87.379,
+          "y_value": 0.99698
+        },
+        {
+          "x_value": 56.958,
+          "y_value": 0.87372
+        },
+        {
+          "x_value": 38.835,
+          "y_value": 0.81571
+        },
+        {
+          "x_value": 93.851,
+          "y_value": 0.98973
+        },
+        {
+          "x_value": 15.534,
+          "y_value": 0.63082
+        },
+        {
+          "x_value": 56.958,
+          "y_value": 0.90997
+        },
+        {
+          "x_value": 11.65,
+          "y_value": 0.61631
+        },
+        {
+          "x_value": 106.8,
+          "y_value": 0.99698
+        },
+        {
+          "x_value": 185.76,
+          "y_value": 0.99698
+        },
+        {
+          "x_value": 132.69,
+          "y_value": 0.99698
+        },
+        {
+          "x_value": 155.99,
+          "y_value": 0.99698
+        },
+        {
+          "x_value": 5.8252,
+          "y_value": 0.49305
+        },
+        {
+          "x_value": 149.51,
+          "y_value": 0.99698
+        },
+        {
+          "x_value": 62.136,
+          "y_value": 0.98248
+        },
+        {
+          "x_value": 8.4142,
+          "y_value": 0.58731
+        }
+      ]
+    }
+  ]
+}
+```
+
+⏺ The data has been successfully extracted from the plot and saved to /Users/bryanpyo/Documents/ax-mcp/examples/plots/single_real/plot_data.json. The plot contains a single data series
+with 95 data points, with x-values ranging from approximately 3.88 to 189.0 and y-values ranging from about 0.47 to 1.00.
