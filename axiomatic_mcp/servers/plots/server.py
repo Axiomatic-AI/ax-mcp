@@ -78,7 +78,7 @@ def process_plot_parser_output(response_json, max_points: int = 100, sig_figs: i
     return SeriesPointsData(series_points=extracted_series_list)
 
 
-PLOTS_SERVER_INSTRUCTIONS = """This server hosts tools for extracting numerical data from plot images. 
+PLOTS_SERVER_INSTRUCTIONS = """This server hosts tools for extracting numerical data from plot images.
 It can analyze line plots and scatter plots and convert visual data points into a structured numerical format."""
 
 plots = FastMCP(
