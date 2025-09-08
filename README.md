@@ -30,10 +30,24 @@ Extract numerical data from plot images for analysis and reproduction.
 
 ## Getting an API Key
 
-All Axiomatic MCP servers require an API key:
-
 1. Fill the following [form](https://docs.google.com/forms/d/e/1FAIpQLSfScbqRpgx3ZzkCmfVjKs8YogWDshOZW9p-LVXrWzIXjcHKrQ/viewform?usp=dialog) to request an Axiomatic_AI API key.
-2. Add the API key to your MCP client configuration as `AXIOMATIC_API_KEY`
+2. Once received, add the API key to your MCP client configuration as described in the Configuration section below.
+
+## Configuration
+
+Add the following settings to your MCP client configuration file or environment variables.
+
+### API Key
+
+All Axiomatic MCP servers require an API:
+
+- `AXIOMATIC_API_KEY`: Your API key obtained after filling the request form.
+
+### Telemetry
+
+By default, we track tool usage to help us improve the services. You can optionally disable this feature:
+
+- Set `DISABLE_TELEMETRY: "true"` in your MCP client configuration.
 
 ## Installation
 

@@ -13,6 +13,7 @@ from fastmcp import FastMCP
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
+from ...providers.moesif_provider import add_moesif_middleware
 from ...shared import AxiomaticAPIClient
 from .data_file_utils import resolve_data_input, resolve_output_data_only
 
@@ -445,6 +446,8 @@ mcp = FastMCP(
     """,
     version="0.0.1",
 )
+
+add_moesif_middleware(mcp)
 
 
 @mcp.tool(

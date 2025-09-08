@@ -10,6 +10,7 @@ from fastmcp.exceptions import ToolError
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
+from ...providers.moesif_provider import add_moesif_middleware
 from ...shared.documents.pdf_to_markdown import pdf_to_markdown
 
 mcp = FastMCP(
@@ -18,6 +19,8 @@ mcp = FastMCP(
     from the filesystem using the Axiomatic_AI Platform.""",
     version="0.0.1",
 )
+
+add_moesif_middleware(mcp)
 
 
 @mcp.tool(

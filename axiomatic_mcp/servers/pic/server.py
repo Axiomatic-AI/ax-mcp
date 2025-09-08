@@ -9,6 +9,7 @@ from fastmcp import Context, FastMCP
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
+from ...providers.moesif_provider import add_moesif_middleware
 from .services.circuit_service import CircuitService
 from .services.notebook_service import NotebookService
 from .services.optimization_service import OptimizationService
@@ -24,6 +25,7 @@ mcp = FastMCP(
     version="0.0.1",
 )
 
+add_moesif_middleware(mcp)
 
 circuit_service = CircuitService()
 simulation_service = SimulationService()

@@ -12,6 +12,7 @@ from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 from pydantic import BaseModel, Field, field_validator
 
+from ...providers.moesif_provider import add_moesif_middleware
 from ...shared.api_client import AxiomaticAPIClient
 
 
@@ -125,6 +126,8 @@ mcp = FastMCP(
     instructions="""This server provides tools to annotate pdfs with detailed analysis.""",
     version="0.0.1",
 )
+
+add_moesif_middleware(mcp)
 
 
 @mcp.tool(

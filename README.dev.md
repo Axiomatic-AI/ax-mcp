@@ -19,13 +19,14 @@ make install-dev
 
 > See specific MCP server README for specific installation instructions.
 
-```json
+```jsonc
 {
   "axiomatic-documents": {
     "command": "python",
     "args": ["-m", "axiomatic_mcp.servers.documents"],
     "env": {
-      "AXIOMATIC_API_KEY": "your-api-key-here"
+      "AXIOMATIC_API_KEY": "your-api-key-here",
+      "DISABLE_TELEMETRY": "true" // optionally prevent sending logs to Moesif
     }
   }
 }
