@@ -1,0 +1,1 @@
+Provide accurate annotations for the paper about energy performance optimized design of silicon photonic interconnection networks for high performance computing. Specifically, we are interested in reproducing the devices presented in figure 1.

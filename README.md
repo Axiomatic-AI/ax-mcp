@@ -87,7 +87,45 @@ Install only the domain servers you need. Each server runs independently, so you
 1. Verify your API key is set correctly
 2. Check internet connection
 
+## Contributing
+
+We welcome contributions from the community! Here's how you can help:
+
+### Submitting Pull Requests
+
+We love pull requests! If you'd like to contribute code:
+
+1. Fork the repository
+2. Create a new branch for your feature or fix
+3. Make your changes and test them thoroughly
+4. Submit a pull request with a clear description of your changes
+5. Reference any related issues in your PR description
+
+### Reporting Bugs
+
+Found a bug? Please help us fix it by [creating a bug report](https://github.com/Axiomatic-AI/ax-mcp/issues/new?template=bug_report.md). When reporting bugs:
+
+- Use the bug report template to provide all necessary information
+- Include steps to reproduce the issue
+- Add relevant error messages and logs
+- Specify your environment details (OS, Python version, etc.)
+
+### Requesting Features
+
+Have an idea for a new feature? We'd love to hear it! [Submit a feature request](https://github.com/Axiomatic-AI/ax-mcp/issues/new?template=feature_request.md) and:
+
+- Describe the problem your feature would solve
+- Explain your proposed solution
+- Share any alternatives you've considered
+- Provide specific use cases
+
+### Quick Links
+
+- 🐛 [Report a Bug](https://github.com/Axiomatic-AI/ax-mcp/issues/new?template=bug_report.md)
+- 💡 [Request a Feature](https://github.com/Axiomatic-AI/ax-mcp/issues/new?template=feature_request.md)
+- 📋 [View All Issues](https://github.com/Axiomatic-AI/ax-mcp/issues)
+
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/axiomatic/ax-mcp/issues)
+- **Issues**: [GitHub Issues](https://github.com/Axiomatic-AI/ax-mcp/issues)
 - **Email**: developers@axiomatic-ai.com

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "axiomatic-mcp"
-version = "0.0.10"
+version = "0.0.11"
 description = "Modular MCP servers for Axiomatic_AI"
 authors = [{name = "Axiomatic Team", email = "developers@axiomatic-ai.com"}]
 readme = "README.md"
@@ -53,6 +53,20 @@ dev = [
 ]
 lean = [
     "leanclient==0.1.14",
+]
+pic = [
+    "gdsfactory>=9.7.0",
+    "cspdk>=1.0.1",
+    "kfactory>=1.7.3",
+    "klayout>=0.30.2",
+    "iklayout>=0.0.8",
+    "ipympl>=0.9.7",
+    "klujax>=0.4.3",
+    "sax>=0.14.5",
+    "plotly>=6.1.2",
+    "numpy>=1.21.0",
+    "pandas>=1.3.0",
+    "scikit-learn>=1.0.0"
 ]
 
 [project.scripts]

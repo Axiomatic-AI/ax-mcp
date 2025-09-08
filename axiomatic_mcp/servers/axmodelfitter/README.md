@@ -1,8 +1,8 @@
-# AxModelFitter
+# AxModelFitter Server
 
 An MCP server for fitting mathematical models to experimental data using the Axiomatic AI platform's optimization algorithms.
 
-AxModelFitter enables AI assistants to fit mathematical models against experimental or simulation data using various optimization algorithms. The tools provided also enable the AI assistants to perform statistical analyses to assess fit quality, to ensure the data is neither over- nor underfit, and to select the best among multiple competing models.
+The AxModelFitter enables AI assistants to fit mathematical models against experimental or simulation data using various optimization algorithms and to perform statistical analyses to assess fit quality, avoid overfitting, and select among competing models.
 
 ## Installation
 
@@ -46,9 +46,9 @@ Fits mathematical models to experimental data using various optimization algorit
 - `function_source`: JAX-compatible function source code
 - `function_name`: Function name (e.g., 'y')
 - `parameters`: Initial parameter guesses
-- `bounds`:  ALL parameter/input/output bounds
+- `bounds`: ALL parameter/input/output bounds
 - `data_file`: Path to your data file (CSV, Excel, JSON, Parquet)
-- `input_data`: List mapping file columns to input variables  
+- `input_data`: List mapping file columns to input variables
 - `output_data`: Dictionary mapping file columns to output variables
 
 **Selected optional arguments**
@@ -86,10 +86,10 @@ Provides step-by-step guidance for setting up and executing model fitting workfl
 
 ### Statistical Analysis Tools
 
-- **`calculate_r_squared`** - Calculate R² (coefficient of determination) for evaluating quality of model fit. 
-- **`cross_validate_model`** - Perform cross-validation to assess model generalization capabilities and ensure data is neither over nor underfit.  
-- **`calculate_information_criteria`** - Compute Akaike and Bayesian information criteria (AIC/BIC) for model comparison
-- **`compare_models`** - Statistical comparison of multiple models based on AIC/BIC
+- **`calculate_r_squared`** - Calculate R² (coefficient of determination) for model evaluation
+- **`cross_validate_model`** - Perform cross-validation to assess model generalization
+- **`calculate_information_criteria`** - Compute AIC/BIC for model comparison
+- **`compare_models`** - Statistical comparison of multiple models
 
 
 ## Data Requirements
@@ -114,6 +114,7 @@ Via an LLM client such as Claude Desktop:
 Example input for testing with the MCP Inspector (using file-based data):
 
 **First, create a CSV file** (e.g., `quadratic_data.csv`):
+
 ```csv
 x,y
 -5,71.63
@@ -149,30 +150,49 @@ x,y
 ```
 
 **Then use the `fit_model` tool**:
+
 ```json
 {
   "model_name": "SimpleQuadratic",
   "function_source": "def y(x, a, b, c): return a * x**2 + b * x + c",
   "function_name": "y",
   "parameters": [
-    {"name": "a", "value": {"magnitude": 1.0, "unit": "dimensionless"}},
-    {"name": "b", "value": {"magnitude": 2.0, "unit": "dimensionless"}},
-    {"name": "c", "value": {"magnitude": -5.0, "unit": "dimensionless"}}
+    { "name": "a", "value": { "magnitude": 1.0, "unit": "dimensionless" } },
+    { "name": "b", "value": { "magnitude": 2.0, "unit": "dimensionless" } },
+    { "name": "c", "value": { "magnitude": -5.0, "unit": "dimensionless" } }
   ],
   "bounds": [
-    {"name": "a", "lower": {"magnitude": 0.5, "unit": "dimensionless"}, "upper": {"magnitude": 5.0, "unit": "dimensionless"}},
-    {"name": "b", "lower": {"magnitude": -5.0, "unit": "dimensionless"}, "upper": {"magnitude": 5.0, "unit": "dimensionless"}},
-    {"name": "c", "lower": {"magnitude": -10.0, "unit": "dimensionless"}, "upper": {"magnitude": 10.0, "unit": "dimensionless"}},
-    {"name": "x", "lower": {"magnitude": -5.0, "unit": "dimensionless"}, "upper": {"magnitude": 5.0, "unit": "dimensionless"}},
-    {"name": "y", "lower": {"magnitude": 2.8, "unit": "dimensionless"}, "upper": {"magnitude": 72.0, "unit": "dimensionless"}}
+    {
+      "name": "a",
+      "lower": { "magnitude": 0.5, "unit": "dimensionless" },
+      "upper": { "magnitude": 5.0, "unit": "dimensionless" }
+    },
+    {
+      "name": "b",
+      "lower": { "magnitude": -5.0, "unit": "dimensionless" },
+      "upper": { "magnitude": 5.0, "unit": "dimensionless" }
+    },
+    {
+      "name": "c",
+      "lower": { "magnitude": -10.0, "unit": "dimensionless" },
+      "upper": { "magnitude": 10.0, "unit": "dimensionless" }
+    },
+    {
+      "name": "x",
+      "lower": { "magnitude": -5.0, "unit": "dimensionless" },
+      "upper": { "magnitude": 5.0, "unit": "dimensionless" }
+    },
+    {
+      "name": "y",
+      "lower": { "magnitude": 2.8, "unit": "dimensionless" },
+      "upper": { "magnitude": 72.0, "unit": "dimensionless" }
+    }
   ],
   "data_file": "/path/to/quadratic_data.csv",
-  "input_data": [
-    {"column": "x", "name": "x", "unit": "dimensionless"}
-  ],
+  "input_data": [{ "column": "x", "name": "x", "unit": "dimensionless" }],
   "output_data": {
-    "columns": ["y"], 
-    "name": "y", 
+    "columns": ["y"],
+    "name": "y",
     "unit": "dimensionless"
   },
   "optimizer_type": "nlopt",
@@ -183,7 +203,7 @@ x,y
 
 ## Optimization Algorithms
 
-- **NLopt (Default)**:  Global search, gradient-based and gradient-free optimization, constraint support
+- **NLopt (Default)**: Global search, gradient-based and gradient-free optimization, constraint support
 - **SciPy**: Fast local search. easy tasks
 - **Nevergrad**: Global optimization, gradient-free
 
@@ -196,9 +216,9 @@ x,y
 
 ## Best Practices
 
-1. **Model Formulation**: Use JAX operations (jnp.*) for all mathematical functions
+1. **Model Formulation**: Use JAX operations (jnp.\*) for all mathematical functions
 2. **Data Preparation**: Create clean CSV/Excel files with clear column names
-3. **Parameter Bounds**: Set realistic bounds based on physical constraints  
+3. **Parameter Bounds**: Set realistic bounds based on physical constraints
 4. **Initial Values**: Choose initial parameters close to expected values
 5. **File Formats**: Use CSV for simplicity, Parquet for large datasets
 

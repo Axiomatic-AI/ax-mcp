@@ -1,4 +1,4 @@
-"""AxModelFitter MCP server using the Axiomatic API.
+"""AxModelFitter server using the Axiomatic API.
 
 This server provides tools for fitting custom mathematical models to experimental data
 using the Axiomatic AI platform's optimization API. It includes comprehensive
@@ -375,8 +375,8 @@ def evaluate_model(payload: dict) -> dict:
 
 
 mcp = FastMCP(
-    name="AxModelFitter",
-    instructions="""This server provides mathematical model fitting using the Axiomatic AI platform.
+    name="AxModelFitter Server",
+    instructions="""This server provides mathematical model fitting capabilities using the Axiomatic AI platform.
 
     Fitting Workflow - FOLLOW THESE STEPS:
 

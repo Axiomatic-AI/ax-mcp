@@ -4,7 +4,15 @@ An MCP server for designing, optimizing, and simulating Photonic Integrated Circ
 
 ## Overview
 
-The PIC Designer server enables AI assistants to create photonic integrated circuit designs using natural language descriptions. It leverages the Axiomatic AI platform to generate GDSFactory-compatible Python code for photonic components and circuits, and provides tools to simulate and optimize them.
+The AxPhotonicsPreview Server enables AI assistants to create photonic integrated circuit designs using natural language descriptions. It leverages the Axiomatic AI platform to generate GDSFactory-compatible Python code for photonic components and circuits, and provides tools to simulate and optimize them.
+
+## Installation guide
+
+First, make sure that you have the AxPhotonicsPreview dependencies installed:
+
+```bash
+pip install "axiomatic-mcp[pic]"
+```
 
 ## Tools Available
 

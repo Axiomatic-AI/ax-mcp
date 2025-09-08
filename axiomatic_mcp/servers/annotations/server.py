@@ -1,4 +1,5 @@
 import asyncio
+import textwrap
 import uuid
 from datetime import datetime
 from enum import Enum
@@ -120,7 +121,7 @@ class AnnotationsResponse(BaseModel):
 
 
 mcp = FastMCP(
-    name="Axiomatic Annotations",
+    name="AxDocumentAnnotator Server",
     instructions="""This server provides tools to annotate pdfs with detailed analysis.""",
     version="0.0.1",
 )
@@ -162,15 +163,42 @@ async def annotate_file_main(file_path: Path, query: str) -> ToolResult:
             format_annotations(annotations_response.annotations) if annotations_response.annotations else "No annotations found for the given query."
         )
 
+    except Exception as e:
+        raise ToolError(f"Failed to annotate file: {e!s}") from e
+
+    try:
+        with (file_path.parent / f"{file_path.stem}_annotations.md").open("w", encoding="utf-8") as f:
+            f.write(annotations_text)
+    except Exception as e:
         return ToolResult(
             content=[
                 TextContent(
-                    type="text", text=f"Successfully annotated {file_path.name}\n\n**Query:** {query}\n\n**Annotations:**\n\n{annotations_text}"
+                    type="text",
+                    text=textwrap.dedent(
+                        f"""Successfully annotated {file_path.name}\n\n
+                    Failed to save markdown file: {e!s}\n\n
+                    **Query:** {query}\n\n
+                    **Annotations:**\n\n{annotations_text}"""
+                    ),
                 )
             ]
         )
-    except Exception as e:
-        raise ToolError(f"Failed to annotate file: {e!s}") from e
+
+    # Return the result
+    return ToolResult(
+        content=[
+            TextContent(
+                type="text",
+                text=textwrap.dedent(
+                    f"""Successfully annotated {file_path.name}\n\n
+                    Successfully saved markdown file: {file_path.parent / f"{file_path.stem}_annotations.md"}\n\n
+                    **Query:** {query}\n\n
+                    **Annotations:**\n\n
+                    {annotations_text}"""
+                ),
+            )
+        ]
+    )
 
 
 def format_annotations(annotations: list[PDFAnnotation] | list[PDFAnnotationOld]) -> str:
