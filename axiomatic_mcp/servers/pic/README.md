@@ -24,7 +24,7 @@ Designs a photonic integrated circuit based on natural language descriptions and
 
 - `query` (str, required): Natural language description of the desired photonic circuit
 - `existing_code` (str, optional): Existing GDSFactory code to refine or build upon
-- `output_path` (Path, optional): Path where the generated files (`circuit.py` and `statements.json`) will be stored. Defaults to the current working directory.
+- `output_path` (str, optional): Absolute path where the generated files (`circuit.py` and `statements.json`) will be stored. Defaults to the current working directory.
 - `pdk_type` (str, optional): The pdk to be used by the tool to generate a circuit. If not provided, the user will be asked to chose from available ones.
 
 **Outputs:**
@@ -43,8 +43,8 @@ Simulates a previously generated circuit and produces both the **wavelengths** u
 
 **Parameters:**
 
-- `file_path` (Path, required): Absolute path to the Python file (`circuit.py`) containing the circuit design.
-- `statements_file_path` (Path, optional): Absolute path to a JSON statements file to define the wavelength range
+- `file_path` (str, required): Absolute path to the Python file (`circuit.py`) containing the circuit design.
+- `statements_file_path` (str, optional): Absolute path to a JSON statements file to define the wavelength range
 - `wavelength_range` (tuple[float, float, int], optional): wavelength range (start, end, number of points) in um. Overridden by statements_file_path
 
 **Outputs:**
@@ -77,8 +77,8 @@ Optimizes a photonic circuit by refining the generated code using its formalized
 
 **Parameters:**
 
-- `code_path` (Path, required): Path to the Python file containing the circuit code.
-- `statements_path` (Path, required): Path to the JSON file containing the circuit statements.
+- `code_path` (str, required): Path to the Python file containing the circuit code.
+- `statements_path` (str, required): Path to the JSON file containing the circuit statements.
 
 **Outputs:**
 

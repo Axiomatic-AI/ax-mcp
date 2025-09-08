@@ -42,7 +42,7 @@ async def design(
     query: Annotated[str, "The query to design the circuit"],
     existing_code: Annotated[str | None, "Existing code to use as a reference to refine"] = None,
     output_path: Annotated[
-        Path | None, "The path to save the circuit and statements files. If not provided, the files will be saved in the current working directory."
+        str | None, "The path to save the circuit and statements files. If not provided, the files will be saved in the current working directory."
     ] = None,
     pdk_type: Annotated[str | None, "The user's selected PDK. If none is passed, we will prompt the user for one."] = None,
 ) -> ToolResult:
@@ -74,7 +74,7 @@ async def design(
 
     formalize_response = circuit_service.get_statements(formalize_body)
 
-    file_path = output_path or Path.cwd()
+    file_path = Path(output_path) if output_path else Path.cwd()
 
     if not file_path.exists():
         file_path.mkdir(parents=True)
@@ -105,8 +105,8 @@ async def design(
     description="Simulates a circuit from code and returns a Jupyter notebook with results",
 )
 async def simulate_circuit(
-    file_path: Annotated[Path, "The absolute path to the python file to analyze"],
-    statements_file_path: Annotated[Path | None, "Optional path to a JSON statements file to define the wavelength range"] = None,
+    file_path: Annotated[str, "The absolute path to the python file to analyze"],
+    statements_file_path: Annotated[str | None, "Optional path to a JSON statements file to define the wavelength range"] = None,
     wavelength_range: Annotated[
         tuple[float, float, int] | None, "Optional wavelength range (start, end, number of points) in um. Overridden by statements_file_path."
     ] = None,
@@ -124,6 +124,7 @@ async def simulate_circuit(
     Returns:
         A ToolResult object with the path to the generated notebook and simulation output.
     """
+    file_path = Path(file_path)
     if not file_path.exists():
         raise FileNotFoundError(f"Code not found: {file_path}")
 
@@ -135,6 +136,7 @@ async def simulate_circuit(
 
     wavelengths = None
     if statements_file_path:
+        statements_file_path = Path(statements_file_path)
         if not statements_file_path.exists():
             raise FileNotFoundError(f"Statement file not found: {file_path}")
         statements_raw = await asyncio.to_thread(statements_file_path.read_bytes)
@@ -224,10 +226,12 @@ async def get_pdk_info(
     tags=["optimize", "gfsfactory"],
 )
 async def optimize_circuit(
-    code_path: Annotated[Path, "Path to the Python file containing the circuit code"],
-    statements_path: Annotated[Path, "Path to the JSON file containing the circuit statements"],
+    code_path: Annotated[str, "Path to the Python file containing the circuit code"],
+    statements_path: Annotated[str, "Path to the JSON file containing the circuit statements"],
 ) -> ToolResult:
     """Optimize a photonic integrated circuit."""
+    code_path = Path(code_path)
+    statements_path = Path(statements_path)
     if not code_path.exists():
         raise FileNotFoundError(f"Circuit code not found: {code_path}")
     if not statements_path.exists():
