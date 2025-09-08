@@ -10,15 +10,30 @@ AxModelFitter enables AI assistants to fit mathematical models against experimen
 
 If you are using Cursor, click the buttom below for 1-click installation.
 
-[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=AxModelFitter&config=eyJjb21tYW5kIjoidXZ4IC0tZnJvbSBheGlvbWF0aWMtbWNwIGF4bW9kZWxmaXR0ZXIiLCJlbnYiOnsiQVhJT01BVElDX0FQSV9LRVkiOiJ5b3VyLWFwaS1rZXktaGVyZSJ9fQ%3D%3D)
+[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=axiomatic-axmodelfitter&config=eyJjb21tYW5kIjoidXZ4IC0tZnJvbSBheGlvbWF0aWMtbWNwIGF4aW9tYXRpYy1heG1vZGVsZml0dGVyIiwiZW52Ijp7IkFYSU9NQVRJQ19BUElfS0VZIjoieW91ci1hcGkta2V5LWhlcmUifX0%3D)
 
 Otherwise, add to the MCP client configuration of your preferred IDE or langauge model app:
 
 ```json
 {
-  "AxModelFitter": {
+  "axiomatic-axmodelfitter": {
     "command": "uvx",
-    "args": ["--from", "axiomatic-mcp", "axmodelfitter"],
+    "args": ["--from", "axiomatic-mcp", "axiomatic-axmodelfitter"],
+    "env": {
+      "AXIOMATIC_API_KEY": "your-api-key-here"
+    }
+  }
+}
+```
+
+### Development Install 
+For development or local modifications:
+
+```json
+{
+  "axiomatic-axmodelfitter": {
+    "command": "python",
+    "args": ["-m", "axiomatic_mcp.servers.axmodelfitter"],
     "env": {
       "AXIOMATIC_API_KEY": "your-api-key-here"
     }

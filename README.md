@@ -16,7 +16,7 @@ Convert PDF documents to markdown with advanced OCR and layout understanding.
 
 Create intelligent annotations for PDF documents with contextual analysis, equation extraction, and parameter identification.
 
-### ⚙️ [AxModelFitter](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/model_fitting/)
+### ⚙️ [AxModelFitter](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/axmodelfitter/)
 
 Fit parametric models or digital twins to observational data using advanced statistical analysis and optimization algorithms.
 
