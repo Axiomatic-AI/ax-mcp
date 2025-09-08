@@ -20,7 +20,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 keywords = ["mcp", "axiomatic", "ai", "fastmcp"]
-urls = {Homepage = "https://github.com/axiomatic/ax-mcp", Issues = "https://github.com/axiomatic/ax-mcp/issues"}
+urls = {Homepage = "https://github.com/Axiomatic-AI/ax-mcp", Issues = "https://github.com/Axiomatic-AI/ax-mcp/issues"}
 dependencies = [
     "fastmcp>=0.1.0",
     "pydantic>=2.0.0",
