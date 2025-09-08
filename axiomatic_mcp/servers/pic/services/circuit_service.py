@@ -19,7 +19,7 @@ class CircuitService(SingletonBase):
             raise ValueError("No code content provided.")
 
         # Load the template (from axiomatic_mcp/templates/get_netlist.template)
-        template_code = files("axiomatic_mcp.templates").joinpath("get_netlist.template").read_text()
+        template_code = (files("axiomatic_mcp") / "templates" / "get_netlist.template").read_text()
 
         # Merge user code + template
         full_code = f"{current_file_content.decode()}\n\n{template_code}"

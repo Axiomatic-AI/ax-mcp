@@ -20,10 +20,10 @@ def get_wavelengths_from_statements(statements: list[dict[str, Any]], num_points
 def get_default_wavelength_range(num_points: int = 10000, pdk_type: str = "cspdk.si220.cband") -> list[float]:
     if pdk_type == "cspdk.si220.cband":
         center = 1.55
-        span = 0.01
+        span = 0.05
     else:
         center = 1.31
-        span = 0.01
+        span = 0.05
     return get_linear_range(center - span, center + span, num_points)
 
 
