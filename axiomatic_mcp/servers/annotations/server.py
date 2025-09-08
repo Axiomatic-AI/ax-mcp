@@ -133,9 +133,10 @@ mcp = FastMCP(
     tags=["pdf", "annotate", "analyze"],
 )
 async def annotate_file(
-    file_path: Annotated[Path, "The absolute path to the pdf file to annotate"],
+    file_path: Annotated[str, "The absolute path to the pdf file to annotate"],
     query: Annotated[str, "The specific instructions or query to use for annotating the file"],
 ) -> ToolResult:
+    file_path = Path(file_path)
     return await annotate_file_main(file_path, query)
 
 

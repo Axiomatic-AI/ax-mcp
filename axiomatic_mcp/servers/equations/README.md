@@ -10,7 +10,7 @@ Generates the desired equation from all the other equations in the source text t
 
 **Parameters:**
 
-- `document` (Path, required): Path to the PDF file to analyze
+- `document` (str, required): Path to the PDF file to analyze
 - `task` (str, required): Description of the expression of interest
 
 **Returns:**
@@ -53,7 +53,7 @@ Validates equations or corrects potential errors. Produces a corrected Python fi
 
 **Parameters:**
 
-- `document` (Path, required): Path to the PDF or Markdown file to analyze
+- `document` (str, required): Path to the PDF or Markdown file to analyze
 - `task` (str, required): Task for equation checking (e.g., “check if E=mc² is correct”)
 
 **Returns:**
