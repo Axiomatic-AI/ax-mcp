@@ -19,7 +19,7 @@ from .utils.wavelengths import get_default_wavelength_range, get_wavelengths_fro
 
 mcp = FastMCP(
     name="AxPhotonicsPreview Server",
-    instructions="""This server provides tools to design, optimize,
+    instructions="""This server provides tools to design
     and simulate photonic integrated circuits.""",
     version="0.0.1",
 )
