@@ -106,10 +106,6 @@ async def design(
 )
 async def simulate_circuit(
     file_path: Annotated[Path, "The absolute path to the python file to analyze"],
-    statements_file_path: Annotated[Path | None, "Optional path to a JSON statements file to define the wavelength range"] = None,
-    wavelength_range: Annotated[
-        tuple[float, float, int] | None, "Optional wavelength range (start, end, number of points) in um. Overridden by statements_file_path."
-    ] = None,
 ) -> ToolResult:
     """Simulates a circuit and saves the results in a Jupyter notebook.
 
@@ -118,8 +114,6 @@ async def simulate_circuit(
 
     Args:
         file_path: Path to the Python circuit file.
-        statements_file_path: Optional path to a JSON file to extract the wavelength range.
-        wavelength_range: Optional tuple for the simulation wavelength.
 
     Returns:
         A ToolResult object with the path to the generated notebook and simulation output.
@@ -134,6 +128,8 @@ async def simulate_circuit(
     netlist = await circuit_service.get_netlist_from_code(code)
     pdk_type = extract_pdk_type_from_code(code.decode("utf-8")) or "cspdk.si220.cband"
     wavelengths = None
+    # TODO: figure out why accepting those values as inpout does not work on some systems
+    statements_file_path, wavelength_range = None, None
     if statements_file_path:
         if not statements_file_path.exists():
             raise FileNotFoundError(f"Statement file not found: {file_path}")
