@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "axiomatic-mcp"
-version = "0.0.11"
+version = "0.1.0"
 description = "Modular MCP servers for Axiomatic_AI"
 authors = [{name = "Axiomatic Team", email = "developers@axiomatic-ai.com"}]
 readme = "README.md"
