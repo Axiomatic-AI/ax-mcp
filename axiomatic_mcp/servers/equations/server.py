@@ -6,27 +6,38 @@ from fastmcp.exceptions import ToolError
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
+from axiomatic_mcp.shared.api_client import AxiomaticAPIClient
 from axiomatic_mcp.shared.documents.pdf_to_markdown import pdf_to_markdown
 
 from ...providers.moesif_provider import add_moesif_middleware
-from ...shared import AxiomaticAPIClient
 
 
 async def _get_document_content(document: Path | str) -> str:
     """Helper function to extract document content from either a file path or direct content."""
     if isinstance(document, Path):
-        if document.exists() and document.suffix.lower() == ".pdf":
+        if not document.exists():
+            raise ValueError(f"File not found: {document}")
+
+        if document.suffix.lower() == ".pdf":
             response = await pdf_to_markdown(document)
             return response.markdown
+        elif document.suffix.lower() in [".md", ".txt"]:
+            with Path.open(document, encoding="utf-8") as f:
+                return f.read()
         else:
-            raise ValueError(f"PDF file not found or invalid: {document}")
+            raise ValueError(f"Unsupported file type: {document.suffix}. Supported types: .pdf, .md, .txt")
 
-    potential_path = Path(document)
-    if potential_path.exists() and potential_path.suffix.lower() == ".pdf":
-        response = await pdf_to_markdown(potential_path)
-        return response.markdown
-    else:
-        return document
+    if len(document) < 500 and "\n" not in document:
+        potential_path = Path(document)
+        if potential_path.exists():
+            if potential_path.suffix.lower() == ".pdf":
+                response = await pdf_to_markdown(potential_path)
+                return response.markdown
+            elif potential_path.suffix.lower() in [".md", ".txt"]:
+                with Path.open(potential_path, encoding="utf-8") as f:
+                    return f.read()
+
+    return document
 
 
 mcp = FastMCP(
@@ -39,7 +50,7 @@ add_moesif_middleware(mcp)
 
 
 @mcp.tool(
-    name="function_finder",
+    name="find_functional_form",
     description=(
         "Compose an expression of your interest given the information from the source documents "
         "and equations residing there. Provide description of the expression you want to compose."
@@ -56,15 +67,16 @@ async def find_expression(
     together with sympy code that explains how it was derived."""
     try:
         doc_content = await _get_document_content(document)
-        input_body = {"markdown": doc_content, "task": task}
-        response = AxiomaticAPIClient().post("/document/expression/compose/markdown", data=input_body)
 
-        code = response.get("composition_code", "")
+        input_body = {"markdown": doc_content, "task": task}
+        response = AxiomaticAPIClient().post("/document/expression/compose/fast/markdown", data=input_body)
+
+        code = response.get("composer_code", "")
 
         if not code:
-            raise ToolError("No composition_code returned from service")
+            raise ToolError("No composer_code returned from service")
 
-        code = response.get("composition_code", "")
+        code = response.get("composer_code", "")
 
         if isinstance(document, Path) or (isinstance(document, str) and Path(document).exists()):
             doc_path = Path(document)
@@ -77,12 +89,9 @@ async def find_expression(
 
         return ToolResult(
             content=[
-                TextContent(
-                    type="text",
-                    text=f"Generated expression composition for: {file_path}\n\n```python\n{code}\n```",
-                )
-            ],
-            structured_content={"result": {"status": "success", "path": str(file_path), "message": f"Equation code written to {file_path}"}},
+                TextContent(type="text", text=f"Comments: {response.get('comments', '')}"),
+                TextContent(type="text", text=f"Code: {response.get('composer_code', '')}"),
+            ]
         )
 
     except Exception as e:
@@ -90,7 +99,7 @@ async def find_expression(
 
 
 @mcp.tool(
-    name="equation_checker",
+    name="check_equation",
     description=(
         "Ask the agent to check the correctness of the equation or correct potential errors. "
         "This tool validates equations and provides corrections if needed."
@@ -108,12 +117,12 @@ async def check_equation(
         doc_content = await _get_document_content(document)
         input_body = {"markdown": doc_content, "task": task}
         # Note: Using the same endpoint for now, but this could be changed to a dedicated checking endpoint
-        response = AxiomaticAPIClient().post("/document/expression/compose/markdown", data=input_body)
+        response = AxiomaticAPIClient().post("/document/expression/compose/fast/markdown", data=input_body)
 
         return ToolResult(
             content=[
-                TextContent(type="text", text=f"Validation Results: {response.get('validation_results', response.get('comments', ''))}"),
-                TextContent(type="text", text=f"Corrections: {response.get('corrections', response.get('composition_code', ''))}"),
+                TextContent(type="text", text=f"Comments: {response.get('comments', '')}"),
+                TextContent(type="text", text=f"Code: {response.get('composer_code', '')}"),
             ]
         )
 

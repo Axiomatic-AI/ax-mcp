@@ -24,7 +24,7 @@ add_moesif_middleware(mcp)
 
 
 @mcp.tool(
-    name="document_to_markdown",
+    name="parse_pdf_to_md",
     description="""
     Convert a PDF document to markdown using Axiomatic's advanced OCR.
     The output will be a markdown file with the same name as the input file,

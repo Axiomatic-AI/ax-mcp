@@ -4,9 +4,9 @@ An MCP server that provides equation composition and validation capabilities usi
 
 ## Tools Available
 
-### `function_finder`
+### `find_functional_form`
 
-Generates the desired equation from all the other equations in the source text together with a Python file explaining the derivation steps.
+Generates the desired equation from all the other equations in the source text (and necessary external knowledge) in the form of a Python file explaining the derivation steps.
 
 **Parameters:**
 
@@ -17,37 +17,19 @@ Generates the desired equation from all the other equations in the source text t
 
 - A `*_code.py` file containing the composed expression in Python (Sympy-compatible)
 - Includes derivation logic in the generated code
+- Comments explaining the detials of the workflow and other relevant information.
 
 **Features:**
 
-- Uses the Axiomatic `/document/expression/compose/markdown` endpoint
-- Employs `shared/documents/pdf_to_markdown.py` to preprocess the PDF into Markdown
 - Maintains original mathematical notation and conventions
 - Provides derivation recipe in code
+- Provides the report on what has been done throughout the derivation process
 
 **Example Usage:**
 
-Input the following query:
+Please, visit `/examples/equations/find_functional_form/` folder to see the example.
 
-> Express the total mechanical energy in terms of velocity v and height h using the function_finder tool
-
-And create a markdown file `example.md` with this content:
-
-```markdown
-The kinetic energy of a particle of mass m moving with velocity v is given by:
-
-$$ E_k = \frac{1}{2} m v^2 $$
-
-The potential energy in a gravitational field is given by:
-
-$$ E_p = m g h $$
-```
-
-Then a file `example_code.py` is created next to `example.md` or a `expression_code.py` in your user directory in case that the LLM interprets the content and not the file itself.```
-
----
-
-### `equation_checker`
+### `check_equation`
 
 Validates equations or corrects potential errors. Produces a corrected Python file if necessary.
 
@@ -58,31 +40,13 @@ Validates equations or corrects potential errors. Produces a corrected Python fi
 
 **Returns:**
 
-- Validation results and corrections in text output
-- No file is created (corrections are shown inline)
+- A `*_code.py` file containing the composed expression in Python (Sympy-compatible)
+- Comments explaining the detials of the workflow and other relevant information.
 
-**Features:**
-
-- Uses the same Axiomatic endpoint (`/document/expression/compose/markdown`)
-- Provides corrected equations in Python (Sympy-compatible)
 
 **Example Usage:**
 
-Input the following query:
-
-> Check if the expression for kinetic energy is correct using the equation_checker tool
-
-With the following markdown file:
-
-```markdown
-The kinetic energy of a particle is written as:
-
-$$ E_k = m v^2 $$
-```
-
-The tool suggests that based on the equation checker tool's analysis, the kinetic energy expression in your `example.md` file is incorrect.
-
----
+Please, visit `/examples/equations/check_equation/` folder to see the examples.
 
 ## Installation
 

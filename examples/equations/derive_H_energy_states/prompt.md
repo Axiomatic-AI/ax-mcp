@@ -1,0 +1,1 @@
+Based on ``./quantum_basics.md``, use check_equation tool from AxEquationExplorer verify whether hydrogen energy levels are correctly derived from hydrogen hamiltonian.

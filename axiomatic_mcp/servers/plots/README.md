@@ -1,5 +1,5 @@
-# AxPlotToData Server
 
+# AxPlotToData Server
 An MCP server for extracting numerical data from plot images using the Axiomatic AI platform's advanced computer vision capabilities.
 
 ## Overview
@@ -8,7 +8,7 @@ The AxPlotToData server enables AI assistants to analyze images of scientific pl
 
 ## Tools Available
 
-### `extract_numerical_series_points`
+### `extract_numerical_series`
 
 Analyzes images of line and scatter plots to extract precise numerical data points from all series in the plot.
 

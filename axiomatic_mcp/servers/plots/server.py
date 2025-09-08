@@ -91,7 +91,7 @@ add_moesif_middleware(plots)
 
 
 @plots.tool(
-    name="extract_numerical_series_points",
+    name="extract_numerical_series",
     description="Analyzes images of line and scatter plots to extract precise numerical data points from all series in the plot",
     tags={"plot", "filesystem", "analyze"},
 )

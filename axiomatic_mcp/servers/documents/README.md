@@ -1,3 +1,4 @@
+
 # AxDocumentParser Server
 
 An MCP server that provides document processing capabilities using the Axiomatic AI platform, with a focus on converting PDF documents to markdown format using advanced OCR technology.
@@ -8,7 +9,7 @@ The Documents server enables AI assistants to read and process PDF documents fro
 
 ## Tools Available
 
-### `document_to_markdown`
+### `parse_pdf_to_md`
 
 Converts a PDF document to markdown using Axiomatic's advanced OCR technology.
 
