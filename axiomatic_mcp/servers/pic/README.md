@@ -6,14 +6,6 @@ An MCP server for designing, and simulating Photonic Integrated Circuits (PICs) 
 
 The AxPhotonicsPreview Server enables AI assistants to create photonic integrated circuit designs using natural language descriptions. It leverages the Axiomatic AI platform to generate GDSFactory-compatible Python code for photonic components and circuits, and provides tools to simulate them.
 
-## Installation guide
-
-First, make sure that you have the AxPhotonicsPreview dependencies installed:
-
-```bash
-pip install "axiomatic-mcp[pic]"
-```
-
 ## Tools Available
 
 ### `design_circuit`
@@ -161,6 +153,14 @@ Give me more information about the cspdk.si220.cband PDK
 4. **Iterate** with refinements using the `existing_code` parameter.
 
 ## Installation
+
+### System requirements
+
+First, make sure that you have the AxPhotonicsPreview dependencies installed:
+
+```bash
+pip install "axiomatic-mcp[pic]"
+```
 
 [![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=axiomatic-pic&config=eyJjb21tYW5kIjoidXZ4IC0tZnJvbSBheGlvbWF0aWMtbWNwIGF4aW9tYXRpYy1waWMiLCJlbnYiOnsiQVhJT01BVElDX0FQSV9LRVkiOiJFTlRFUiBZT1VSIEFQSSBLRVkifX0%3D)
 
