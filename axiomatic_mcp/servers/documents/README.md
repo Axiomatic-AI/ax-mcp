@@ -1,4 +1,3 @@
-
 # AxDocumentParser Server
 
 An MCP server that provides document processing capabilities using the Axiomatic AI platform, with a focus on converting PDF documents to markdown format using advanced OCR technology.
@@ -83,7 +82,7 @@ For development or local modifications:
 
 - `AXIOMATIC_API_KEY`: Your Axiomatic AI API key (required)
 
-See the [main README](../../../README.md#getting-an-api-key) for instructions on obtaining an API key.
+See the [main README](https://github.com/Axiomatic-AI/ax-mcp#getting-an-api-key) for instructions on obtaining an API key.
 
 ## Use Cases
 

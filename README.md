@@ -4,27 +4,27 @@ MCP (Model Context Protocol) servers that provide AI assistants with access to t
 
 ## Available Servers
 
-### 🖌️ [AxEquationExplorer](./axiomatic_mcp/servers/equations/)
+### 🖌️ [AxEquationExplorer](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/equations/)
 
 Compose equation of your interest based on information in the scientific paper.
 
-### 📄 [AxDocumentParser](./axiomatic_mcp/servers/documents/)
+### 📄 [AxDocumentParser](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/documents/)
 
 Convert PDF documents to markdown with advanced OCR and layout understanding.
 
-### 📝 [AxDocumentAnnotator](./axiomatic_mcp/servers/annotations/)
+### 📝 [AxDocumentAnnotator](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/annotations/)
 
 Create intelligent annotations for PDF documents with contextual analysis, equation extraction, and parameter identification.
 
-### ⚙️ [AxModelFitter](./axiomatic_mcp/servers/model_fitting/)
+### ⚙️ [AxModelFitter](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/model_fitting/)
 
 Fit parametric models or digital twins to observational data using advanced statistical analysis and optimization algorithms.
 
-### 🔬 [AxPhotonicsPreview](./axiomatic_mcp/servers/pic/)
+### 🔬 [AxPhotonicsPreview](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/pic/)
 
 Design photonic integrated circuits using natural language descriptions.
 
-### 📊 [AxPlotToData](./axiomatic_mcp/servers/plots/)
+### 📊 [AxPlotToData](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/plots/)
 
 Extract numerical data from plot images for analysis and reproduction.
 

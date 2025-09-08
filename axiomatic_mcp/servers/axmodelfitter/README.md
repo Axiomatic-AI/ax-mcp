@@ -12,7 +12,6 @@ If you are using Cursor, click the buttom below for 1-click installation.
 
 [![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=AxModelFitter&config=eyJjb21tYW5kIjoidXZ4IC0tZnJvbSBheGlvbWF0aWMtbWNwIGF4bW9kZWxmaXR0ZXIiLCJlbnYiOnsiQVhJT01BVElDX0FQSV9LRVkiOiJ5b3VyLWFwaS1rZXktaGVyZSJ9fQ%3D%3D)
 
-
 Otherwise, add to the MCP client configuration of your preferred IDE or langauge model app:
 
 ```json
@@ -33,11 +32,11 @@ You require an Axiomatic API key and must configure the following environment va
 
 - `AXIOMATIC_API_KEY`: Your Axiomatic AI API key (required)
 
-See the [main README](../../../README.md#getting-an-api-key) for instructions on obtaining an API key.
+See the [main README](https://github.com/Axiomatic-AI/ax-mcp#getting-an-api-key) for instructions on obtaining an API key.
 
 ### Getting started
-A number of lightweight demos showcasing common use cases and workflow integrations of AxModelFitter can be found [here](../../../examples/axmodelfitter/README.md).
 
+A number of lightweight demos showcasing common use cases and workflow integrations of AxModelFitter can be found [here](https://github.com/Axiomatic-AI/ax-mcp/blob/main/examples/axmodelfitter/README.md).
 
 ## Model Fitting Tools
 
@@ -90,24 +89,24 @@ Provides step-by-step guidance for setting up and executing model fitting workfl
   4. Optimizer and cost function selection
 
 ## Statistical Analysis Tools
+
 - **`calculate_r_squared`** - Calculate R² (coefficient of determination) for model evaluation
 - **`cross_validate_model`** - Perform cross-validation to assess model generalization
 - **`calculate_information_criteria`** - Compute AIC/BIC for model comparison
 - **`compare_models`** - Statistical comparison of multiple models
 
-
 ## Data Requirements
 
 ### File-Based Data Input
-All tools require tabular data to be provided via files. Ideally the column names indicate the units of the quantities. Otherwise, the units must be made explicitly clear in the user prompt. 
+
+All tools require tabular data to be provided via files. Ideally the column names indicate the units of the quantities. Otherwise, the units must be made explicitly clear in the user prompt.
 
 Supported formats:
 
 - **CSV** (`.csv`) - Most common, easy to create
 - **Excel** (`.xlsx`, `.xls`) - Spreadsheet format
-- **JSON** (`.json`) - Structured data format  
+- **JSON** (`.json`) - Structured data format
 - **Parquet** (`.parquet`) - Efficient columnar format
-
 
 ## Example Usage
 

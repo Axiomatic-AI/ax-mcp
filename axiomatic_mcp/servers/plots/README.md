@@ -85,7 +85,7 @@ For development or local modifications:
 
 - `AXIOMATIC_API_KEY`: Your Axiomatic AI API key (required)
 
-See the [main README](../../../README.md#getting-an-api-key) for instructions on obtaining an API key.
+See the [main README](https://github.com/Axiomatic-AI/ax-mcp#getting-an-api-key) for instructions on obtaining an API key.
 
 ## Use Cases
 
@@ -127,7 +127,7 @@ See the [main README](../../../README.md#getting-an-api-key) for instructions on
 
 ## Integration Examples
 
-A number of demos for the plots mcp can be found [here](../../../examples/plots/README.md).
+A number of demos for the plots mcp can be found [here](https://github.com/Axiomatic-AI/ax-mcp/blob/main/examples/plots/README.md).
 
 ### Python Integration
 

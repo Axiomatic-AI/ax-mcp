@@ -87,7 +87,7 @@ For development or local modifications:
 
 - `AXIOMATIC_API_KEY`: Your Axiomatic AI API key (required)
 
-See the [main README](../../../README.md#getting-an-api-key) for instructions on obtaining an API key.
+See the [main README](https://github.com/Axiomatic-AI/ax-mcp#getting-an-api-key) for instructions on obtaining an API key.
 
 ## Use Cases
 
@@ -126,7 +126,7 @@ The server supports three primary annotation types:
 
 ## Examples
 
-See the [examples](../../../examples/annotations/README.md) directory for examples of how to use the Axiomatic Annotations MCP server.
+See the [examples](https://github.com/Axiomatic-AI/ax-mcp/blob/main/examples/annotations/README.md) directory for examples of how to use the Axiomatic Annotations MCP server.
 
 ## Limitations
 
