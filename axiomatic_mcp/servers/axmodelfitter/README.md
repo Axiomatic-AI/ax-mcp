@@ -10,7 +10,7 @@ AxModelFitter enables AI assistants to fit mathematical models against experimen
 
 If you are using Cursor, click the buttom below for 1-click installation.
 
-[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](cursor://anysphere.cursor-deeplink/mcp/install?name=AxModelFitter&config=eyJjb21tYW5kIjoidXZ4IC0tZnJvbSBheGlvbWF0aWMtbWNwIGF4bW9kZWxmaXR0ZXIiLCJlbnYiOnsiQVhJT01BVElDX0FQSV9LRVkiOiJ5b3VyLWFwaS1rZXktaGVyZSJ9fQ%3D%3D)
+[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=AxModelFitter&config=eyJjb21tYW5kIjoidXZ4IC0tZnJvbSBheGlvbWF0aWMtbWNwIGF4bW9kZWxmaXR0ZXIiLCJlbnYiOnsiQVhJT01BVElDX0FQSV9LRVkiOiJ5b3VyLWFwaS1rZXktaGVyZSJ9fQ%3D%3D)
 
 
 Otherwise, add to the MCP client configuration of your preferred IDE or langauge model app:
@@ -89,8 +89,7 @@ Provides step-by-step guidance for setting up and executing model fitting workfl
   3. File-based data loading and unit consistency checking
   4. Optimizer and cost function selection
 
-### Statistical Analysis Tools
-
+## Statistical Analysis Tools
 - **`calculate_r_squared`** - Calculate R² (coefficient of determination) for model evaluation
 - **`cross_validate_model`** - Perform cross-validation to assess model generalization
 - **`calculate_information_criteria`** - Compute AIC/BIC for model comparison
