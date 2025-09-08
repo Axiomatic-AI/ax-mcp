@@ -1,0 +1,2 @@
+Provide accurate annotations for the paper about dispersion engineered and fabrication robust SOI waveguides for ultra broadband DWDM. Specifically, we are interested in the governing effects and equations of the resulting mzi transmission with the SOI waveguides presented in figure 1b and figure 1c.
+Furthermore, we are interested in the reproducing the results of figure 2a to get a clear profile on the proposed SOI waveguides.

@@ -1,0 +1,2 @@
+Provide accurate annotations for the paper about optimization of thermo-optic phase shifter design and mitigation of thermal crosstalk on the SOI platform. Specifically, we are interested in the governing effects and equations of the system presented and relevant information to reproduce figure 7 on the power consumption of the phase shifter.
+Furthermore, we are intested in reproducing results from figure 9 and 10 too.

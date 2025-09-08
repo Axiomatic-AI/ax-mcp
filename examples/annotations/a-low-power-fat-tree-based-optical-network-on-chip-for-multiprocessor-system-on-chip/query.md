@@ -1,0 +1,1 @@
+Provide accurate annotations for the paper about lower fat tree based optical network on chip for multiprocessor system on chip. Specifically, we are interested in the governing effects and equations of the system presented and relevant information to reproduce figure 7.

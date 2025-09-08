@@ -124,6 +124,10 @@ The server supports three primary annotation types:
 2. **Document Quality**: Use high-quality PDF files for optimal text and equation recognition
 3. **Query Refinement**: Iterate on queries to extract different aspects of the same document
 
+## Examples
+
+See the [examples](../../../examples/annotations/README.md) directory for examples of how to use the Axiomatic Annotations MCP server.
+
 ## Limitations
 
 - Currently supports PDF files only
