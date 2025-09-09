@@ -45,6 +45,15 @@ Extract data points from the plot at /path/to/experiment_results.png
 
 ## Installation
 
+### Getting an API Key
+
+First you will need to get an API key.
+
+1. Fill the following [form](https://docs.google.com/forms/d/e/1FAIpQLSfScbqRpgx3ZzkCmfVjKs8YogWDshOZW9p-LVXrWzIXjcHKrQ/viewform?usp=dialog) to request an Axiomatic_AI API key.
+2. Once received, add the API key to your MCP client configuration as described in the Configuration section below.
+
+### Cursor Installation
+
 [![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=axiomatic-plots&config=eyJjb21tYW5kIjoidXZ4IC0tZnJvbSBheGlvbWF0aWMtbWNwIGF4aW9tYXRpYy1wbG90cyIsImVudiI6eyJBWElPTUFUSUNfQVBJX0tFWSI6InlvdXItYXBpLWtleS1oZXJlIn19)
 
 ### Quick Install (via PyPI)

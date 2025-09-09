@@ -6,6 +6,13 @@ AxModelFitter enables AI assistants to fit mathematical models against experimen
 
 ## Quick Start
 
+### Getting an API Key
+
+First you will need to get an API key.
+
+1. Fill the following [form](https://docs.google.com/forms/d/e/1FAIpQLSfScbqRpgx3ZzkCmfVjKs8YogWDshOZW9p-LVXrWzIXjcHKrQ/viewform?usp=dialog) to request an Axiomatic_AI API key.
+2. Once received, add the API key to your MCP client configuration as described in the Configuration section below.
+
 ### Installation (via PyPI)
 
 If you are using Cursor, click the buttom below for 1-click installation.
@@ -26,7 +33,8 @@ Otherwise, add to the MCP client configuration of your preferred IDE or langauge
 }
 ```
 
-### Development Install 
+### Development Install
+
 For development or local modifications:
 
 ```json

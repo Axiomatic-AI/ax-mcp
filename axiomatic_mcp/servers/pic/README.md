@@ -73,7 +73,6 @@ Gets detailed information about a specific PDK, including its available cross-se
 
 - Detailed information for the specified PDK, including components and cross-sections.
 
-
 ## Features
 
 - Natural language to GDSFactory code generation
@@ -98,6 +97,13 @@ Gets detailed information about a specific PDK, including its available cross-se
 
 ## Installation
 
+### Getting an API Key
+
+First you will need to get an API key.
+
+1. Fill the following [form](https://docs.google.com/forms/d/e/1FAIpQLSfScbqRpgx3ZzkCmfVjKs8YogWDshOZW9p-LVXrWzIXjcHKrQ/viewform?usp=dialog) to request an Axiomatic_AI API key.
+2. Once received, add the API key to your MCP client configuration as described in the Configuration section below.
+
 ### System requirements
 
 First, make sure that you have the AxPhotonicsPreview dependencies installed:
@@ -105,6 +111,8 @@ First, make sure that you have the AxPhotonicsPreview dependencies installed:
 ```bash
 pip install "axiomatic-mcp[pic]"
 ```
+
+### Cursor Installation
 
 [![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=axiomatic-pic&config=eyJjb21tYW5kIjoidXZ4IC0tZnJvbSBheGlvbWF0aWMtbWNwIGF4aW9tYXRpYy1waWMiLCJlbnYiOnsiQVhJT01BVElDX0FQSV9LRVkiOiJFTlRFUiBZT1VSIEFQSSBLRVkifX0%3D)
 

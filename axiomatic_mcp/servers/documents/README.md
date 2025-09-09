@@ -42,6 +42,15 @@ Write the markdown to a file
 
 ## Installation
 
+### Getting an API Key
+
+First you will need to get an API key.
+
+1. Fill the following [form](https://docs.google.com/forms/d/e/1FAIpQLSfScbqRpgx3ZzkCmfVjKs8YogWDshOZW9p-LVXrWzIXjcHKrQ/viewform?usp=dialog) to request an Axiomatic_AI API key.
+2. Once received, add the API key to your MCP client configuration as described in the Configuration section below.
+
+### Cursor Installation
+
 [![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=axiomatic-documents&config=eyJjb21tYW5kIjoidXZ4IC0tZnJvbSBheGlvbWF0aWMtbWNwIGF4aW9tYXRpYy1kb2N1bWVudHMiLCJlbnYiOnsiQVhJT01BVElDX0FQSV9LRVkiOiJFTlRFUiBZT1VSIEFQSSBLRVkifX0%3D)
 
 ### Quick Install (via PyPI)

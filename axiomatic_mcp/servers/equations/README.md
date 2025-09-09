@@ -43,12 +43,20 @@ Validates equations or corrects potential errors. Produces a corrected Python fi
 - A `*_code.py` file containing the composed expression in Python (Sympy-compatible)
 - Comments explaining the detials of the workflow and other relevant information.
 
-
 **Example Usage:**
 
 Please, visit `/examples/equations/derive_H_energy_states/` and `/examples/equations/transmission_with_loss_modulation_check/` folders to see relevant examples.
 
 ## Installation
+
+### Getting an API Key
+
+First you will need to get an API key.
+
+1. Fill the following [form](https://docs.google.com/forms/d/e/1FAIpQLSfScbqRpgx3ZzkCmfVjKs8YogWDshOZW9p-LVXrWzIXjcHKrQ/viewform?usp=dialog) to request an Axiomatic_AI API key.
+2. Once received, add the API key to your MCP client configuration as described in the Configuration section below.
+
+### Cursor Installation
 
 [![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=axiomatic-equations&config=eyJjb21tYW5kIjoidXZ4IC0tZnJvbSBheGlvbWF0aWMtbWNwIGF4aW9tYXRpYy1lcXVhdGlvbnMiLCJlbnYiOnsiQVhJT01BVElDX0FQSV9LRVkiOiJ5b3VyLWFwaS1rZXktaGVyZSJ9fQ%3D%3D)
 
