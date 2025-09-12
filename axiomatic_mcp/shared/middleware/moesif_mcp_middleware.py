@@ -85,7 +85,7 @@ class MoesifMcpMiddleware(StructuredLoggingMiddleware):
         except Exception as e:
             tool_call_success = False
             response_body = {"error": str(e)}
-            raise Exception from e
+            raise
         finally:
             end_time = datetime.now(timezone.utc)
             duration_ms = int((end_time - start_time).total_seconds() * 1000)
