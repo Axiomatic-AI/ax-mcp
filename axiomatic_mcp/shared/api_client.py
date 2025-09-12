@@ -10,6 +10,11 @@ TIMEOUT = 1000
 
 class AxiomaticAPIClient:
     def __init__(self):
+        """
+        Initialize the AxiomaticAPIClient.
+        
+        Reads the AXIOMATIC_API_KEY environment variable and raises ValueError if it's not set. Creates an httpx.Client configured with the module API_URL and TIMEOUT, and default headers including the API key (X-API-Key) and an origin identifier (X-origin: "mcp-client").
+        """
         api_key = os.getenv("AXIOMATIC_API_KEY")
         if not api_key:
             raise ValueError("AXIOMATIC_API_KEY environment variable is not set")
