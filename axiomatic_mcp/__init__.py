@@ -20,7 +20,11 @@ async def setup():
         await axiomatic_mcp.import_server(server.server, prefix=server.name)
 
 
-if __name__ == "__main__":
+def main():
+    """Main entry point for the all-in-one server."""
     asyncio.run(setup())
-
     axiomatic_mcp.run(transport="stdio")
+
+
+if __name__ == "__main__":
+    main()
