@@ -22,11 +22,28 @@ TRACKED_METHODS: dict[str, Callable] = {
 
 
 class MoesifMcpMiddleware(StructuredLoggingMiddleware):
+    _instance: "MoesifMcpMiddleware" = None
+    application_id: str = None
+
+    def __new__(cls, application_id: str):
+        if not application_id:
+            raise ValueError("Moesif Application ID is required.")
+
+        if cls.application_id and cls.application_id != application_id:
+            raise ValueError("Can't instantiate Moesiff with a different Application ID")
+
+        existing = cls._instance
+        if existing:
+            return existing
+
+        self = super().__new__(cls)
+        cls._instance = self
+        return self
+
     def __init__(self, application_id: str):
         super().__init__(include_payloads=True)
 
-        if not application_id:
-            raise ValueError("Moesif Application ID is required.")
+        self.application_id = application_id
 
         moesif_client = MoesifAPIClient(application_id)
         moesif_client.api = CustomApiController()
@@ -105,9 +122,9 @@ class MoesifMcpMiddleware(StructuredLoggingMiddleware):
                     "end_time": end_time.isoformat(),
                     "duration_ms": duration_ms,
                     "user_role": user_info.get("role"),
-                    "mcp_type": context.type,
-                    "mcp_source": context.source,
-                    "mpc_method": request_data.get("method"),
+                    "mcp_type": getattr(context, "type", None),
+                    "mcp_source": getattr(context, "source", None),
+                    "mcp_method": request_data.get("method"),
                     "mcp_tool_name": request_payload.get("name"),
                 },
             }
