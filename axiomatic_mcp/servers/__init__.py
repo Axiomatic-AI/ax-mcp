@@ -9,7 +9,7 @@ from .axmodelfitter.server import mcp as axmodelfitter_mcp
 from .documents.server import mcp as documents_mcp
 from .equations.server import mcp as equations_mcp
 from .pic.server import mcp as pic_mcp
-from .plots.server import mcp as plots_mcp
+from .plots.server import plots as plots_mcp
 
 
 class ServerConfig(TypedDict):

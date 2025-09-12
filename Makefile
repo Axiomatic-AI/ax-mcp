@@ -1,4 +1,4 @@
-.PHONY: install dev test format clean
+.PHONY: install dev test format clean run inspect
 
 install:
 	@command -v uv >/dev/null 2>&1 || (echo "Installing uv..." && curl -LsSf https://astral.sh/uv/install.sh | sh)
@@ -24,3 +24,9 @@ clean:
 	@rm -rf build/ dist/ *.egg-info .pytest_cache .ruff_cache .mypy_cache
 	@find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	@echo "✅ Cleaned build artifacts"
+
+run:
+	@uv run python -m axiomatic_mcp
+
+inspect:
+	@npx @modelcontextprotocol/inspector uv run python -m axiomatic_mcp
