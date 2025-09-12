@@ -12,6 +12,7 @@ from mcp.types import TextContent
 from ...providers.moesif_provider import add_moesif_middleware
 from .services.circuit_service import CircuitService
 from .services.notebook_service import NotebookService
+from .services.optimization_service import OptimizationService
 from .services.pdk_service import PdkService
 from .services.simulation_service import SimulationService
 from .utils.pdk import extract_pdk_type_from_code, flatten_pdks_response
@@ -19,7 +20,7 @@ from .utils.wavelengths import resolve_wavelengths
 
 mcp = FastMCP(
     name="AxPhotonicsPreview Server",
-    instructions="""This server provides tools to design
+    instructions="""This server provides tools to design, optimize,
     and simulate photonic integrated circuits.""",
     version="0.0.1",
 )
@@ -30,6 +31,7 @@ circuit_service = CircuitService()
 simulation_service = SimulationService()
 notebook_service = NotebookService()
 pdk_service = PdkService()
+optimization_service = OptimizationService()
 
 
 @mcp.tool(
@@ -189,6 +191,56 @@ async def simulate_circuit(
                 "end": max(wavelengths),
                 "points": len(wavelengths),
             },
+        },
+    )
+
+
+@mcp.tool(
+    name="optimize_circuit",
+    description="Optimizes a photonic circuit by refining the generated code using its statements.",
+    tags=["optimize", "gfsfactory"],
+)
+async def optimize_circuit(
+    code_path: Annotated[Path, "Path to the Python file containing the circuit code"],
+    statements_path: Annotated[Path, "Path to the JSON file containing the circuit statements"],
+) -> ToolResult:
+    """Optimize a photonic integrated circuit."""
+    if not code_path.exists():
+        raise FileNotFoundError(f"Circuit code not found: {code_path}")
+    if not statements_path.exists():
+        raise FileNotFoundError(f"Statements file not found: {statements_path}")
+
+    code = code_path.read_text(encoding="utf-8")
+
+    with statements_path.open("r", encoding="utf-8") as f:
+        statements_json = json.load(f)
+
+    statements_list = statements_json.get("statements", [])
+
+    request_body = {
+        "code": code,
+        "statements": statements_list,
+    }
+
+    response = await optimization_service.optimize_code(request_body)
+
+    optimized_code = response.get("optimized_code", "")
+
+    optimized_file_path = code_path.parent / f"{code_path.stem}_optimized.py"
+
+    with optimized_file_path.open("w", encoding="utf-8") as f:
+        f.write(optimized_code)
+
+    return ToolResult(
+        content=[
+            TextContent(
+                type="text",
+                text=f"Optimized circuit saved at {optimized_file_path}",
+            )
+        ],
+        structured_content={
+            "optimized_file_path": str(optimized_file_path),
+            "optimized_code": optimized_code,
         },
     )
 
