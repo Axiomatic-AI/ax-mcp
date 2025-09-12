@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.13'",
@@ -109,7 +109,7 @@ wheels = [
 
 [[package]]
 name = "axiomatic-mcp"
-version = "0.0.10"
+version = "0.1.3"
 source = { editable = "." }
 dependencies = [
     { name = "cspdk" },
@@ -144,36 +144,62 @@ dev = [
 lean = [
     { name = "leanclient" },
 ]
+pic = [
+    { name = "cspdk" },
+    { name = "gdsfactory" },
+    { name = "iklayout" },
+    { name = "ipympl" },
+    { name = "kfactory" },
+    { name = "klayout" },
+    { name = "klujax" },
+    { name = "numpy" },
+    { name = "pandas" },
+    { name = "plotly" },
+    { name = "sax" },
+    { name = "scikit-learn" },
+]
 
 [package.metadata]
 requires-dist = [
     { name = "black", marker = "extra == 'dev'", specifier = ">=23.0.0" },
     { name = "cspdk", specifier = ">=1.0.1" },
+    { name = "cspdk", marker = "extra == 'pic'", specifier = ">=1.0.1" },
     { name = "debugpy", specifier = ">=1.8.0" },
     { name = "debugpy", marker = "extra == 'dev'", specifier = ">=1.8.0" },
     { name = "fastmcp", specifier = ">=0.1.0" },
     { name = "gdsfactory", specifier = ">=9.7.0" },
+    { name = "gdsfactory", marker = "extra == 'pic'", specifier = ">=9.7.0" },
     { name = "httpx", specifier = ">=0.25.0" },
     { name = "iklayout", specifier = ">=0.0.8" },
+    { name = "iklayout", marker = "extra == 'pic'", specifier = ">=0.0.8" },
     { name = "ipympl", specifier = ">=0.9.7" },
+    { name = "ipympl", marker = "extra == 'pic'", specifier = ">=0.9.7" },
     { name = "kfactory", specifier = ">=1.7.3" },
+    { name = "kfactory", marker = "extra == 'pic'", specifier = ">=1.7.3" },
     { name = "klayout", specifier = ">=0.30.2" },
+    { name = "klayout", marker = "extra == 'pic'", specifier = ">=0.30.2" },
     { name = "klujax", specifier = ">=0.4.3" },
+    { name = "klujax", marker = "extra == 'pic'", specifier = ">=0.4.3" },
     { name = "leanclient", marker = "extra == 'lean'", specifier = "==0.1.14" },
     { name = "moesifasgi", specifier = ">=1.1.5" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "nbformat", specifier = ">=5.10.4" },
     { name = "numpy", specifier = ">=1.21.0" },
+    { name = "numpy", marker = "extra == 'pic'", specifier = ">=1.21.0" },
     { name = "pandas", specifier = ">=1.3.0" },
+    { name = "pandas", marker = "extra == 'pic'", specifier = ">=1.3.0" },
     { name = "plotly", specifier = ">=6.1.2" },
+    { name = "plotly", marker = "extra == 'pic'", specifier = ">=6.1.2" },
     { name = "pydantic", specifier = ">=2.0.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
     { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
     { name = "sax", specifier = ">=0.14.5" },
+    { name = "sax", marker = "extra == 'pic'", specifier = ">=0.14.5" },
     { name = "scikit-learn", specifier = ">=1.0.0" },
+    { name = "scikit-learn", marker = "extra == 'pic'", specifier = ">=1.0.0" },
 ]
-provides-extras = ["dev", "lean"]
+provides-extras = ["dev", "lean", "pic"]
 
 [[package]]
 name = "black"
