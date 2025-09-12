@@ -88,11 +88,13 @@ def my_tool():
 axiomatic-mydomain = "axiomatic_mcp.servers.my_domain:main"
 ```
 
-5. Update README.md with instructions on installing your server. You can generate the "Add to cursor" button [here](https://docs.cursor.com/en/tools/developers)
+5. Add server to the servers array in `axiomatic_mcp/servers/__init__.py`
 
-6. Don't forget to link to your server's README.md in the main project README.md
+6. Update README.md with instructions on installing your server. You can generate the "Add to cursor" button [here](https://docs.cursor.com/en/tools/developers)
 
-7. Creating **Add to Cursor** button:
+7. Don't forget to link to your server's README.md in the main project README.md
+
+8. Creating **Add to Cursor** button:
    Copy your MCP client configuration and paste it there:
    https://docs.cursor.com/en/tools/developers#generate-install-link
 
