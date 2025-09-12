@@ -6,15 +6,15 @@ import asyncio
 
 from fastmcp import FastMCP
 
+from .providers.middleware_provider import get_mcp_middleware
 from .servers import servers
 
 axiomatic_mcp = FastMCP(
     name="Axiomatic MCP",
     instructions="""This server provides various tools to help with physics and engineering workflows..""",
     version=__version__,
+    middleware=get_mcp_middleware(),
 )
-
-
 
 
 async def setup():

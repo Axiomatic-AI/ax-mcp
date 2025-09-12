@@ -10,8 +10,8 @@ from fastmcp.server.middleware.logging import StructuredLoggingMiddleware
 from moesifapi.models.user_model import UserModel
 from moesifapi.moesif_api_client import MoesifAPIClient
 
-from ...servers.constants.api_constants import ApiRoutes
 from ...shared.api_client import AxiomaticAPIClient
+from ...shared.constants.api_constants import ApiRoutes
 from ..utils.tool_result import serialize_tool_call_result
 from .custom_api_controller import CustomApiController
 

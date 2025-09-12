@@ -5,8 +5,8 @@ from importlib.resources import files
 from typing import Any
 
 from ....shared import AxiomaticAPIClient
+from ....shared.constants.api_constants import ApiRoutes
 from ....shared.models.singleton_base import SingletonBase
-from ...constants.api_constants import ApiRoutes
 
 
 class CircuitService(SingletonBase):
