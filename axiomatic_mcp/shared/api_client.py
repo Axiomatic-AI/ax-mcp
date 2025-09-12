@@ -19,6 +19,7 @@ class AxiomaticAPIClient:
             timeout=TIMEOUT,
             headers={
                 "X-API-Key": api_key,
+                "X-origin": "mcp-client",
             },
         )
 

@@ -9,7 +9,7 @@ from fastmcp import Context, FastMCP
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
-from ...providers.moesif_provider import add_moesif_middleware
+from ...providers.middleware_provider import get_mcp_middleware
 from .services.circuit_service import CircuitService
 from .services.notebook_service import NotebookService
 from .services.pdk_service import PdkService
@@ -22,9 +22,9 @@ mcp = FastMCP(
     instructions="""This server provides tools to design
     and simulate photonic integrated circuits.""",
     version="0.0.1",
+    middleware=get_mcp_middleware(),
 )
 
-add_moesif_middleware(mcp)
 
 circuit_service = CircuitService()
 simulation_service = SimulationService()

@@ -1,8 +1,7 @@
 from typing import Any
 
-from axiomatic_mcp.servers.constants.api_constants import ApiRoutes
-
 from ....shared import AxiomaticAPIClient
+from ....shared.constants.api_constants import ApiRoutes
 from ....shared.models.singleton_base import SingletonBase
 
 

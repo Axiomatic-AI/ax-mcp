@@ -13,9 +13,9 @@ from typing import Annotated
 import numpy as np
 from fastmcp import FastMCP
 from fastmcp.tools.tool import ToolResult
+from ...providers.middleware_provider import get_mcp_middleware
 from mcp.types import TextContent
 
-from ...providers.moesif_provider import add_moesif_middleware
 from ...shared import AxiomaticAPIClient
 from .data_file_utils import resolve_data_input, resolve_output_data_only
 
@@ -447,9 +447,8 @@ mcp = FastMCP(
     • relative_mse: Good when data spans several orders of magnitude
     """,
     version="0.0.1",
+    middleware=get_mcp_middleware(),
 )
-
-add_moesif_middleware(mcp)
 
 
 @mcp.tool(

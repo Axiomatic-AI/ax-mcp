@@ -10,7 +10,7 @@ from fastmcp.exceptions import ToolError
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
-from ...providers.moesif_provider import add_moesif_middleware
+from ...providers.middleware_provider import get_mcp_middleware
 from ...shared.documents.pdf_to_markdown import pdf_to_markdown
 
 mcp = FastMCP(
@@ -18,9 +18,8 @@ mcp = FastMCP(
     instructions="""This server provides tools to read, analyze, and process documents
     from the filesystem using the Axiomatic_AI Platform.""",
     version="0.0.1",
+    middleware=get_mcp_middleware(),
 )
-
-add_moesif_middleware(mcp)
 
 
 @mcp.tool(
