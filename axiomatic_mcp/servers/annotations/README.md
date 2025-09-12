@@ -49,10 +49,7 @@ Extract all equations and their parameters from the technical document at /docum
 
 ### Getting an API Key
 
-First you will need to get an API key.
-
-1. Fill the following [form](https://docs.google.com/forms/d/e/1FAIpQLSfScbqRpgx3ZzkCmfVjKs8YogWDshOZW9p-LVXrWzIXjcHKrQ/viewform?usp=dialog) to request an Axiomatic_AI API key.
-2. Once received, add the API key to your MCP client configuration as described in the Configuration section below.
+[![Static Badge](https://img.shields.io/badge/Get%20your%20API%20key-6EB700?style=flat)](https://docs.google.com/forms/d/e/1FAIpQLSfScbqRpgx3ZzkCmfVjKs8YogWDshOZW9p-LVXrWzIXjcHKrQ/viewform)
 
 ### Cursor Installation
 
