@@ -22,13 +22,23 @@ class AxiomaticAPIClient:
             },
         )
 
+    def _handle_raise_for_status(self, response: httpx.Response) -> None:
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            try:
+                error_body = response.text
+                raise httpx.HTTPStatusError(f"{e!s} - Response: {error_body}", request=response.request, response=response) from e
+            except Exception:
+                raise
+
     def get(
         self,
         endpoint: str,
         params: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         response = self.client.get(endpoint, params=params)
-        response.raise_for_status()
+        self._handle_raise_for_status(response)
         return response.json()
 
     def post(
@@ -44,7 +54,8 @@ class AxiomaticAPIClient:
         else:
             # For JSON data, use application/json
             response = self.client.post(endpoint, json=data, params=params)
-        response.raise_for_status()
+
+        self._handle_raise_for_status(response)
         return response.json()
 
     def __enter__(self):
