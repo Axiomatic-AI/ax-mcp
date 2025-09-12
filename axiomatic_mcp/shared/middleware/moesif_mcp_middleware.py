@@ -30,7 +30,7 @@ class MoesifMcpMiddleware(StructuredLoggingMiddleware):
             raise ValueError("Moesif Application ID is required.")
 
         if cls.application_id and cls.application_id != application_id:
-            raise ValueError("Can't instantiate Moesiff with a different Application ID")
+            raise ValueError("Can't instantiate Moesif with a different Application ID")
 
         existing = cls._instance
         if existing:
