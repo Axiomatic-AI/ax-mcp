@@ -1,8 +1,10 @@
+from fastmcp.server.middleware import Middleware
+
 from ..config.config import get_settings
 from ..shared.middleware.moesif_mcp_middleware import MoesifMcpMiddleware
 
 
-def get_mcp_middleware() -> MoesifMcpMiddleware:
+def get_mcp_middleware() -> list[Middleware]:
     # This is our Publishable Application Id
     app_settings = get_settings().app
     moesif_app_id = app_settings.moesif_application_id
