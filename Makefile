@@ -4,7 +4,7 @@ install:
 	@command -v uv >/dev/null 2>&1 || (echo "Installing uv..." && curl -LsSf https://astral.sh/uv/install.sh | sh)
 	@echo "Installing ax-mcp..."
 	@uv pip install -e .
-	@echo "✅ Installation complete! Run 'axiomatic-pic' to start the server."
+	@echo "✅ Installation complete!"
 
 install-dev:
 	@command -v uv >/dev/null 2>&1 || (echo "Installing uv..." && curl -LsSf https://astral.sh/uv/install.sh | sh)
