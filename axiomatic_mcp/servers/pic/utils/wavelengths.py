@@ -36,7 +36,9 @@ async def resolve_wavelengths(
         statements_raw = await asyncio.to_thread(statements_file_path.read_bytes)
         statement_dict = json.loads(statements_raw)
         statements = statement_dict.get("statements", [])
-        return _get_wavelengths_from_statements(statements)
+        wavelengths = _get_wavelengths_from_statements(statements)
+        if wavelengths:
+            return wavelengths
 
     return _get_default_wavelength_range(pdk_type=pdk_type)
 
