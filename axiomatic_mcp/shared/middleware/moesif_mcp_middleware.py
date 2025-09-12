@@ -26,6 +26,18 @@ class MoesifMcpMiddleware(StructuredLoggingMiddleware):
     application_id: str = None
 
     def __new__(cls, application_id: str):
+        """
+        Create or return a singleton MoesifMcpMiddleware instance tied to the given Moesif application ID.
+        
+        This enforces a single instance per application ID:
+        - Raises ValueError if `application_id` is falsy.
+        - Raises ValueError if an instance already exists for a different application ID.
+        - Returns the existing instance if one was already created for this class.
+        - Otherwise allocates, stores, and returns a new instance.
+        
+        Parameters:
+            application_id (str): The Moesif application ID used to identify and lock this middleware instance to a specific Moesif account.
+        """
         if not application_id:
             raise ValueError("Moesif Application ID is required.")
 
@@ -41,6 +53,14 @@ class MoesifMcpMiddleware(StructuredLoggingMiddleware):
         return self
 
     def __init__(self, application_id: str):
+        """
+        Initialize the MoesifMcpMiddleware instance.
+        
+        Creates and configures the Moesif API client (replacing its API with a CustomApiController), stores the application_id, and initializes user-related state used by the middleware.
+        
+        Parameters:
+            application_id (str): Moesif application ID used to construct the Moesif API client.
+        """
         super().__init__(include_payloads=True)
 
         self.application_id = application_id
@@ -79,6 +99,24 @@ class MoesifMcpMiddleware(StructuredLoggingMiddleware):
             pass
 
     async def on_message(self, context: MiddlewareContext[Any], call_next: CallNext[Any, Any]) -> Any:
+        """
+        Handle an incoming MCP message; for tracked methods, identify the user once, time and forward the call, and send a summary event to Moesif.
+        
+        If the incoming context.method is not in TRACKED_METHODS this delegates to the parent middleware. For tracked methods the middleware:
+        - Ensures user information is populated once (via _identify_user_once).
+        - Records start and end timestamps and duration.
+        - Attempts to parse the request payload from the logged request entry.
+        - Awaits the next handler (call_next) and uses the registered parser to extract a response payload.
+        - Re-raises any exception produced by the downstream handler.
+        - Always sends a Moesif event named "mcp_tool_call" containing user and company identifiers (if available), request/response payloads, success flag, timings, user role, and MCP context (type, source, method, tool name).
+        
+        Parameters:
+            context: MiddlewareContext containing the MCP request metadata (expects .method and may contain .type and .source).
+            call_next: Callable that advances processing to the next middleware/handler.
+        
+        Returns:
+            The value returned by call_next(context).
+        """
         parse_func = TRACKED_METHODS.get(context.method)
         if not parse_func:
             return await super().on_message(context, call_next)
