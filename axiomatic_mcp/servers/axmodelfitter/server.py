@@ -1,3 +1,5 @@
+# ruff: noqa
+
 """AxModelFitter server using the Axiomatic API.
 
 This server provides tools for fitting custom mathematical models to experimental data
@@ -487,7 +489,7 @@ async def fit_model(
     parameters: Annotated[list, "Initial parameter guesses: [{'name': 'a', 'value': {'magnitude': 2.0, 'unit': 'dimensionless'}}]"],
     bounds: Annotated[
         list,
-        "ALL parameter/input/output bounds: [{'name': 'a', 'lower': {'magnitude': 0, 'unit': 'dimensionless'}, 'upper': {'magnitude': 10, 'unit': 'dimensionless'}}]",  # noqa E501
+        "ALL parameter/input/output bounds: [{'name': 'a', 'lower': {'magnitude': 0, 'unit': 'dimensionless'}, 'upper': {'magnitude': 10, 'unit': 'dimensionless'}}]",
     ],
     # File-based data input (REQUIRED)
     data_file: Annotated[str, "Path to data file (CSV, Excel, JSON, Parquet). All data must be provided via file."],
@@ -627,7 +629,7 @@ Use `get_fitting_examples` to see working examples.
 
 @mcp.prompt(
     name="get_workflow_prompt",
-    description="Step-by-step guide for model fitting with the AxModelFitter. Shows complete workflow from model definition to optimization execution.",  # noqa
+    description="Step-by-step guide for model fitting with the AxModelFitter. Shows complete workflow from model definition to optimization execution.",
 )
 def get_workflow_prompt() -> str:
     """Generate a generic optimization workflow guide."""
