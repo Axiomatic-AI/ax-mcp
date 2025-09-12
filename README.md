@@ -4,7 +4,81 @@
 
 MCP (Model Context Protocol) servers that provide AI assistants with access to the Axiomatic_AI Platform - a suite of advanced tools for scientific computing, document processing, and photonic circuit design.
 
-## Available Servers
+## 🚀 Quickstart
+
+### System requirements
+
+- Python
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
+
+#### 1. Get an API key
+
+[![Static Badge](https://img.shields.io/badge/Get%20your%20API%20key-6EB700?style=flat)](https://docs.google.com/forms/d/e/1FAIpQLSfScbqRpgx3ZzkCmfVjKs8YogWDshOZW9p-LVXrWzIXjcHKrQ/viewform)
+
+#### 2. Configure your client
+
+<details>
+<summary><strong>⚡ Claude Code</strong></summary>
+
+```bash
+claude mcp add axiomatic-mcp --command "uvx --from axiomatic-mcp all" --env AXIOMATIC_API_KEY=your-api-key-here
+```
+
+</details>
+
+<details>
+<summary><strong>🔷 Cursor</strong></summary>
+
+[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=axiomatic-mcp&config=eyJjb21tYW5kIjoidXZ4IC0tZnJvbSBheGlvbWF0aWMtbWNwIGFsbCIsImVudiI6eyJBWElPTUFUSUNfQVBJX0tFWSI6InlvdXItYXBpLWtleS1oZXJlIn19)
+
+</details>
+
+<details>
+<summary><strong>🤖 Claude Desktop</strong></summary>
+
+1. Open Claude Desktop settings → Developer → Edit MCP config
+2. Add this configuration:
+
+```json
+{
+  "mcpServers": {
+    "axiomatic-mcp": {
+      "command": "uvx",
+      "args": ["--from", "axiomatic-mcp", "all"],
+      "env": {
+        "AXIOMATIC_API_KEY": "your-api-key-here"
+      }
+    }
+  }
+}
+```
+
+3. Restart Claude Desktop
+
+</details>
+
+<details>
+<summary><strong>🌊 Other MCP Clients</strong></summary>
+
+Use this server configuration:
+
+```json
+{
+  "command": "uvx",
+  "args": ["--from", "axiomatic-mcp", "all"],
+  "env": {
+    "AXIOMATIC_API_KEY": "your-api-key-here"
+  }
+}
+```
+
+</details>
+
+> **Note:** This installs all tools under one server and may cause issues with some clients. If you experience problems, install individual servers instead.
+
+## Individual servers
+
+You may find more information about each server and how to install them individually in their own READMEs.
 
 ### 🖌️ [AxEquationExplorer](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/equations/)
 
@@ -29,62 +103,6 @@ Design photonic integrated circuits using natural language descriptions.
 ### 📊 [AxPlotToData](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/plots/)
 
 Extract numerical data from plot images for analysis and reproduction.
-
-## Getting an API Key
-
-1. Fill the following [form](https://docs.google.com/forms/d/e/1FAIpQLSfScbqRpgx3ZzkCmfVjKs8YogWDshOZW9p-LVXrWzIXjcHKrQ/viewform?usp=dialog) to request an Axiomatic_AI API key.
-2. Once received, add the API key to your MCP client configuration as described in the Configuration section below.
-
-## Configuration
-
-Add the following settings to your MCP client configuration file or environment variables.
-
-### API Key
-
-All Axiomatic MCP servers require an API:
-
-- `AXIOMATIC_API_KEY`: Your API key obtained after filling the request form.
-
-### Telemetry
-
-By default, we track tool usage to help us improve the services. You can optionally disable this feature:
-
-- Set `DISABLE_TELEMETRY: "true"` in your MCP client configuration.
-
-## Installation
-
-### System requirements
-
-- Python
-- [uv](https://docs.astral.sh/uv/getting-started/installation/)
-
-### Individual MCP server installation
-
-Installation instructions can be found for each specific server in their README.
-
-### Install all servers
-
-Copy the content of the [mcp-example.json](mcp-example.json) file into your AI client MCP server config json.
-
-### Setting up MCP Servers in AI Clients
-
-#### Claude Desktop
-
-1. Open Claude Desktop settings
-2. Navigate to Developer → Edit MCP config
-3. Add the server configuration(s) above
-4. Restart Claude Desktop
-
-#### Cursor
-
-1. Open Cursor settings (Cmd/Ctrl + ,)
-2. Search for "MCP"
-3. Add the server configuration(s) to the MCP settings
-4. Restart Cursor
-
-#### Other MCP Clients
-
-Refer to your client's documentation for MCP server configuration.
 
 ## Troubleshooting
 
