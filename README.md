@@ -121,6 +121,18 @@ Install only the domain servers you need. Each server runs independently, so you
 1. Verify your API key is set correctly
 2. Check internet connection
 
+### Tools not appearing
+
+If you experience any issues such as tools not appearing, it may be that you are using an old version and need to clear uv's cache to update it.
+
+```bash
+uv cache clean
+```
+
+Then restart your MCP client (e.g. restart Cursor).
+
+This clears the uv cache and forces fresh downloads of packages on the next run.
+
 ## Contributing
 
 We welcome contributions from the community! Here's how you can help:
