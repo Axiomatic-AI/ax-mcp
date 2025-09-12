@@ -1,6 +1,6 @@
 # Axiomatic MCP Servers
 
-[![Static Badge](https://img.shields.io/badge/Join%20Discord-6EB700?style=flat)](https://discord.gg/KKU97ZR5)
+[![Static Badge](https://img.shields.io/badge/Join%20Discord-5865f2?style=flat)](https://discord.gg/KKU97ZR5)
 
 MCP (Model Context Protocol) servers that provide AI assistants with access to the Axiomatic_AI Platform - a suite of advanced tools for scientific computing, document processing, and photonic circuit design.
 
