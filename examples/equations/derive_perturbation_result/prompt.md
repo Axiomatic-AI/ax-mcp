@@ -1,1 +1,1 @@
-use find_functional_form tool to derive the band flatness delta_F from second order preturbation theory in this paper: /Users/tymek_axai/Coding/AX_code/ax-mcp/examples/equations/derive_perturbation_results/1912.12736v2.pdf
+use find_functional_form tool to derive the band flatness delta_F from second order perturbation theory in this paper: /Users/tymek_axai/Coding/AX_code/ax-mcp/examples/equations/derive_perturbation_results/1912.12736v2.pdf
