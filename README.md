@@ -58,6 +58,77 @@ claude mcp add axiomatic-mcp --command "uvx --from axiomatic-mcp all" --env AXIO
 </details>
 
 <details>
+<summary><strong>🔮 Gemini CLI</strong></summary>
+
+Follow the MCP install guide and use the standard configuration above.  
+See the official instructions here: [Gemini CLI MCP Server Guide](https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md#configure-the-mcp-server-in-settingsjson)
+
+```json
+{
+  "axiomatic-mcp": {
+    "command": "uvx",
+    "args": ["--from", "axiomatic-mcp", "all"],
+    "env": {
+      "AXIOMATIC_API_KEY": "your-api-key-here"
+    }
+  }
+}
+```
+
+</details>
+
+<details>
+<summary><strong>🌬️ Windsurf</strong></summary>
+
+Follow the [Windsurf MCP documentation](https://docs.windsurf.com/windsurf/cascade/mcp).  
+Use the standard configuration above.
+
+```json
+{
+  "axiomatic-mcp": {
+    "command": "uvx",
+    "args": ["--from", "axiomatic-mcp", "all"],
+    "env": {
+      "AXIOMATIC_API_KEY": "your-api-key-here"
+    }
+  }
+}
+```
+
+</details>
+
+<details>
+<summary><strong>🧪 LM Studio</strong></summary>
+
+#### Click the button to install:
+
+[![Install MCP Server](https://files.lmstudio.ai/deeplink/mcp-install-light.svg)](https://lmstudio.ai/install-mcp?name=axiomatic-mcp&config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyItLWZyb20iLCJheGlvbWF0aWMtbWNwIiwiYWxsIl19)
+
+> **Note:** After installing via the button, open LM Studio MCP settings and add:
+>
+> ```json
+> "env": {
+>   "AXIOMATIC_API_KEY": "your-api-key-here"
+> }
+> ```
+
+</details>
+
+<details>
+<summary><strong>💻 Codex</strong></summary>
+
+Create or edit the configuration file `~/.codex/config.toml` and add:
+
+```toml
+[mcp_servers.axiomatic-mcp]
+command = "uvx"
+args = ["--from", "axiomatic-mcp", "all"]
+```
+
+For more information, see the [Codex MCP documentation](https://github.com/openai/codex/blob/main/codex-rs/config.md#mcp_servers)
+
+</details> 
+<details>
 <summary><strong>🌊 Other MCP Clients</strong></summary>
 
 Use this server configuration:
