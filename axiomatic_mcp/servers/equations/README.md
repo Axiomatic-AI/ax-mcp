@@ -27,7 +27,7 @@ Generates the desired equation from all the other equations in the source text (
 
 **Example Usage:**
 
-Please, visit `/examples/equations/kinetic_energy_in_terms_of_momentum/` and `/examples/equations/dynamical_transmission_as_function_of_C/` folders to see relevant examples.
+Please, visit [this example](../../../examples/equations/derive_perturbation_result/) and [that example](../../../examples/equations/dynamical_transmission_as_function_of_C/) folders to see relevant examples.
 
 ### `check_equation`
 
@@ -45,7 +45,7 @@ Validates equations or corrects potential errors. Produces a corrected Python fi
 
 **Example Usage:**
 
-Please, visit `/examples/equations/derive_H_energy_states/` and `/examples/equations/transmission_with_loss_modulation_check/` folders to see relevant examples.
+Please, visit [this example](../../../examples/equations/check_FHS_algorithm/) and [that example](../../../examples/equations/transmission_with_loss_modulation_check/) folders to see relevant examples.
 
 ## Installation
 
