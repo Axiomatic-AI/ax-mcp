@@ -100,7 +100,9 @@ Use the standard configuration above.
 <details>
 <summary><strong>🧪 LM Studio</strong></summary>
 
-[![Install MCP Server](https://lmstudio.ai/install-mcp-dark.svg)](https://lmstudio.ai/install-mcp?name=axiomatic-mcp&config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyItLWZyb20iLCJheGlvbWF0aWMtbWNwIiwiYWxsIl19)
+#### Click the button to install:
+
+[![Install MCP Server](https://files.lmstudio.ai/deeplink/mcp-install-light.svg)](https://lmstudio.ai/install-mcp?name=axiomatic-mcp&config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyItLWZyb20iLCJheGlvbWF0aWMtbWNwIiwiYWxsIl19)
 
 > **Note:** After installing via the button, open LM Studio MCP settings and add:
 >
