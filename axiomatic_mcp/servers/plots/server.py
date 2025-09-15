@@ -1,9 +1,11 @@
 """AxPlotToData MCP server"""
 
+import base64
 import json
 import math
 import mimetypes
 import random
+import re
 from pathlib import Path
 from typing import Annotated
 
@@ -142,5 +144,54 @@ async def extract_data_from_plot_image(
                 type="text",
                 text=f"Extracted plot data saved to: {json_path}\n\n```json\n{json.dumps(series_data.model_dump(), indent=2)}\n```",
             )
+        ],
+    )
+
+
+@plots.tool(
+    name="split_multi_plot",
+    description="Given an image of a plot with multiple subplots, splits it into the individual subplots",
+    tags={"plot", "filesystem", "analyze"},
+)
+async def split_multi_plot(
+    plot_path: Annotated[Path, "The absolute path to the image file of the plot to split. Supports only PNG for now"],
+) -> Annotated[ToolResult, "Paths to the saved split images"]:
+    if not plot_path.is_file():
+        raise FileNotFoundError(f"Image not found or is not a regular file: {plot_path}")
+
+    supported_extensions = {".png"}
+    file_extension = plot_path.suffix.lower()
+    if file_extension not in supported_extensions:
+        raise ValueError(f"Unsupported image format: {file_extension}. Supported formats: {', '.join(supported_extensions)}")
+
+    mime_type, _ = mimetypes.guess_type(str(plot_path))
+    if not mime_type or not mime_type.startswith("image/"):
+        mime_type = "application/octet-stream"
+
+    with Path.open(plot_path, "rb") as f:
+        files = {"plot_img": (plot_path.name, f, mime_type)}
+        params = {"get_img_coords": True, "v2": True}
+
+        response = AxiomaticAPIClient().post("/document/plot/split", files=files, params=params)
+
+    split_image_paths = []
+
+    for idx, b64_split_img in enumerate(response):
+        split_image_path = plot_path.parent / (plot_path.stem + f"_split_{idx}.png")
+
+        match = re.match(r"data:image/[^;]+;base64,(.*)", b64_split_img)
+        image_data = match.group(1) if match else b64_split_img
+
+        with Path.open(split_image_path, "wb") as image_file:
+            image_file.write(base64.b64decode(image_data))
+
+        split_image_paths.append(split_image_path)
+
+    return ToolResult(
+        content=[
+            TextContent(
+                type="text",
+                text=(f"Split into {len(split_image_paths)} images:\n" + "\n".join(f"- {p}" for p in split_image_paths)),
+            ),
         ],
     )
