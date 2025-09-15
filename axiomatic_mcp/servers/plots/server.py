@@ -13,7 +13,7 @@ from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 from pydantic import BaseModel
 
-from ...providers.moesif_provider import add_moesif_middleware
+from ...providers.middleware_provider import get_mcp_middleware
 from ...shared import AxiomaticAPIClient
 
 
@@ -86,8 +86,8 @@ plots = FastMCP(
     name="AxPlotToData server",
     instructions=PLOTS_SERVER_INSTRUCTIONS,
     version="0.0.1",
+    middleware=get_mcp_middleware(),
 )
-add_moesif_middleware(plots)
 
 
 @plots.tool(

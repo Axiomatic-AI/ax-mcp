@@ -6,7 +6,7 @@ from fastmcp.exceptions import ToolError
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
-from ...providers.moesif_provider import add_moesif_middleware
+from ...providers.middleware_provider import get_mcp_middleware
 from ...shared.api_client import AxiomaticAPIClient
 from ...shared.documents.pdf_to_markdown import pdf_to_markdown
 
@@ -43,9 +43,8 @@ mcp = FastMCP(
     name="AxEquationExplorer Server",
     instructions="""This server provides tools to compose and analyze equations.""",
     version="0.0.1",
+    middleware=get_mcp_middleware(),
 )
-
-add_moesif_middleware(mcp)
 
 
 @mcp.tool(
