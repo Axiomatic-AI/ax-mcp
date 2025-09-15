@@ -172,7 +172,15 @@ async def split_multi_plot(
         files = {"plot_img": (plot_path.name, f, mime_type)}
         params = {"get_img_coords": True, "v2": True}
 
-        response = AxiomaticAPIClient().post("/document/plot/split", files=files, params=params)
+        try:
+            response = AxiomaticAPIClient().post("/document/plot/split", files=files, params=params)
+        except Exception as e:
+            raise ToolError(f"Failed to split plot image: {e!s}") from e
+
+        if not isinstance(response, (list, tuple)) or not all(isinstance(x, str) for x in response):
+            raise ToolError("Upstream service returned unexpected response format; expected a list of base64-encoded image strings")
+        if not response:
+            raise ToolError("Upstream service returned no split images")
 
     split_image_paths = []
 
@@ -182,8 +190,12 @@ async def split_multi_plot(
         match = re.match(r"data:image/[^;]+;base64,(.*)", b64_split_img)
         image_data = match.group(1) if match else b64_split_img
 
-        with Path.open(split_image_path, "wb") as image_file:
-            image_file.write(base64.b64decode(image_data))
+        try:
+            binary = base64.b64decode(image_data, validate=True)
+        except Exception as e:
+            raise ToolError(f"Invalid base64 image payload at index {idx}: {e!s}") from e
+
+        split_image_path.write_bytes(binary)
 
         split_image_paths.append(split_image_path)
 

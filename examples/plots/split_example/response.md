@@ -1,7 +1,7 @@
 Split into 2 images:
 
-- /Users/bryanpyo/Documents/ax-mcp/examples/plots/split_example/plot_split_0.png
-- /Users/bryanpyo/Documents/ax-mcp/examples/plots/split_example/plot_split_1.png
+- <ABS_PATH_TO_REPO>/examples/plots/split_example/plot_split_0.png
+- <ABS_PATH_TO_REPO>/examples/plots/split_example/plot_split_1.png
 
 ⏺ The plot has been successfully split into 2 individual subplots:
 
