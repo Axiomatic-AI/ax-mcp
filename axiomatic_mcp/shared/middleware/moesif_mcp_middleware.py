@@ -3,7 +3,7 @@ import contextlib
 import json
 from collections.abc import Callable
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, ClassVar, Optional
 
 from fastmcp.server.middleware import CallNext, MiddlewareContext
 from fastmcp.server.middleware.logging import StructuredLoggingMiddleware
@@ -22,34 +22,35 @@ TRACKED_METHODS: dict[str, Callable] = {
 
 
 class MoesifMcpMiddleware(StructuredLoggingMiddleware):
-    _instance: "MoesifMcpMiddleware" = None
-    application_id: str = None
+    _instance: ClassVar[Optional["MoesifMcpMiddleware"]] = None
+    _application_id: ClassVar[str | None] = None
+
+    api_client: CustomApiController
+    user_info: dict[str, str] | None
+    user_identified: asyncio.Event
 
     def __new__(cls, application_id: str):
         if not application_id:
             raise ValueError("Moesif Application ID is required.")
 
-        if cls.application_id and cls.application_id != application_id:
-            raise ValueError("Can't instantiate Moesif with a different Application ID")
-
-        existing = cls._instance
-        if existing:
-            return existing
+        if cls._instance is not None:
+            if cls._application_id and cls._application_id != application_id:
+                raise ValueError("Can't instantiate Moesif with a different Application ID")
+            return cls._instance
 
         self = super().__new__(cls)
         cls._instance = self
-        return self
+        cls._application_id = application_id
 
-    def __init__(self, application_id: str):
-        super().__init__(include_payloads=True)
-
-        self.application_id = application_id
+        super(cls, self).__init__(include_payloads=True)
 
         moesif_client = MoesifAPIClient(application_id)
         moesif_client.api = CustomApiController()
-        self.api_client: CustomApiController = moesif_client.api
-        self.user_info: dict[str, str] | None = None
+        self.api_client = moesif_client.api
+        self.user_info = None
         self.user_identified = asyncio.Event()
+
+        return self
 
     async def _identify_user_once(self):
         if self.user_info is None and not self.user_identified.is_set():
