@@ -27,9 +27,9 @@ Each example folder contains:
 
 ### Find Functional Form Examples
 
-1. **Derivation of the second order perturbation fornula**
+1. **Derivation of the second order perturbation formula**
    - Location: `/derive_perturbation_result/`
-   - Description: Derives the functional form of famous FHS formula and provides the code for numerical calulcations
+   - Description: Derives the functional form of the second order perturbation approximation for the quasi-flat band width
    - Context: Based on this [this paper](https://journals.aps.org/prb/pdf/10.1103/PhysRevB.102.235126) 
 
 2. **Dynamical Transmission as Function of C**
