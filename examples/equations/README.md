@@ -30,7 +30,7 @@ Each example folder contains:
 1. **Derivation of the second order perturbation formula**
    - Location: `/derive_perturbation_result/`
    - Description: Derives the functional form of the second order perturbation approximation for the quasi-flat band width
-   - Context: Based on this [this paper](https://journals.aps.org/prb/pdf/10.1103/PhysRevB.102.235126) 
+   - Context: Based on [this paper](https://journals.aps.org/prb/pdf/10.1103/PhysRevB.102.235126) 
 
 2. **Dynamical Transmission as Function of C**
    - Location: `/dynamical_transmission_as_function_of_C/`
