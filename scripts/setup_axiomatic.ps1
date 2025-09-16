@@ -1,28 +1,32 @@
 # Stop on error
 $ErrorActionPreference = "Stop"
 
-Write-Host "=== Starting environment setup for Axiomatic MCP Servers ==="
+function Log-Info($msg) { Write-Host "[INFO]  $msg" -ForegroundColor Cyan }
+function Log-Warn($msg) { Write-Host "[WARN]  $msg" -ForegroundColor Yellow }
+function Log-Error($msg) { Write-Host "[ERROR] $msg" -ForegroundColor Red }
+
+Write-Host "=== Starting environment setup for Axiomatic MCP Servers ===" -ForegroundColor Green
 
 # --- Ensure winget is available ---
 if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
-    Write-Host "[LOG] winget not found. Installing App Installer (which includes winget)..."
+    Log-Warn "winget not found. Installing App Installer (which includes winget)..."
     $installer = "$env:TEMP\AppInstaller.msixbundle"
     Invoke-WebRequest -Uri "https://aka.ms/getwinget" -OutFile $installer
     Add-AppxPackage -Path $installer
     Remove-Item $installer
 } else {
-    Write-Host "[LOG] winget is available."
+    Log-Info "winget is available."
 }
 
 # --- Function to resolve real Python binary ---
 function Resolve-Python {
-    Write-Host "[LOG] Searching for Python..."
+    Log-Info "Searching for Python..."
 
     # Ignore WindowsApps alias
     $pythonPaths = @(where.exe python 2>$null)
     foreach ($p in $pythonPaths) {
         if ($p -and (-not $p.Contains("WindowsApps"))) {
-            Write-Host "[LOG] Found valid python in PATH: $p"
+            Log-Info "Found valid python in PATH: $p"
             return $p
         }
     }
@@ -34,7 +38,7 @@ function Resolve-Python {
             foreach ($exe in @("python.exe","python3.exe")) {
                 $candidate = Join-Path $d.FullName $exe
                 if (Test-Path $candidate) {
-                    Write-Host "[LOG] Found python candidate: $candidate"
+                    Log-Info "Found python candidate: $candidate"
                     return $candidate
                 }
             }
@@ -48,7 +52,7 @@ function Resolve-Python {
             foreach ($exe in @("python.exe","python3.exe")) {
                 $candidate = Join-Path $d.FullName $exe
                 if (Test-Path $candidate) {
-                    Write-Host "[LOG] Found python candidate: $candidate"
+                    Log-Info "Found python candidate: $candidate"
                     return $candidate
                 }
             }
@@ -65,7 +69,7 @@ function Resolve-Python {
                     foreach ($exe in @("python.exe","python3.exe")) {
                         $candidate = Join-Path $installPath $exe
                         if ($installPath -and (Test-Path $candidate)) {
-                            Write-Host "[LOG] Found python via registry: $candidate"
+                            Log-Info "Found python via registry: $candidate"
                             return $candidate
                         }
                     }
@@ -81,68 +85,68 @@ function Resolve-Python {
 $PYTHON_BIN = Resolve-Python
 
 if (-not $PYTHON_BIN) {
-    Write-Host "[LOG] No valid Python detected. Installing Python 3.12 x64 with winget..."
+    Log-Warn "No valid Python detected. Installing Python 3.12 x64 with winget..."
     winget install -e --id Python.Python.3.12 --architecture x64 -h
 
-    Write-Host "[LOG] Checking again after install..."
+    Log-Info "Checking again after install..."
     $PYTHON_BIN = Resolve-Python
     if (-not $PYTHON_BIN) {
-        Write-Host "[ERROR] Python installation failed or executable not found."
+        Log-Error "Python installation failed or executable not found."
         exit 1
     }
 }
 
-Write-Host "[LOG] Using PYTHON_BIN = $PYTHON_BIN"
+Log-Info "Using PYTHON_BIN = $PYTHON_BIN"
 
 # --- Validate Python version ---
 try {
-    Write-Host "[LOG] Running version check..."
+    Log-Info "Running version check..."
     $pyVersion = & $PYTHON_BIN -c "import sys; print(sys.version_info.major*10+sys.version_info.minor)"
-    Write-Host "[LOG] pyVersion raw result: $pyVersion"
+    Log-Info "pyVersion raw result: $pyVersion"
 } catch {
-    Write-Host "[ERROR] Could not run Python at $PYTHON_BIN."
+    Log-Error "Could not run Python at $PYTHON_BIN."
     exit 1
 }
 
 if (-not $pyVersion) {
-    Write-Host "[ERROR] Python returned no version output."
+    Log-Error "Python returned no version output."
     exit 1
 }
 
 if ([int]$pyVersion -lt 38) {
-    Write-Host "Python version must be >= 3.8. Found: $(& $PYTHON_BIN --version)"
+    Log-Error "Python version must be >= 3.8. Found: $(& $PYTHON_BIN --version)"
     exit 1
 }
-Write-Host "Using $(& $PYTHON_BIN --version)"
+Log-Info "Using $(& $PYTHON_BIN --version)"
 
 # --- Install pipx ---
 if (-not (Get-Command pipx -ErrorAction SilentlyContinue)) {
-    Write-Host "[LOG] Installing pipx..."
+    Log-Warn "pipx not found. Installing pipx..."
     & $PYTHON_BIN -m pip install --user pipx
     & $PYTHON_BIN -m pipx ensurepath
 } else {
-    Write-Host "[LOG] pipx already installed."
+    Log-Info "pipx already installed."
 }
 
 # --- Install uv ---
 if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
-    Write-Host "[LOG] Installing uv..."
+    Log-Warn "uv not found. Installing uv..."
     irm https://astral.sh/uv/install.ps1 | iex
 } else {
-    Write-Host "[LOG] uv already installed."
+    Log-Info "uv already installed."
 }
 
 # --- Ensure local bin in PATH ---
 $localBin = "$HOME\.local\bin"
 if (-not ($env:Path -split ";" | ForEach-Object { $_.Trim() } | Where-Object { $_ -eq $localBin })) {
-    Write-Host "[LOG] Adding $localBin to PATH..."
+    Log-Info "Adding $localBin to PATH..."
     $env:Path += ";$localBin"
 } else {
-    Write-Host "[LOG] $localBin already in PATH."
+    Log-Info "$localBin already in PATH."
 }
 
 Write-Host ""
-Write-Host "=== Setup complete! ==="
+Write-Host "=== Setup complete! ===" -ForegroundColor Green
 Write-Host ""
 
 # --- Prompt user to start MCP server now ---
@@ -150,10 +154,10 @@ $RUN_NOW = Read-Host "Installation successful. Do you want to start the Axiomati
 $RUN_NOW = $RUN_NOW.ToLower()
 
 if ($RUN_NOW -eq "y" -or $RUN_NOW -eq "yes") {
-    Write-Host "[LOG] Starting Axiomatic MCP server..."
+    Log-Info "Starting Axiomatic MCP server..."
     uvx --from axiomatic-mcp all
 } else {
-    Write-Host "[LOG] Skipping MCP server start. To run later, execute:"
+    Log-Info "Skipping MCP server start. To run later, execute:"
     Write-Host ""
     Write-Host "    uvx --from axiomatic-mcp all"
     Write-Host ""
