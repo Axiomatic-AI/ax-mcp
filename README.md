@@ -21,7 +21,7 @@ MCP (Model Context Protocol) servers that provide AI assistants with access to t
 <summary><strong>⚡ Claude Code</strong></summary>
 
 ```bash
-claude mcp add axiomatic-mcp --command "uvx --from axiomatic-mcp all" --env AXIOMATIC_API_KEY=your-api-key-here
+claude mcp add axiomatic-mcp --env AXIOMATIC_API_KEY=your-api-key-here -- uvx --from axiomatic-mcp all
 ```
 
 </details>
