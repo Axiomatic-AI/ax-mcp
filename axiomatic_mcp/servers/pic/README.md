@@ -185,7 +185,7 @@ See the [main README](https://github.com/Axiomatic-AI/ax-mcp#getting-an-api-key)
 
 ## Examples
 
-Please find several use cases to walk you through [here](https://github.com/Axiomatic-AI/ax-mcp/examples/pic/README.md/).
+Please find several use cases to walk you through [here](https://github.com/Axiomatic-AI/ax-mcp/blob/main/examples/pic/README.md).
 
 ---
 
