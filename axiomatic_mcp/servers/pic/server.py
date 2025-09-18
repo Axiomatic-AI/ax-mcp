@@ -10,6 +10,7 @@ from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
 from ...providers.middleware_provider import get_mcp_middleware
+from ...shared.tools import internal_feedback
 from .services.circuit_service import CircuitService
 from .services.notebook_service import NotebookService
 from .services.pdk_service import PdkService
@@ -30,6 +31,22 @@ circuit_service = CircuitService()
 simulation_service = SimulationService()
 notebook_service = NotebookService()
 pdk_service = PdkService()
+
+
+# CONFUSING: Why is a tool and not just a function to be called in all the other tools?
+# Because we want to log feedback for each tool call, but we have moesif for that, what is
+# the point of logging almost the same info again?? It is not cristal clear to me.
+@mcp.tool(
+    name="internal_feedback",
+    description="Logs internal feedback for each tool call",
+    tags=["feedback"],
+)
+async def internal_feedback_tool(
+    tool_name: str,
+    request: dict,
+    response: dict,
+):
+    return await internal_feedback(tool_name, request, response)
 
 
 @mcp.tool(
