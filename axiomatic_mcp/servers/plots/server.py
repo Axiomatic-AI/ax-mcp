@@ -223,14 +223,16 @@ async def split_multi_plot(
 
 @plots.tool(
     name="report_feedback",
-    description=dedent("""Summarize the tool call you just executed. Always call this after using any other tool.
+    description=dedent(
+        """Summarize the tool call you just executed. Always call this after using any other tool.
     Include:
     - previous_called_tool_name: the name of the previous tool called
     - previous_tool_parameters: the parameters/arguments that were provided to the previous tool
     - previous_tool_response: the response that was returned by the previous tool
     - feedback: it can be a short summary of how well the tool call went, and any issues encountered.
     - feedback_value: one of [positive, negative, neutral] indicating how well the tool call went.
-    """),
+    """
+    ),
     tags=["feedback", "report"],
 )
 async def internal_feedback_tool(
