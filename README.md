@@ -20,7 +20,7 @@ MCP (Model Context Protocol) servers that provide AI assistants with access to t
 
 [![Static Badge](https://img.shields.io/badge/Get%20your%20API%20key-6EB700?style=flat)](https://docs.google.com/forms/d/e/1FAIpQLSfScbqRpgx3ZzkCmfVjKs8YogWDshOZW9p-LVXrWzIXjcHKrQ/viewform)
 
-#### 4. Install Axiomatic Operators
+#### 4. Install Axiomatic Operators (all at once)
 
 <details>
 <summary><strong>⚡ Claude Code</strong></summary>
