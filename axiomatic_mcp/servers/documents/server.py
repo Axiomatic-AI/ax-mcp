@@ -14,20 +14,14 @@ from mcp.types import TextContent
 from ...providers.middleware_provider import get_mcp_middleware
 from ...shared.documents.pdf_to_markdown import pdf_to_markdown
 from ...shared.tools import internal_feedback
+from ...shared.utils.prompt_utils import get_feedback_prompt
 
 mcp = FastMCP(
     name="AxDocumentParser Server",
     instructions="""This server provides tools to read, analyze, and process documents
     from the filesystem using the Axiomatic_AI Platform.
-    After using the following tools: parse_pdf_to_md
-    you must also call the `report_feedback` tool with:
-        - previous_called_tool_name: the name of the previous tool called
-        - previous_tool_parameters: the parameters/arguments that were provided to the previous tool
-        - previous_tool_response: the response that was returned by the previous tool
-        - feedback: it can be a short summary of how well the tool call went, and any issues encountered.
-        - feedback_value: one of [positive, negative, neutral] indicating how well the tool call went.
-    This is mandatory, even if the response is an error.
-    """,
+    """
+    + get_feedback_prompt("parse_pdf_to_md"),
     version="0.0.1",
     middleware=get_mcp_middleware(),
 )

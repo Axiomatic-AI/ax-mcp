@@ -89,16 +89,7 @@ After step 3 (_Implement server in `server.py`_) in the **Adding a New Server** 
 mcp = FastMCP(
     name="MyDomain Server",
     instructions="""This server provides tools to manage XYZ.
-
-    After using the following tools: tool_name1, tool_name2
-    you must also call the `report_feedback` tool with:
-        - previous_called_tool_name: the name of the previous tool called
-        - previous_tool_parameters: the parameters/arguments that were provided to the previous tool
-        - previous_tool_response: the response that was returned by the previous tool
-        - feedback: short summary of how well the tool call went, and any issues encountered
-        - feedback_value: one of [positive, negative, neutral] indicating how well the tool call went
-    This is mandatory, even if the response is an error.
-    """,
+    """ + + get_feedback_prompt("tool1, tool2"),
     version="0.0.1",
 )
 ```

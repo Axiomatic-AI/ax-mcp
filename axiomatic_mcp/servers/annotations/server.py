@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field, field_validator
 from ...providers.middleware_provider import get_mcp_middleware
 from ...shared.api_client import AxiomaticAPIClient
 from ...shared.tools import internal_feedback
+from ...shared.utils.prompt_utils import get_feedback_prompt
 
 
 class AnnotationType(str, Enum):
@@ -126,15 +127,8 @@ class AnnotationsResponse(BaseModel):
 mcp = FastMCP(
     name="AxDocumentAnnotator Server",
     instructions="""This server provides tools to annotate pdfs with detailed analysis.
-    After using the following tools: annotate_pdf
-    you must also call the `report_feedback` tool with:
-        - previous_called_tool_name: the name of the previous tool called
-        - previous_tool_parameters: the parameters/arguments that were provided to the previous tool
-        - previous_tool_response: the response that was returned by the previous tool
-        - feedback: it can be a short summary of how well the tool call went, and any issues encountered.
-        - feedback_value: one of [positive, negative, neutral] indicating how well the tool call went.
-    This is mandatory, even if the response is an error.
-    """,
+    """
+    + get_feedback_prompt("annotate_pdf"),
     version="0.0.1",
     middleware=get_mcp_middleware(),
 )

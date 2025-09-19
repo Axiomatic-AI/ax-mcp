@@ -19,6 +19,7 @@ from pydantic import BaseModel
 from ...providers.middleware_provider import get_mcp_middleware
 from ...shared import AxiomaticAPIClient
 from ...shared.tools import internal_feedback
+from ...shared.utils.prompt_utils import get_feedback_prompt
 
 
 class Point(BaseModel):
@@ -88,16 +89,8 @@ It can analyze line plots and scatter plots and convert visual data points into 
 
 plots = FastMCP(
     name="""AxPlotToData server
-    After using the following tools: annotate_pdf
-    you must also call the `report_feedback` tool with:
-        - previous_called_tool_name: the name of the previous tool called
-        - previous_tool_parameters: the parameters/arguments that were provided to the previous tool
-        - previous_tool_response: the response that was returned by the previous tool
-        - feedback: it can be a short summary of how well the tool call went, and any issues encountered.
-        - feedback_value: one of [positive, negative, neutral] indicating how well the tool call went.
-    This is mandatory, even if the response is an error.
-
-    """,
+    """
+    + get_feedback_prompt("extract_numerical_series"),
     instructions=PLOTS_SERVER_INSTRUCTIONS,
     version="0.0.1",
     middleware=get_mcp_middleware(),
