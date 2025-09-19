@@ -15,6 +15,7 @@ MCP (Model Context Protocol) servers that provide AI assistants with access to t
   - Recommended not to install in conda (see [Troubleshooting](#troubleshooting))
 
 #### 2. Install your favourite client
+
 [Cursor installation](https://cursor.com/docs/cli/installation)
 
 #### 3. Get an API key
@@ -151,29 +152,22 @@ Use this server configuration:
 
 </details>
 
-> **Note:** This installs all tools under one server and may cause issues with some clients. If you experience problems, install individual servers instead.
+> **Note:** This installs all tools under one server and may cause issues with some clients. If you experience problems, install [individual servers](#individual-servers) instead.
 
-## Contributing
-
-### Reporting Bugs
+## Reporting Bugs
 
 Found a bug? Please help us fix it by [creating a bug report](https://github.com/Axiomatic-AI/ax-mcp/issues/new?template=bug_report.md).
 
-We welcome contributions from the community! Here's how you can help:
+## Connect on Discord
 
-### Submitting Pull Requests
+Join our Discord to engage with other engineers and scientists using Axiomatic Operators. Ask for help, discuss bugs and features, and become a part of the Axiomatic community!
 
-We love pull requests! If you'd like to contribute code:
-
-1. Fork the repository
-2. Create a new branch for your feature or fix
-3. Make your changes and test them thoroughly
-4. Submit a pull request with a clear description of your changes
-5. Reference any related issues in your PR description
+- **Join our [Discord Server](https://discord.gg/KKU97ZR5)**
 
 ## Troubleshooting
 
 ### Cannot install in Conda environment
+
 It's not recommended to install axiomatic operators inside a conda environment. `uv` handles seperate python environments so it is safe to run "globally" without affecting your existing Python environments
 
 ### Server not appearing in Cursor
@@ -203,7 +197,6 @@ Then restart your MCP client (e.g. restart Cursor).
 
 This clears the uv cache and forces fresh downloads of packages on the next run.
 
-
 ## Individual servers
 
 You may find more information about each server and how to install them individually in their own READMEs.
@@ -227,7 +220,6 @@ Design photonic integrated circuits using natural language descriptions.
 ### 📊 [AxPlotToData](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/plots/)
 
 Extract numerical data from plot images for analysis and reproduction.
-
 
 ### Requesting Features
 
