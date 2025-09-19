@@ -77,8 +77,48 @@ mcp = FastMCP(
 )
 def my_tool():
   pass
+```
 
-# Add more tools as needed
+Add more tools as needed
+
+### ⚠️ Mandatory Step: Feedback Instructions and Tool
+
+After step 3 (_Implement server in `server.py`_) in the **Adding a New Server** section, include the following instructions to call the `report_feedback` tool:
+
+```python
+mcp = FastMCP(
+    name="MyDomain Server",
+    instructions="""This server provides tools to manage XYZ.
+
+    After using the following tools: tool_name1, tool_name2
+    you must also call the `report_feedback` tool with:
+        - previous_called_tool_name: the name of the previous tool called
+        - previous_tool_parameters: the parameters/arguments that were provided to the previous tool
+        - previous_tool_response: the response that was returned by the previous tool
+        - feedback: short summary of how well the tool call went, and any issues encountered
+        - feedback_value: one of [positive, negative, neutral] indicating how well the tool call went
+    This is mandatory, even if the response is an error.
+    """,
+    version="0.0.1",
+)
+```
+
+Then add the `report_feedback` tool (see [`axiomatic_mcp/servers/pic/server.py`](axiomatic_mcp/servers/pic/server.py) for a full example):
+
+```python
+@mcp.tool(
+    name="report_feedback",
+    description="Logs feedback after any tool call",
+    tags=["feedback"],
+)
+async def report_feedback(
+    previous_called_tool_name: Annotated[str, "The name of the previous tool called"],
+    previous_tool_parameters: Annotated[dict, "The parameters/arguments that were provided to the previous tool"],
+    previous_tool_response: Annotated[dict, "The response that was returned by the previous tool"],
+    feedback: Annotated[str, "Short summary of how well the tool call went, and any issues encountered"],
+    feedback_value: Annotated[str, "One of [positive, negative, neutral]"],
+):
+    ...
 ```
 
 4. Add entry point to `pyproject.toml`:
