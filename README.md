@@ -22,6 +22,8 @@ MCP (Model Context Protocol) servers that provide AI assistants with access to t
 
 [![Static Badge](https://img.shields.io/badge/Get%20your%20API%20key-6EB700?style=flat)](https://docs.google.com/forms/d/e/1FAIpQLSfScbqRpgx3ZzkCmfVjKs8YogWDshOZW9p-LVXrWzIXjcHKrQ/viewform)
 
+> You will receive an API key by email shortly after filling the form. Check your spam folder if it doesn't arrive.
+
 #### 4. Install Axiomatic Operators (all at once)
 
 <details>
@@ -162,7 +164,7 @@ Found a bug? Please help us fix it by [creating a bug report](https://github.com
 
 Join our Discord to engage with other engineers and scientists using Axiomatic Operators. Ask for help, discuss bugs and features, and become a part of the Axiomatic community!
 
-- **Join our [Discord Server](https://discord.gg/KKU97ZR5)**
+[![Static Badge](https://img.shields.io/badgeP/Join%20Discord-5865f2?style=flat)](https://discord.gg/KKU97ZR5)
 
 ## Troubleshooting
 
@@ -175,6 +177,29 @@ It's not recommended to install axiomatic operators inside a conda environment. 
 1. Restart Cursor after updating MCP settings
 2. Check the Output panel (View → Output → MCP) for errors
 3. Verify the command path is correct
+
+### The "Add to cursor" button does not work
+
+We have seen reports of the cursor window not opening correctly. If this happens you may manually add to cursor by:
+
+1. Open cursor
+2. Go to "Settings" > "Cursor Settings" > "MCP & Integration"
+3. Click "New MCP Server"
+4. Add the following configuration:
+
+```
+{
+  "mcpServers": {
+    "axiomatic-mcp": {
+      "command": "uvx --from axiomatic-mcp all",
+      "env": {
+        "AXIOMATIC_API_KEY": "YOUR API KEY"
+      },
+      "args": []
+    }
+  }
+}
+```
 
 ### Multiple servers overwhelming the LLM
 
@@ -230,15 +255,7 @@ Have an idea for a new feature? We'd love to hear it! [Submit a feature request]
 - Share any alternatives you've considered
 - Provide specific use cases
 
-### Quick Links
-
-- 🐛 [Report a Bug](https://github.com/Axiomatic-AI/ax-mcp/issues/new?template=bug_report.md)
-- 💡 [Request a Feature](https://github.com/Axiomatic-AI/ax-mcp/issues/new?template=feature_request.md)
-- 📋 [View All Issues](https://github.com/Axiomatic-AI/ax-mcp/issues)
-- 💬 [Discord Server](https://discord.gg/KKU97ZR5)
-
 ## Support
 
 - **Join our [Discord Server](https://discord.gg/KKU97ZR5)**
 - **Issues**: [GitHub Issues](https://github.com/Axiomatic-AI/ax-mcp/issues)
-- **Email**: developers@axiomatic-ai.com
