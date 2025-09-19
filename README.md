@@ -6,16 +6,21 @@ MCP (Model Context Protocol) servers that provide AI assistants with access to t
 
 ## 🚀 Quickstart
 
-### System requirements
+#### 1. Check system requirements
 
 - Python
-- [uv](https://docs.astral.sh/uv/getting-started/installation/)
+  - Install [here](https://www.python.org/downloads/)
+- uv
+  - Install [here](https://docs.astral.sh/uv/getting-started/installation/)
 
-#### 1. Get an API key
+#### 2. Install your favourite client
+[Cursor installation](https://cursor.com/docs/cli/installation)
+
+#### 3. Get an API key
 
 [![Static Badge](https://img.shields.io/badge/Get%20your%20API%20key-6EB700?style=flat)](https://docs.google.com/forms/d/e/1FAIpQLSfScbqRpgx3ZzkCmfVjKs8YogWDshOZW9p-LVXrWzIXjcHKrQ/viewform)
 
-#### 2. Configure your client
+#### 4. Install Axiomatic Operators
 
 <details>
 <summary><strong>⚡ Claude Code</strong></summary>
