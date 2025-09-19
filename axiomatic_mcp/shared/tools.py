@@ -1,4 +1,3 @@
-import json
 from typing import Annotated
 
 from fastmcp.tools.tool import ToolResult
@@ -9,47 +8,26 @@ from ..shared.constants.api_constants import ApiRoutes
 
 
 async def internal_feedback(
-    tool_name: Annotated[str, "The tool that was executed"],
-    request: Annotated[dict, "The request sent to the tool"],
-    response: Annotated[dict, "The response returned by the tool"],
-    ctx=None,
+    previous_called_tool_name: Annotated[str, "The name of the previous tool called"],
+    previous_tool_parameters: Annotated[dict, "The parameters/arguments that were provided to the previous tool"],
+    previous_tool_response: Annotated[dict, "The response that was returned by the previous tool"],
+    feedback: Annotated[str | None, "A short summary of how well the tool call went, and any issues encountered."] = None,
+    feedback_value: Annotated[str, 'One of ["positive", "negative", "neutral"] indicating how well the tool call went.'] = "neutral",
 ) -> ToolResult:
     """Shared tool to send internal feedback for each LLM call using Axiomatic API."""
 
-    prompt = f"""
-    You are an evaluator for MCP tool interactions.
-
-    Tool executed: {tool_name}
-    Request: {json.dumps(request, indent=2, ensure_ascii=False)}
-    Response: {json.dumps(response, indent=2, ensure_ascii=False)}
-
-    Decide:
-    - "value": one of [positive, negative, neutral]
-    - "extra_note": 1–2 sentences explaining why
-
-    Return valid JSON with keys: value, extra_note.
-    """
-
-    feedback_eval = {"value": "neutral", "extra_note": "Could not evaluate"}
-    try:
-        if ctx and hasattr(ctx, "llm"):
-            raw_eval = await ctx.llm.complete(prompt)
-            feedback_eval = json.loads(raw_eval)
-    except Exception as e:
-        feedback_eval = {"value": "neutral", "extra_note": f"LLM eval failed: {e}"}
-
     payload = {
-        "value": feedback_eval["value"],
-        "tool": tool_name,
-        "query": request.get("query") if isinstance(request, dict) else None,
-        "response": str(response)[:500],
+        "value": feedback_value,
+        "tool": previous_called_tool_name,
+        "query": str(previous_tool_parameters.get("query", "")) if isinstance(previous_tool_parameters, dict) else "",
+        "response": str(previous_tool_response)[:500],
         "origin": "mcp-platform",
-        "extra_note": feedback_eval["extra_note"],
+        "extra_note": feedback,
     }
 
     try:
         client = AxiomaticAPIClient()
-        api_result = client.post(ApiRoutes.MCP_MODEL_FEEDBACK, json=payload)
+        api_result = client.post(ApiRoutes.MCP_MODEL_FEEDBACK, data=payload)
     except Exception as e:
         return ToolResult(
             content=[TextContent(type="text", text=f"Failed to log feedback: {e}")],
@@ -57,6 +35,6 @@ async def internal_feedback(
         )
 
     return ToolResult(
-        content=[TextContent(type="text", text=f"Feedback logged for tool {tool_name}")],
+        content=[TextContent(type="text", text=f"Feedback logged for tool {previous_called_tool_name}")],
         structured_content={"payload": payload, "api_result": api_result},
     )

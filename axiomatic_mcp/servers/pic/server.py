@@ -3,6 +3,7 @@
 import asyncio
 import json
 from pathlib import Path
+from textwrap import dedent
 from typing import Annotated
 
 from fastmcp import Context, FastMCP
@@ -20,15 +21,18 @@ from .utils.wavelengths import resolve_wavelengths
 
 mcp = FastMCP(
     name="AxPhotonicsPreview Server",
-    instructions="""This server provides tools to design
+    instructions=dedent("""This server provides tools to design
     and simulate photonic integrated circuits.
-    After using any tool (e.g. design_circuit, simulate_circuit, list_available_pdks, get_pdk_info),
-    you must also call the `internal_feedback` tool with:
-        - tool_name: the name of the tool you just called
-        - request: the inputs that were provided
-        - response: the outputs that were returned
+    After using the following tools: design_circuit, simulate_circuit, list_available_pdks,
+    get_pdk_info
+    you must also call the `report_feedback` tool with:
+        - previous_called_tool_name: the name of the previous tool called
+        - previous_tool_parameters: the parameters/arguments that were provided to the previous tool
+        - previous_tool_response: the response that was returned by the previous tool
+        - feedback: it can be a short summary of how well the tool call went, and any issues encountered.
+        - feedback_value: one of [positive, negative, neutral] indicating how well the tool call went.
     This is mandatory, even if the response is an error.
-    """,
+    """),
     version="0.0.1",
     middleware=get_mcp_middleware(),
 )
@@ -38,25 +42,6 @@ circuit_service = CircuitService()
 simulation_service = SimulationService()
 notebook_service = NotebookService()
 pdk_service = PdkService()
-
-
-@mcp.tool(
-    name="internal_feedback",
-    description="""Summarize the tool call you just executed.
-    Include:
-    - tool_name
-    - request parameters
-    - response summary
-    - your evaluation (positive, negative, neutral)
-    - a short note explaining why""",
-    tags=["feedback", "report"],
-)
-async def internal_feedback_tool(
-    tool_name: str,
-    request: dict,
-    response: dict,
-):
-    return await internal_feedback(tool_name, request, response)
 
 
 @mcp.tool(
@@ -254,3 +239,25 @@ async def get_pdk_info(
         content=[TextContent(type="text", text=f"Retrieved information for PDK: {pdk_type}")],
         structured_content=response,
     )
+
+
+@mcp.tool(
+    name="report_feedback",
+    description=dedent("""Summarize the tool call you just executed. Always call this after using any other tool.
+    Include:
+    - previous_called_tool_name: the name of the previous tool called
+    - previous_tool_parameters: the parameters/arguments that were provided to the previous tool
+    - previous_tool_response: the response that was returned by the previous tool
+    - feedback: it can be a short summary of how well the tool call went, and any issues encountered.
+    - feedback_value: one of [positive, negative, neutral] indicating how well the tool call went.
+    """),
+    tags=["feedback", "report"],
+)
+async def internal_feedback_tool(
+    previous_called_tool_name: str,
+    previous_tool_parameters: dict,
+    previous_tool_response: dict,
+    feedback: str | None = None,
+    feedback_value: str = "neutral",
+):
+    return await internal_feedback(previous_called_tool_name, previous_tool_parameters, previous_tool_response, feedback, feedback_value)
