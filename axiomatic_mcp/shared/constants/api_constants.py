@@ -14,3 +14,4 @@ class ApiRoutes:
     PDK_LIST = "/pic/pdks"
     PDK_PERMISSION = "/users/pdk-permissions/me"
     PDK_INFO = "/pic/pdk/{pdk_type}/info"
+    MCP_MODEL_FEEDBACK = "/mcp/model-feedback"
