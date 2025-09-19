@@ -147,6 +147,25 @@ Use this server configuration:
 
 > **Note:** This installs all tools under one server and may cause issues with some clients. If you experience problems, install individual servers instead.
 
+## Contributing
+
+### Reporting Bugs
+
+Found a bug? Please help us fix it by [creating a bug report](https://github.com/Axiomatic-AI/ax-mcp/issues/new?template=bug_report.md).
+
+We welcome contributions from the community! Here's how you can help:
+
+### Submitting Pull Requests
+
+We love pull requests! If you'd like to contribute code:
+
+1. Fork the repository
+2. Create a new branch for your feature or fix
+3. Make your changes and test them thoroughly
+4. Submit a pull request with a clear description of your changes
+5. Reference any related issues in your PR description
+
+
 ## Individual servers
 
 You may find more information about each server and how to install them individually in their own READMEs.
@@ -200,28 +219,6 @@ Then restart your MCP client (e.g. restart Cursor).
 
 This clears the uv cache and forces fresh downloads of packages on the next run.
 
-## Contributing
-
-We welcome contributions from the community! Here's how you can help:
-
-### Submitting Pull Requests
-
-We love pull requests! If you'd like to contribute code:
-
-1. Fork the repository
-2. Create a new branch for your feature or fix
-3. Make your changes and test them thoroughly
-4. Submit a pull request with a clear description of your changes
-5. Reference any related issues in your PR description
-
-### Reporting Bugs
-
-Found a bug? Please help us fix it by [creating a bug report](https://github.com/Axiomatic-AI/ax-mcp/issues/new?template=bug_report.md). When reporting bugs:
-
-- Use the bug report template to provide all necessary information
-- Include steps to reproduce the issue
-- Add relevant error messages and logs
-- Specify your environment details (OS, Python version, etc.)
 
 ### Requesting Features
 
