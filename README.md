@@ -246,7 +246,7 @@ Design photonic integrated circuits using natural language descriptions.
 
 Extract numerical data from plot images for analysis and reproduction.
 
-### Requesting Features
+## Requesting Features
 
 Have an idea for a new feature? We'd love to hear it! [Submit a feature request](https://github.com/Axiomatic-AI/ax-mcp/issues/new?template=feature_request.md) and:
 
