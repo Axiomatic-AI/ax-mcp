@@ -164,7 +164,7 @@ Found a bug? Please help us fix it by [creating a bug report](https://github.com
 
 Join our Discord to engage with other engineers and scientists using Axiomatic Operators. Ask for help, discuss bugs and features, and become a part of the Axiomatic community!
 
-[![Static Badge](https://img.shields.io/badgeP/Join%20Discord-5865f2?style=flat)](https://discord.gg/KKU97ZR5)
+[![Static Badge](https://img.shields.io/badge/Join%20Discord-5865f2?style=flat)](https://discord.gg/KKU97ZR5)
 
 ## Troubleshooting
 
