@@ -12,6 +12,7 @@ MCP (Model Context Protocol) servers that provide AI assistants with access to t
   - Install [here](https://www.python.org/downloads/)
 - uv
   - Install [here](https://docs.astral.sh/uv/getting-started/installation/)
+  - Recommended not to install in conda (see [Troubleshooting](#troubleshooting))
 
 #### 2. Install your favourite client
 [Cursor installation](https://cursor.com/docs/cli/installation)
