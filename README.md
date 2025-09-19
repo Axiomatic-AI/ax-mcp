@@ -165,32 +165,10 @@ We love pull requests! If you'd like to contribute code:
 4. Submit a pull request with a clear description of your changes
 5. Reference any related issues in your PR description
 
-
-## Individual servers
-
-You may find more information about each server and how to install them individually in their own READMEs.
-
-### 🖌️ [AxEquationExplorer](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/equations/)
-
-Compose equation of your interest based on information in the scientific paper.
-
-### 📄 [AxDocumentParser](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/documents/)
-
-Convert PDF documents to markdown with advanced OCR and layout understanding.
-
-### 📝 [AxDocumentAnnotator](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/annotations/)
-
-Create intelligent annotations for PDF documents with contextual analysis, equation extraction, and parameter identification.
-
-### 🔬 [AxPhotonicsPreview](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/pic/)
-
-Design photonic integrated circuits using natural language descriptions.
-
-### 📊 [AxPlotToData](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/plots/)
-
-Extract numerical data from plot images for analysis and reproduction.
-
 ## Troubleshooting
+
+### Cannot install in Conda environment
+It's not recommended to install axiomatic operators inside a conda environment. `uv` handles seperate python environments so it is safe to run "globally" without affecting your existing Python environments
 
 ### Server not appearing in Cursor
 
@@ -218,6 +196,31 @@ uv cache clean
 Then restart your MCP client (e.g. restart Cursor).
 
 This clears the uv cache and forces fresh downloads of packages on the next run.
+
+
+## Individual servers
+
+You may find more information about each server and how to install them individually in their own READMEs.
+
+### 🖌️ [AxEquationExplorer](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/equations/)
+
+Compose equation of your interest based on information in the scientific paper.
+
+### 📄 [AxDocumentParser](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/documents/)
+
+Convert PDF documents to markdown with advanced OCR and layout understanding.
+
+### 📝 [AxDocumentAnnotator](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/annotations/)
+
+Create intelligent annotations for PDF documents with contextual analysis, equation extraction, and parameter identification.
+
+### 🔬 [AxPhotonicsPreview](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/pic/)
+
+Design photonic integrated circuits using natural language descriptions.
+
+### 📊 [AxPlotToData](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/plots/)
+
+Extract numerical data from plot images for analysis and reproduction.
 
 
 ### Requesting Features
