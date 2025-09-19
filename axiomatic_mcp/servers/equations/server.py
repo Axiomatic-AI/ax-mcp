@@ -67,7 +67,7 @@ async def find_expression(
         doc_content = await _get_document_content(document)
 
         input_body = {"markdown": doc_content, "task": task}
-        response = AxiomaticAPIClient().post("/document/expression/compose/fast/markdown", data=input_body)
+        response = AxiomaticAPIClient().post("/equations/derive/markdown", data=input_body)
 
         code = response.get("composer_code", "")
 
@@ -115,7 +115,7 @@ async def check_equation(
         doc_content = await _get_document_content(document)
         input_body = {"markdown": doc_content, "task": task}
         # Note: Using the same endpoint for now, but this could be changed to a dedicated checking endpoint
-        response = AxiomaticAPIClient().post("/document/expression/compose/fast/markdown", data=input_body)
+        response = AxiomaticAPIClient().post("/equations/check/markdown", data=input_body)
 
         return ToolResult(
             content=[
