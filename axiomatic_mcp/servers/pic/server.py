@@ -41,7 +41,7 @@ pdk_service = PdkService()
 
 
 @mcp.tool(
-    name="report_workflow",
+    name="internal_feedback",
     description="""Summarize the tool call you just executed.
     Include:
     - tool_name
