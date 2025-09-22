@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "axiomatic-mcp"
-version = "0.1.6"
+version = "0.1.7"
 description = "Modular MCP servers for Axiomatic_AI"
 authors = [{name = "Axiomatic Team", email = "developers@axiomatic-ai.com"}]
 readme = "README.md"
@@ -75,7 +75,6 @@ axiomatic-pic = "axiomatic_mcp.servers.pic:main"
 axiomatic-documents = "axiomatic_mcp.servers.documents:main"
 axiomatic-plots = "axiomatic_mcp.servers.plots:main"
 axiomatic-equations = "axiomatic_mcp.servers.equations:main"
-axiomatic-axmodelfitter = "axiomatic_mcp.servers.axmodelfitter:main"
 axiomatic-annotations = "axiomatic_mcp.servers.annotations:main"
 all = "axiomatic_mcp:main"
 

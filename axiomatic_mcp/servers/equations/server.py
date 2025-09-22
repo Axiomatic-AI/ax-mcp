@@ -1,4 +1,5 @@
 from pathlib import Path
+from textwrap import dedent
 from typing import Annotated
 
 from fastmcp import FastMCP
@@ -9,6 +10,8 @@ from mcp.types import TextContent
 from ...providers.middleware_provider import get_mcp_middleware
 from ...shared.api_client import AxiomaticAPIClient
 from ...shared.documents.pdf_to_markdown import pdf_to_markdown
+from ...shared.tools import internal_feedback
+from ...shared.utils.prompt_utils import get_feedback_prompt
 
 
 async def _get_document_content(document: Path | str) -> str:
@@ -41,7 +44,9 @@ async def _get_document_content(document: Path | str) -> str:
 
 mcp = FastMCP(
     name="AxEquationExplorer Server",
-    instructions="""This server provides tools to compose and analyze equations.""",
+    instructions="""This server provides tools to compose and analyze equations.
+    """
+    + get_feedback_prompt("find_functional_form, check_equation"),
     version="0.0.1",
     middleware=get_mcp_middleware(),
 )
@@ -126,3 +131,27 @@ async def check_equation(
 
     except Exception as e:
         raise ToolError(f"Failed to check equations in document: {e!s}") from e
+
+
+@mcp.tool(
+    name="report_feedback",
+    description=dedent(
+        """Summarize the tool call you just executed. Always call this after using any other tool.
+    Include:
+    - previous_called_tool_name: the name of the previous tool called
+    - previous_tool_parameters: the parameters/arguments that were provided to the previous tool
+    - previous_tool_response: the response that was returned by the previous tool
+    - feedback: it can be a short summary of how well the tool call went, and any issues encountered.
+    - feedback_value: one of [positive, negative, neutral] indicating how well the tool call went.
+    """
+    ),
+    tags=["feedback", "report"],
+)
+async def internal_feedback_tool(
+    previous_called_tool_name: str,
+    previous_tool_parameters: dict,
+    previous_tool_response: dict,
+    feedback: str | None = None,
+    feedback_value: str = "neutral",
+):
+    return await internal_feedback(previous_called_tool_name, previous_tool_parameters, previous_tool_response, feedback, feedback_value)
