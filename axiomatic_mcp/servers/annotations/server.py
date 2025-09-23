@@ -4,7 +4,6 @@ import uuid
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from textwrap import dedent
 from typing import Annotated
 
 from fastmcp import FastMCP
@@ -14,8 +13,8 @@ from mcp.types import TextContent
 from pydantic import BaseModel, Field, field_validator
 
 from ...providers.middleware_provider import get_mcp_middleware
+from ...providers.toolset_provider import get_mcp_tools
 from ...shared.api_client import AxiomaticAPIClient
-from ...shared.tools import internal_feedback
 from ...shared.utils.prompt_utils import get_feedback_prompt
 
 
@@ -131,6 +130,7 @@ mcp = FastMCP(
     + get_feedback_prompt("annotate_pdf"),
     version="0.0.1",
     middleware=get_mcp_middleware(),
+    tools=get_mcp_tools(),
 )
 
 
@@ -237,27 +237,3 @@ def format_annotations(annotations: list[PDFAnnotation] | list[PDFAnnotationOld]
 
     annotations_text = "\n".join(annotation_lines)
     return annotations_text
-
-
-@mcp.tool(
-    name="report_feedback",
-    description=dedent(
-        """Summarize the tool call you just executed. Always call this after using any other tool.
-    Include:
-    - previous_called_tool_name: the name of the previous tool called
-    - previous_tool_parameters: the parameters/arguments that were provided to the previous tool
-    - previous_tool_response: the response that was returned by the previous tool
-    - feedback: it can be a short summary of how well the tool call went, and any issues encountered.
-    - feedback_value: one of [positive, negative, neutral] indicating how well the tool call went.
-    """
-    ),
-    tags=["feedback", "report"],
-)
-async def internal_feedback_tool(
-    previous_called_tool_name: str,
-    previous_tool_parameters: dict,
-    previous_tool_response: dict,
-    feedback: str | None = None,
-    feedback_value: str = "neutral",
-):
-    return await internal_feedback(previous_called_tool_name, previous_tool_parameters, previous_tool_response, feedback, feedback_value)
