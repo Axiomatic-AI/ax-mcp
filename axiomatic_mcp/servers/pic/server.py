@@ -234,25 +234,28 @@ async def validate_statements(
         "statements": statements_list,
     }
 
-    response = await optimization_service.optimize_code(request_body)
+    verified_statements = await statements_service.validate_statements(request_body)
 
-    optimized_code = response.get("optimized_code", "")
+    # Convert to pretty JSON
+    verified_statements_json = json.dumps(verified_statements, indent=2)
 
-    optimized_file_path = code_path.parent / f"{code_path.stem}_optimized.py"
+    # Build a new path in the same directory
+    verified_statements_path = statements_path.parent / "verified_statements.json"
 
-    with optimized_file_path.open("w", encoding="utf-8") as f:
-        f.write(optimized_code)
+    # Write to the new file
+    with verified_statements_path.open("w", encoding="utf-8") as f:
+        f.write(verified_statements_json)
 
     return ToolResult(
         content=[
             TextContent(
                 type="text",
-                text=f"Optimized circuit saved at {optimized_file_path}",
+                text=f"Verified statements saved at {statements_path}",
             )
         ],
         structured_content={
-            "optimized_file_path": str(optimized_file_path),
-            "optimized_code": optimized_code,
+            "verified_statements_path": str(statements_path),
+            "verified_statements": verified_statements,
         },
     )
 
