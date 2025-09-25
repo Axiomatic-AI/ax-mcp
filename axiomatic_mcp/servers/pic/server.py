@@ -17,6 +17,7 @@ from .services.circuit_service import CircuitService
 from .services.notebook_service import NotebookService
 from .services.pdk_service import PdkService
 from .services.simulation_service import SimulationService
+from .services.statements_service import StatementsService
 from .utils.pdk import extract_pdk_type_from_code, flatten_pdks_response
 from .utils.wavelengths import resolve_wavelengths
 
@@ -32,12 +33,11 @@ mcp = FastMCP(
     middleware=get_mcp_middleware(),
     tools=get_mcp_tools(),
 )
-
-
 circuit_service = CircuitService()
 simulation_service = SimulationService()
 notebook_service = NotebookService()
 pdk_service = PdkService()
+statements_service = StatementsService()
 
 
 @mcp.tool(
@@ -202,6 +202,60 @@ async def simulate_circuit(
                 "end": max(wavelengths),
                 "points": len(wavelengths),
             },
+        },
+    )
+
+
+@mcp.tool(
+    name="validate_statements",
+    description="Validates the statements in a photonic circuit design.",
+    tags=["validate", "statements"],
+)
+async def validate_statements(
+    file_path: Annotated[Path, "Path to the Python file containing the circuit code"],
+    statements_path: Annotated[Path, "Path to the JSON file containing the circuit statements"],
+) -> ToolResult:
+    """Optimize a photonic integrated circuit."""
+    if not file_path.exists():
+        raise FileNotFoundError(f"Circuit netlist not found: {file_path}")
+    if not statements_path.exists():
+        raise FileNotFoundError(f"Statements file not found: {statements_path}")
+    
+    code = await asyncio.to_thread(file_path.read_bytes)
+    netlist = await circuit_service.get_netlist_from_code(code)
+
+    with statements_path.open("r", encoding="utf-8") as f:
+        statements_json = json.load(f)
+
+    statements_list = statements_json.get("statements", [])
+
+    request_body = {
+        "netlist": netlist,
+        "statements": statements_list,
+    }
+
+    verified_statements = await statements_service.validate_statements(request_body)
+
+    # Convert to pretty JSON
+    verified_statements_json = json.dumps(verified_statements, indent=2)
+
+    # Build a new path in the same directory
+    verified_statements_path = statements_path.parent / "verified_statements.json"
+
+    # Write to the new file
+    with verified_statements_path.open("w", encoding="utf-8") as f:
+        f.write(verified_statements_json)
+
+    return ToolResult(
+        content=[
+            TextContent(
+                type="text",
+                text=f"Verified statements saved at {statements_path}",
+            )
+        ],
+        structured_content={
+            "verified_statements_path": str(statements_path),
+            "verified_statements": verified_statements,
         },
     )
 
