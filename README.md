@@ -132,6 +132,7 @@ Create or edit the configuration file `~/.codex/config.toml` and add:
 [mcp_servers.axiomatic-mcp]
 command = "uvx"
 args = ["--from", "axiomatic-mcp", "all"]
+env = { AXIOMATIC_API_KEY = "your-api-key-here" }
 ```
 
 For more information, see the [Codex MCP documentation](https://github.com/openai/codex/blob/main/codex-rs/config.md#mcp_servers)
