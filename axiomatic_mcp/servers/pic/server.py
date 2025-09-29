@@ -220,9 +220,9 @@ async def validate_statements(
         raise FileNotFoundError(f"Circuit code file not found: {file_path}")
     if not statements_path.exists():
         raise FileNotFoundError(f"Statements file not found: {statements_path}")
-    if not statements_path.read_text().strip(): # raise error if statements file is empty
+    if not statements_path.read_text().strip():  # raise error if statements file is empty
         raise ValueError(f"Statements file is empty: {statements_path}")
-    
+
     code = await asyncio.to_thread(file_path.read_bytes)
     netlist = await circuit_service.get_netlist_from_code(code)
 
