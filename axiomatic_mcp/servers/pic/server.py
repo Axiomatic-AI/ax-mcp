@@ -215,11 +215,13 @@ async def validate_statements(
     file_path: Annotated[Path, "Path to the Python file containing the circuit code"],
     statements_path: Annotated[Path, "Path to the JSON file containing the circuit statements"],
 ) -> ToolResult:
-    """Optimize a photonic integrated circuit."""
+    """Validates the statements in a photonic circuit design."""
     if not file_path.exists():
-        raise FileNotFoundError(f"Circuit netlist not found: {file_path}")
+        raise FileNotFoundError(f"Circuit code file not found: {file_path}")
     if not statements_path.exists():
         raise FileNotFoundError(f"Statements file not found: {statements_path}")
+    if not statements_path.read_text().strip(): # raise error if statements file is empty
+        raise ValueError(f"Statements file is empty: {statements_path}")
     
     code = await asyncio.to_thread(file_path.read_bytes)
     netlist = await circuit_service.get_netlist_from_code(code)
@@ -250,11 +252,11 @@ async def validate_statements(
         content=[
             TextContent(
                 type="text",
-                text=f"Verified statements saved at {statements_path}",
+                text=f"Verified statements saved at {verified_statements_path}",
             )
         ],
         structured_content={
-            "verified_statements_path": str(statements_path),
+            "verified_statements_path": str(verified_statements_path),
             "verified_statements": verified_statements,
         },
     )
