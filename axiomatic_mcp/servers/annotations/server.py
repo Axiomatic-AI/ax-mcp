@@ -101,12 +101,12 @@ mcp = FastMCP(
 
 
 @mcp.tool(
-    name="annotate_pdf",
-    description="Annotate a pdf with detailed analysis.",
-    tags=["pdf", "annotate", "analyze"],
+    name="annotate_file",
+    description="Annotate a file with detailed analysis. Supports PDF, PNG, JPEG, MD, and TXT files.",
+    tags=["file", "annotate", "analyze"],
 )
 async def annotate_file(
-    file_path: Annotated[Path, "The absolute path to the pdf file to annotate"],
+    file_path: Annotated[Path, "The absolute path to the file to annotate"],
     query: Annotated[str, "The specific instructions or query to use for annotating the file"],
 ) -> ToolResult:
     return await annotate_file_main(file_path, query)
@@ -225,12 +225,3 @@ def format_annotations(annotations: list[Annotation]) -> str:
 
     annotations_text = "\n".join(annotation_lines)
     return annotations_text
-
-
-if __name__ == "__main__":
-    annotation_response = AnnotationsResponse(annotations=[Annotation(
-        annotation_type=AnnotationType.TEXT,
-        description="This is a test annotation",
-        reference="Test reference",
-    )])
-    print(format_annotations(annotation_response.annotations))
