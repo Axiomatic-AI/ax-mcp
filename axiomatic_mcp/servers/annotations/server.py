@@ -192,7 +192,7 @@ async def annotate_file_main(file_path: Path, query: str) -> ToolResult:
     )
 
 
-def format_annotations(annotations: AnnotationsResponse) -> str:
+def format_annotations(annotations: list[Annotation]) -> str:
     annotation_lines = []
 
     for i, annotation in enumerate(annotations):
