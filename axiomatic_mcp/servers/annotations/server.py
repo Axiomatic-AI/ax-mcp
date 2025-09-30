@@ -11,7 +11,7 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from ...providers.middleware_provider import get_mcp_middleware
 from ...providers.toolset_provider import get_mcp_tools
@@ -73,6 +73,7 @@ class PDFAnnotation(Annotation):
 class AnnotationsResponse(BaseModel):
     annotations: list[PDFAnnotation] | list[Annotation]
 
+    @field_validator("annotations", mode="before")
     @classmethod
     def validate_annotations(cls, v):
         if not v:
@@ -224,3 +225,12 @@ def format_annotations(annotations: list[Annotation]) -> str:
 
     annotations_text = "\n".join(annotation_lines)
     return annotations_text
+
+
+if __name__ == "__main__":
+    annotation_response = AnnotationsResponse(annotations=[Annotation(
+        annotation_type=AnnotationType.TEXT,
+        description="This is a test annotation",
+        reference="Test reference",
+    )])
+    print(format_annotations(annotation_response.annotations))
