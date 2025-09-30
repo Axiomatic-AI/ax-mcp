@@ -1,17 +1,17 @@
 import asyncio
+import mimetypes
 import textwrap
 import uuid
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 from pydantic import BaseModel, Field
-import mimetypes
 
 from ...providers.middleware_provider import get_mcp_middleware
 from ...providers.toolset_provider import get_mcp_tools
@@ -70,7 +70,6 @@ class PDFAnnotation(Annotation):
     page_number: int = Field(..., description="The page number of the source")
 
 
-
 class AnnotationsResponse(BaseModel):
     annotations: list[PDFAnnotation] | list[Annotation]
 
@@ -125,7 +124,8 @@ async def annotate_file_main(file_path: Path, query: str) -> ToolResult:
     }
 
     mimetypes.add_type("text/markdown", ".md")
-    def _guess_mime(path: Path) -> Optional[str]:
+
+    def _guess_mime(path: Path) -> str | None:
         guessed, _ = mimetypes.guess_type(path.name)
         return guessed
 
@@ -135,10 +135,7 @@ async def annotate_file_main(file_path: Path, query: str) -> ToolResult:
         file_type = "image/jpeg"
 
     if file_type not in allowed:
-        raise ValueError(
-            f"Unsupported file type: {file_path.suffix}. "
-            f"Supported types: pdf, png, jpeg, md, txt."
-        )
+        raise ValueError(f"Unsupported file type: {file_path.suffix}. Supported types: pdf, png, jpeg, md, txt.")
 
     try:
         file_content = await asyncio.to_thread(file_path.read_bytes)
