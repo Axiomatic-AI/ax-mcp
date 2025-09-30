@@ -241,10 +241,7 @@ async def validate_statements(
     # Convert to pretty JSON
     verified_statements_json = json.dumps(verified_statements, indent=2)
 
-    # Build a new path in the same directory
     verified_statements_path = statements_path.parent / "verified_statements.json"
-
-    # Write to the new file
     with verified_statements_path.open("w", encoding="utf-8") as f:
         f.write(verified_statements_json)
 
