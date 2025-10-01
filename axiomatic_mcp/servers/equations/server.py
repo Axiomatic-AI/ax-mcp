@@ -41,11 +41,38 @@ async def _get_document_content(document: Path | str) -> str:
     return document
 
 
+async def _get_python_code(code_input: Path | str) -> tuple[str, Path | None]:
+    """Helper function to extract Python code from either a file path or direct string.
+
+    Returns:
+        tuple: (code_content, file_path if input was a file, otherwise None)
+    """
+    if isinstance(code_input, Path):
+        if not code_input.exists():
+            raise ValueError(f"File not found: {code_input}")
+
+        if code_input.suffix.lower() != ".py":
+            raise ValueError(f"Unsupported file type: {code_input.suffix}. Only .py files are supported")
+
+        with Path.open(code_input, encoding="utf-8") as f:
+            return f.read(), code_input
+
+    # Check if it's a short string that might be a file path
+    if len(code_input) < 500 and "\n" not in code_input:
+        potential_path = Path(code_input)
+        if potential_path.exists() and potential_path.suffix.lower() == ".py":
+            with Path.open(potential_path, encoding="utf-8") as f:
+                return f.read(), potential_path
+
+    # It's direct code content
+    return code_input, None
+
+
 mcp = FastMCP(
     name="AxEquationExplorer Server",
     instructions="""This server provides tools to compose and analyze equations.
     """
-    + get_feedback_prompt("find_functional_form, check_equation"),
+    + get_feedback_prompt("find_functional_form, check_equation, generate_derivation_graph"),
     version="0.0.1",
     middleware=get_mcp_middleware(),
     tools=get_mcp_tools(),
@@ -61,7 +88,10 @@ mcp = FastMCP(
     tags=["equations", "compose", "derive", "find", "function-finder"],
 )
 async def find_expression(
-    document: Annotated[Path | str, "Either a file path to a PDF document or the document content as a string"],
+    document: Annotated[
+        Path | str,
+        "Either a file path to a PDF document or the document content as a string",
+    ],
     task: Annotated[str, "The task to be done for expression composition"],
 ) -> ToolResult:
     """If you have scientific text with equations, but you don't see the equation you're
@@ -110,8 +140,14 @@ async def find_expression(
     tags=["equations", "check", "error-correction", "validate"],
 )
 async def check_equation(
-    document: Annotated[Path | str, "Either a file path to a PDF document or the document content as a string"],
-    task: Annotated[str, "The task to be done for equation checking (e.g., 'check if E=mc² is correct')"],
+    document: Annotated[
+        Path | str,
+        "Either a file path to a PDF document or the document content as a string",
+    ],
+    task: Annotated[
+        str,
+        "The task to be done for equation checking (e.g., 'check if E=mc² is correct')",
+    ],
 ) -> ToolResult:
     """Use this tool to validate equations or check for errors in mathematical expressions.
     For example: 'Check if the equation F = ma is dimensionally consistent' or
@@ -131,3 +167,95 @@ async def check_equation(
 
     except Exception as e:
         raise ToolError(f"Failed to check equations in document: {e!s}") from e
+
+
+@mcp.tool(
+    name="generate_derivation_graph",
+    description=(
+        "Generates a Mermaid flowchart representing the mathematical derivation steps in SymPy code. "
+        "Analyzes the provided SymPy code and creates a visual flowchart showing the derivation flow, "
+        "intermediate calculations, and dependencies between steps."
+    ),
+    tags=["equations", "derivation", "graph", "flowchart", "visualization", "sympy"],
+)
+async def generate_derivation_graph(
+    sympy_code: Annotated[
+        Path | str,
+        "Either a file path to a Python file containing SymPy code or the SymPy code as a string",
+    ],
+    system_prompt: Annotated[
+        str | None,
+        "Optional system prompt to guide the graph generation. If not provided, a default prompt will be used.",
+    ] = None,
+) -> ToolResult:
+    """Use this tool to visualize the derivation steps in SymPy code as a Mermaid flowchart.
+
+    This is particularly useful for:
+    - Understanding complex mathematical derivations
+    - Visualizing the flow from input variables to final results
+    - Identifying dependencies between intermediate calculations
+    - Creating documentation of derivation steps
+
+    Example usage:
+    - "Create a flowchart showing the derivation steps in this Euler-Lagrange code"
+    - "Visualize how the Maxwell equations are derived in this SymPy script"
+    - "Generate a graph showing the dependencies in this quantum mechanics derivation"
+
+    The tool returns a Mermaid flowchart text that can be rendered in Markdown or visualization tools.
+    """
+    try:
+        code_content, original_file_path = await _get_python_code(sympy_code)
+
+        # Use default system prompt if not provided
+        # TODO fix system_prompt handling: should already be used in core/services so this one is not used
+        if not system_prompt:
+            system_prompt = (
+                "You are an expert in analyzing SymPy code and creating Mermaid flowcharts. "
+                "Analyze the provided SymPy derivation code and create a Mermaid flowchart that shows:\n"
+                "1. The main steps in the mathematical derivation\n"
+                "2. The flow from input variables to the final result\n"
+                "3. Key intermediate calculations\n"
+                "4. Dependencies between steps\n\n"
+                "Output a valid Mermaid flowchart using the 'flowchart TD' syntax."
+            )
+
+        # Prepare the request data
+        input_data = {
+            "system_prompt": system_prompt,
+            "sympy_code": code_content,
+        }
+
+        # Call the API endpoint
+        response = AxiomaticAPIClient().post("/equations/compose/derivation-graph", data=input_data)
+
+        mermaid_text = response.get("mermaid_text", "")
+        metadata = response.get("metadata")
+
+        if not mermaid_text:
+            raise ToolError("No mermaid_text returned from service")
+
+        # Save the Mermaid output to a file
+        if original_file_path:
+            output_path = original_file_path.parent / f"{original_file_path.stem}_derivation.mmd"
+        else:
+            output_path = Path.cwd() / "derivation_graph.mmd"
+
+        with Path.open(output_path, "w", encoding="utf-8") as f:
+            f.write(mermaid_text)
+
+        # Prepare result content
+        result_content = [
+            TextContent(type="text", text=f"Mermaid flowchart saved to: {output_path}"),
+            TextContent(
+                type="text",
+                text=f"\nMermaid Flowchart:\n```mermaid\n{mermaid_text}\n```",
+            ),
+        ]
+
+        if metadata:
+            result_content.append(TextContent(type="text", text=f"\nMetadata: {metadata}"))
+
+        return ToolResult(content=result_content)
+
+    except Exception as e:
+        raise ToolError(f"Failed to generate derivation graph: {e!s}") from e
