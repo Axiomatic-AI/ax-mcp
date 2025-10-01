@@ -67,6 +67,7 @@ def denominators(alpha_symbol: sp.Symbol) -> Denominators:
 
 # ===== Core construction (ansatz + solve) =====
 
+
 def build_tau_and_resolvent(alpha_symbol: sp.Symbol) -> Tuple[sp.Expr, sp.Expr, Dict[str, sp.Symbol]]:
     """Build a minimal rational ansatz for the second-order amplitude and resolvent.
 
@@ -121,8 +122,7 @@ def build_tau_and_resolvent(alpha_symbol: sp.Symbol) -> Tuple[sp.Expr, sp.Expr, 
 
 def _target_ratio(alpha_symbol: sp.Symbol) -> sp.Expr:
     return sp.simplify(
-        (24 * alpha_symbol**3 - 88 * alpha_symbol**2 + 106 * alpha_symbol - 32)
-        / (3 * alpha_symbol**3 - 11 * alpha_symbol**2 + 12 * alpha_symbol - 4)
+        (24 * alpha_symbol**3 - 88 * alpha_symbol**2 + 106 * alpha_symbol - 32) / (3 * alpha_symbol**3 - 11 * alpha_symbol**2 + 12 * alpha_symbol - 4)
     )
 
 
@@ -201,6 +201,7 @@ def compose_delta_F_expression(alpha_symbol: sp.Symbol) -> sp.Expr:
 
 # ===== Explicit virtual-process catalog reconstruction =====
 
+
 def _integerize_solution(sol: Dict[sp.Symbol, sp.Rational]) -> Dict[sp.Symbol, int]:
     """Scale the rational solution to integer counts for an explicit process catalog.
 
@@ -237,17 +238,8 @@ def build_tau_and_resolvent_from_catalog(alpha_symbol: sp.Symbol) -> Tuple[sp.Ex
     int_sol = _integerize_solution(sol)
 
     # Map back to expressions
-    tau_cat = (
-        int_sol[params["u_1ma"]] / d.d_1ma
-        + int_sol[params["u_2ma"]] / d.d_2ma
-        + int_sol[params["u_2m3a"]] / d.d_2m3a
-    )
-    z_cat = (
-        int_sol[params["a0"]]
-        + int_sol[params["z_1ma"]] / d.d_1ma
-        + int_sol[params["z_2ma"]] / d.d_2ma
-        + int_sol[params["z_2m3a"]] / d.d_2m3a
-    )
+    tau_cat = int_sol[params["u_1ma"]] / d.d_1ma + int_sol[params["u_2ma"]] / d.d_2ma + int_sol[params["u_2m3a"]] / d.d_2m3a
+    z_cat = int_sol[params["a0"]] + int_sol[params["z_1ma"]] / d.d_1ma + int_sol[params["z_2ma"]] / d.d_2ma + int_sol[params["z_2m3a"]] / d.d_2m3a
 
     counts = {
         "a0": int_sol[params["a0"]],
@@ -288,9 +280,7 @@ composed_equation = compose_delta_F_expression(alpha)
 
 
 def _expected_expression(alpha_symbol: sp.Symbol) -> sp.Expr:
-    return sp.simplify(
-        t**2 * sp.cos(gamma / 2) ** 2 / (Omega0 * alpha_symbol) * _target_ratio(alpha_symbol)
-    )
+    return sp.simplify(t**2 * sp.cos(gamma / 2) ** 2 / (Omega0 * alpha_symbol) * _target_ratio(alpha_symbol))
 
 
 def test_composed_equation_matches_target():
