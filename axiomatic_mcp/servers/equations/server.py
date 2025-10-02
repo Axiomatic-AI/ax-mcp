@@ -219,14 +219,19 @@ async def generate_derivation_graph(
                 "Output a valid Mermaid flowchart using the 'flowchart TD' syntax."
             )
 
-        # Prepare the request data
-        input_data = {
-            "system_prompt": system_prompt,
-            "sympy_code": code_content,
+        # Prepare the request data as form data (not JSON)
+        # The backend expects multipart/form-data with Form() fields
+        # We need to use files parameter to trigger multipart/form-data encoding
+        form_data = {
+            "system_prompt": (None, system_prompt),
+            "sympy_code": (None, code_content),
         }
 
-        # Call the API endpoint
-        response = AxiomaticAPIClient().post("/equations/compose/derivation-graph", data=input_data)
+        # Call the API endpoint - using files parameter ensures multipart/form-data
+        response = AxiomaticAPIClient().post(
+            "/equations/compose/derivation-graph",
+            files=form_data,  # Send as files to ensure multipart/form-data encoding
+        )
 
         mermaid_text = response.get("mermaid_text", "")
         metadata = response.get("metadata")
@@ -244,12 +249,17 @@ async def generate_derivation_graph(
             f.write(mermaid_text)
 
         # Prepare result content
+        # Check if mermaid_text already has code fences
+        if mermaid_text.strip().startswith("```"):
+            # Already wrapped, don't add more backticks
+            mermaid_display = f"\nMermaid Flowchart:\n{mermaid_text}"
+        else:
+            # Not wrapped, add mermaid code fence
+            mermaid_display = f"\nMermaid Flowchart:\n```mermaid\n{mermaid_text}\n```"
+
         result_content = [
             TextContent(type="text", text=f"Mermaid flowchart saved to: {output_path}"),
-            TextContent(
-                type="text",
-                text=f"\nMermaid Flowchart:\n```mermaid\n{mermaid_text}\n```",
-            ),
+            TextContent(type="text", text=mermaid_display),
         ]
 
         if metadata:
