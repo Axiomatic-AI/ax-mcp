@@ -13,6 +13,8 @@ MCP (Model Context Protocol) servers that provide AI assistants with access to t
 - uv
   - Install [here](https://docs.astral.sh/uv/getting-started/installation/)
   - Recommended not to install in conda (see [Troubleshooting](#troubleshooting))
+- install extra packages (optional)
+  - If you wish to use the AxPhotonicsPreview, you will need to install extra dependencies before continuing. After installing uv, run `uv tool install "axiomatic-mcp[pic]"`.
 
 #### 2. Install your favourite client
 
