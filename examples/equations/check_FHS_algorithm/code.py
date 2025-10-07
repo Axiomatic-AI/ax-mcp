@@ -21,6 +21,7 @@ import sympy as sp
 # 1) Symbolic derivation section
 # =============================
 
+
 def derive_fhs_equation() -> sp.Expr:
     """
     Strategy:
@@ -37,12 +38,12 @@ def derive_fhs_equation() -> sp.Expr:
         SymPy expression representing the composed Chern-number summation over the Brillouin-zone grid.
     """
     # Symbols for the grid indices and sizes
-    i, j = sp.symbols('i j', integer=True)
-    N_x, N_y = sp.symbols('N_x N_y', integer=True, positive=True)
+    i, j = sp.symbols("i j", integer=True)
+    N_x, N_y = sp.symbols("N_x N_y", integer=True, positive=True)
 
     # Define link functions U_x, U_y on the grid
-    U_x = sp.Function('U_x')
-    U_y = sp.Function('U_y')
+    U_x = sp.Function("U_x")
+    U_y = sp.Function("U_y")
 
     # 1) Define the plaquette field strength F(i,j) in the FHS formulation
     # F(i,j) = ln[ U_x(i,j) * U_y(i+1,j) / ( U_x(i,j+1) * U_y(i,j) ) ], principal branch
@@ -50,8 +51,8 @@ def derive_fhs_equation() -> sp.Expr:
 
     # 2) Define raw overlaps S_mu and substitute U_mu = S_mu / |S_mu| to expose the gauge-invariant structure
     # S_x(i,j) ~ <u(i,j) | u(i+1,j)>, S_y(i,j) ~ <u(i,j) | u(i,j+1)>
-    S_x = sp.Function('S_x')
-    S_y = sp.Function('S_y')
+    S_x = sp.Function("S_x")
+    S_y = sp.Function("S_y")
 
     # Build the substitution dictionary for all U's appearing in F_ij
     subs_links = {
@@ -176,6 +177,7 @@ def fhs_chern_from_eigenvectors(evecs: List[List[ComplexVec]]) -> Tuple[int, sp.
 # 3) Convenience model and drivers
 # ===============================
 
+
 def qi_wu_zhang_hamiltonian(kx: float | sp.Expr, ky: float | sp.Expr, m: float | sp.Expr) -> sp.Matrix:
     """
     Qi-Wu-Zhang (QWZ) 2D Chern insulator model on a square lattice:
@@ -257,6 +259,7 @@ def fhs_chern_from_hamiltonian(
 # 4) Pytest test suite
 # =====================
 
+
 def test_qwz_chern_numbers_lower_band():
     # Lower band Chern numbers for QWZ
     def ham_m(mval: float) -> Callable[[float, float], sp.Matrix]:
@@ -305,8 +308,9 @@ def test_gauge_invariance_under_smooth_phase():
 
 # Smoke test: composed_equation structure
 
+
 def test_composed_equation_structure():
     assert composed_equation.has(sp.log), "Chern expression should include a log"
-    assert composed_equation.has(sp.Function('U_x')) and composed_equation.has(sp.Function('U_y'))
+    assert composed_equation.has(sp.Function("U_x")) and composed_equation.has(sp.Function("U_y"))
     # Check for a summation object
     assert composed_equation.has(sp.Sum), "Chern expression should be a summation"
