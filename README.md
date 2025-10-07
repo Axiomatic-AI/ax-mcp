@@ -26,7 +26,7 @@ MCP (Model Context Protocol) servers that provide AI assistants with access to t
 
 > You will receive an API key by email shortly after filling the form. Check your spam folder if it doesn't arrive.
 
-#### 4. Install Axiomatic Operators (all at once)
+#### 4. Install Axiomatic Operators (all except AxPhotonicsPreview)
 
 <details>
 <summary><strong>⚡ Claude Code</strong></summary>
@@ -157,7 +157,7 @@ Use this server configuration:
 
 </details>
 
-> **Note:** This installs all tools under one server and may cause issues with some clients. If you experience problems, install [individual servers](#individual-servers) instead.
+> **Note:** This installs all tools under one server. AxPhotonicsPreview will not appear unless you first install its extra dependencies (see [Check system requirements](#1-check-system-requirements)). If you experience other issues, try [individual servers](#individual-servers) instead.
 
 ## Reporting Bugs
 
