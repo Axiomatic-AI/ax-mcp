@@ -1,4 +1,5 @@
 import asyncio
+import mimetypes
 import textwrap
 import uuid
 from datetime import datetime
@@ -6,8 +7,9 @@ from enum import Enum
 from pathlib import Path
 from typing import Annotated
 
+import filetype
 from fastmcp import FastMCP
-from fastmcp.exceptions import ToolError
+from fastmcp.exceptions import NotFoundError, ToolError, ValidationError
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 from pydantic import BaseModel, Field, field_validator
@@ -16,6 +18,8 @@ from ...providers.middleware_provider import get_mcp_middleware
 from ...providers.toolset_provider import get_mcp_tools
 from ...shared.api_client import AxiomaticAPIClient
 from ...shared.utils.prompt_utils import get_feedback_prompt
+
+mimetypes.add_type("text/markdown", ".md")
 
 
 class AnnotationType(str, Enum):
@@ -69,43 +73,8 @@ class PDFAnnotation(Annotation):
     page_number: int = Field(..., description="The page number of the source")
 
 
-class AnnotationOld(BaseModel):
-    """
-    Represents an annotation with citation and contextual description.
-    An annotation provides broader context and explanation for a citation.
-    """
-
-    id: str = Field(
-        default_factory=lambda: str(uuid.uuid4()),
-        description="Unique identifier for the annotation",
-    )
-    annotation_type: AnnotationType = Field(..., description="Type of annotation")
-    description: str = Field(..., description="Broader contextual description of the citation")
-    tags: list[str] = Field(default_factory=list, description="Tags for categorization")
-    created_at: datetime = Field(default_factory=datetime.now, description="When annotation was created")
-
-
-class PDFAnnotationOld(AnnotationOld):
-    """
-    Represents an annotation with citation and contextual description.
-    An annotation provides broader context and explanation for a citation.
-    """
-
-    page_number: int = Field(..., description="The page number of the source")
-    equation: str | None = Field(
-        None,
-        description="The equation in LaTeX format that is relevant to the annotation",
-    )
-    parameter_value: float | None = Field(
-        None,
-        description="The value of the parameter that is relevant to the annotation",
-    )
-    parameter_name: str | None = Field(None, description="The name of the parameter that is relevant to the annotation")
-    parameter_unit: str | None = Field(None, description="The unit of the parameter that is relevant to the annotation")
-
-
 class AnnotationsResponse(BaseModel):
-    annotations: list[PDFAnnotation] | list[PDFAnnotationOld]
+    annotations: list[Annotation]
 
     @field_validator("annotations", mode="before")
     @classmethod
@@ -113,14 +82,14 @@ class AnnotationsResponse(BaseModel):
         if not v:
             return v
 
-        # Check if it's old format (no reference field) or new format (has reference field)
+        # Check format
         first_item = v[0] if v else {}
-        has_reference = "reference" in first_item
+        has_page_number = "page_number" in first_item
 
-        if has_reference:
+        if has_page_number:
             return [PDFAnnotation.model_validate(item) for item in v]
         else:
-            return [PDFAnnotationOld.model_validate(item) for item in v]
+            return [Annotation.model_validate(item) for item in v]
 
 
 mcp = FastMCP(
@@ -135,12 +104,12 @@ mcp = FastMCP(
 
 
 @mcp.tool(
-    name="annotate_pdf",
-    description="Annotate a pdf with detailed analysis.",
-    tags=["pdf", "annotate", "analyze"],
+    name="annotate_file",
+    description="Annotate a file with detailed analysis. Supports PDF, PNG, JPEG, MD, and TXT files.",
+    tags=["file", "annotate", "analyze"],
 )
 async def annotate_file(
-    file_path: Annotated[Path, "The absolute path to the pdf file to annotate"],
+    file_path: Annotated[Path, "The absolute path to the file to annotate"],
     query: Annotated[str, "The specific instructions or query to use for annotating the file"],
 ) -> ToolResult:
     return await annotate_file_main(file_path, query)
@@ -148,13 +117,34 @@ async def annotate_file(
 
 async def annotate_file_main(file_path: Path, query: str) -> ToolResult:
     if not file_path.exists():
-        raise FileNotFoundError(f"File not found: {file_path}")
-    if file_path.suffix.lower() != ".pdf":
-        raise ValueError("File must be a PDF")
+        raise NotFoundError(f"File not found: {file_path}")
+
+    allowed = {
+        "application/pdf",
+        "image/png",
+        "image/jpeg",
+        "text/markdown",
+        "text/plain",
+    }
+
+    def _guess_mime(path: Path) -> str | None:
+        try:
+            if kind := filetype.guess(str(path)):
+                return kind.mime
+        except Exception:
+            pass
+
+        guessed, _ = mimetypes.guess_type(path.name)
+        return guessed
+
+    file_type = _guess_mime(file_path)
+
+    if file_type not in allowed:
+        raise ValidationError(f"Unsupported file type: {file_path.suffix}. Supported types: pdf, png, jpeg, md, txt.")
 
     try:
         file_content = await asyncio.to_thread(file_path.read_bytes)
-        files = {"file": (file_path.name, file_content, "application/pdf")}
+        files = {"file": (file_path.name, file_content, file_type)}
         data = {"query": query}
 
         response = await asyncio.to_thread(
@@ -164,7 +154,6 @@ async def annotate_file_main(file_path: Path, query: str) -> ToolResult:
             data=data,
         )
 
-        # Parse the response to AnnotationsResponse
         annotations_response = AnnotationsResponse.model_validate(response)
         annotations_text = (
             format_annotations(annotations_response.annotations) if annotations_response.annotations else "No annotations found for the given query."
@@ -208,11 +197,14 @@ async def annotate_file_main(file_path: Path, query: str) -> ToolResult:
     )
 
 
-def format_annotations(annotations: list[PDFAnnotation] | list[PDFAnnotationOld]) -> str:
+def format_annotations(annotations: list[Annotation]) -> str:
     annotation_lines = []
 
-    for i, annotation in enumerate(annotations):
-        annotation_lines.append(f"**Annotation {i}** (Page {annotation.page_number}):")
+    for i, annotation in enumerate(annotations, start=1):
+        if hasattr(annotation, "page_number"):
+            annotation_lines.append(f"**Annotation {i}** (Page {annotation.page_number}):")
+        else:
+            annotation_lines.append(f"**Annotation {i}**:")
         annotation_lines.append(f"Type: {annotation.annotation_type}")
 
         annotation_lines.append(f"Description: {annotation.description}")
