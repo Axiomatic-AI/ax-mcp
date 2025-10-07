@@ -6,6 +6,7 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Annotated
+import filetype
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -127,13 +128,16 @@ async def annotate_file_main(file_path: Path, query: str) -> ToolResult:
     mimetypes.add_type("text/markdown", ".md")
 
     def _guess_mime(path: Path) -> str | None:
+        try:
+            if kind := filetype.guess(str(path)):
+                return kind.mime
+        except Exception:
+            pass
+
         guessed, _ = mimetypes.guess_type(path.name)
         return guessed
 
     file_type = _guess_mime(file_path)
-
-    if not file_type and file_path.suffix.lower() in {".jpg", ".jpeg"}:
-        file_type = "image/jpeg"
 
     if file_type not in allowed:
         raise ValueError(f"Unsupported file type: {file_path.suffix}. Supported types: pdf, png, jpeg, md, txt.")
