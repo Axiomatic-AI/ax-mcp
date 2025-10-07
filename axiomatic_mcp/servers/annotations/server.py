@@ -196,7 +196,7 @@ async def annotate_file_main(file_path: Path, query: str) -> ToolResult:
 def format_annotations(annotations: list[Annotation]) -> str:
     annotation_lines = []
 
-    for i, annotation in enumerate(annotations):
+    for i, annotation in enumerate(annotations, start=1):
         if hasattr(annotation, "page_number"):
             annotation_lines.append(f"**Annotation {i}** (Page {annotation.page_number}):")
         else:
