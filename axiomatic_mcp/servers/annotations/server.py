@@ -73,7 +73,7 @@ class PDFAnnotation(Annotation):
 
 
 class AnnotationsResponse(BaseModel):
-    annotations: list[PDFAnnotation] | list[Annotation]
+    annotations: list[Annotation]
 
     @field_validator("annotations", mode="before")
     @classmethod
