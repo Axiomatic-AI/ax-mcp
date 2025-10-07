@@ -157,7 +157,7 @@ Use this server configuration:
 
 </details>
 
-> **Note:** This installs all tools under one server. AxPhotonicsPreview will not appear unless you first install its extra dependencies (see [Check system requirements](#1-check-system-requirements)). If you experience other issues, try [individual servers](#individual-servers) instead.
+> **Note:** This installs all tools except for AxPhotonicsPreview under one server. If you experience other issues, try [individual servers](#individual-servers) instead.
 
 ## Reporting Bugs
 
@@ -243,7 +243,7 @@ Create intelligent annotations for PDF documents with contextual analysis, equat
 
 ### 🔬 [AxPhotonicsPreview](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/pic/)
 
-Design photonic integrated circuits using natural language descriptions.
+Design photonic integrated circuits using natural language descriptions. Additional requirements are needed, please refer to [Check system requirements](#1-check-system-requirements)
 
 ### 📊 [AxPlotToData](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/plots/)
 
