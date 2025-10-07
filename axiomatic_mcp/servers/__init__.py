@@ -9,11 +9,6 @@ from .documents.server import mcp as documents_mcp
 from .equations.server import mcp as equations_mcp
 from .plots.server import plots as plots_mcp
 
-try:
-    from .pic.server import mcp as pic_mcp
-except ModuleNotFoundError:
-    pic_mcp = None
-
 
 class ServerConfig(TypedDict):
     domain: str
@@ -28,7 +23,5 @@ servers: list[ServerConfig] = [
     ServerConfig(domain="plots", name="AxPlotToData", server=plots_mcp),
 ]
 
-if pic_mcp:
-    servers.append(ServerConfig(domain="pic", name="AxPhotonicsPreview", server=pic_mcp))
 
 __all__ = ["ServerConfig", "servers"]
