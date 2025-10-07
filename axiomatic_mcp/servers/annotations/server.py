@@ -19,6 +19,7 @@ from ...providers.toolset_provider import get_mcp_tools
 from ...shared.api_client import AxiomaticAPIClient
 from ...shared.utils.prompt_utils import get_feedback_prompt
 
+mimetypes.add_type("text/markdown", ".md")
 
 class AnnotationType(str, Enum):
     TEXT = "text"
@@ -124,8 +125,6 @@ async def annotate_file_main(file_path: Path, query: str) -> ToolResult:
         "text/markdown",
         "text/plain",
     }
-
-    mimetypes.add_type("text/markdown", ".md")
 
     def _guess_mime(path: Path) -> str | None:
         try:
