@@ -9,7 +9,7 @@ from typing import Annotated
 import filetype
 
 from fastmcp import FastMCP
-from fastmcp.exceptions import ToolError
+from fastmcp.exceptions import ToolError, ValidationError, NotFoundError
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 from pydantic import BaseModel, Field, field_validator
@@ -115,7 +115,7 @@ async def annotate_file(
 
 async def annotate_file_main(file_path: Path, query: str) -> ToolResult:
     if not file_path.exists():
-        raise FileNotFoundError(f"File not found: {file_path}")
+        raise NotFoundError(f"File not found: {file_path}")
 
     allowed = {
         "application/pdf",
@@ -140,7 +140,7 @@ async def annotate_file_main(file_path: Path, query: str) -> ToolResult:
     file_type = _guess_mime(file_path)
 
     if file_type not in allowed:
-        raise ValueError(f"Unsupported file type: {file_path.suffix}. Supported types: pdf, png, jpeg, md, txt.")
+        raise ValidationError(f"Unsupported file type: {file_path.suffix}. Supported types: pdf, png, jpeg, md, txt.")
 
     try:
         file_content = await asyncio.to_thread(file_path.read_bytes)
