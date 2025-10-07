@@ -6,10 +6,10 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Annotated
-import filetype
 
+import filetype
 from fastmcp import FastMCP
-from fastmcp.exceptions import ToolError, ValidationError, NotFoundError
+from fastmcp.exceptions import NotFoundError, ToolError, ValidationError
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 from pydantic import BaseModel, Field, field_validator
@@ -20,6 +20,7 @@ from ...shared.api_client import AxiomaticAPIClient
 from ...shared.utils.prompt_utils import get_feedback_prompt
 
 mimetypes.add_type("text/markdown", ".md")
+
 
 class AnnotationType(str, Enum):
     TEXT = "text"
