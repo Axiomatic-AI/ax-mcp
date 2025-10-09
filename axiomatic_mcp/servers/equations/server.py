@@ -85,7 +85,8 @@ CRITICAL: For the derive_all_equations workflow, you MUST follow this exact patt
 The modify tool is OPTIONAL and should only be called if user explicitly wants changes. Otherwise proceed directly to execute after user approval.
     """
     + get_feedback_prompt(
-        "find_functional_form, check_equation, generate_derivation_graph, derive_all_equations_analyze, derive_all_equations_modify, derive_all_equations_execute"
+        "find_functional_form, check_equation, generate_derivation_graph, "
+        "derive_all_equations_analyze, derive_all_equations_modify, derive_all_equations_execute"
     ),
     version="0.0.1",
     middleware=get_mcp_middleware(),
@@ -197,10 +198,6 @@ async def generate_derivation_graph(
         Path | str,
         "Either a file path to a Python file containing SymPy code or the SymPy code as a string",
     ],
-    system_prompt: Annotated[
-        str | None,
-        "Optional system prompt to guide the graph generation. If not provided, a default prompt will be used.",
-    ] = None,
 ) -> ToolResult:
     """Use this tool to visualize the derivation steps in SymPy code as a Mermaid flowchart.
 
@@ -220,24 +217,10 @@ async def generate_derivation_graph(
     try:
         code_content, original_file_path = await _get_python_code(sympy_code)
 
-        # Use default system prompt if not provided
-        # TODO fix system_prompt handling: should already be used in core/services so this one is not used
-        if not system_prompt:
-            system_prompt = (
-                "You are an expert in analyzing SymPy code and creating Mermaid flowcharts. "
-                "Analyze the provided SymPy derivation code and create a Mermaid flowchart that shows:\n"
-                "1. The main steps in the mathematical derivation\n"
-                "2. The flow from input variables to the final result\n"
-                "3. Key intermediate calculations\n"
-                "4. Dependencies between steps\n\n"
-                "Output a valid Mermaid flowchart using the 'flowchart TD' syntax."
-            )
-
         # Prepare the request data as form data (not JSON)
         # The backend expects multipart/form-data with Form() fields
         # We need to use files parameter to trigger multipart/form-data encoding
         form_data = {
-            "system_prompt": (None, system_prompt),
             "sympy_code": (None, code_content),
         }
 
