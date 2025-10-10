@@ -41,11 +41,53 @@ async def _get_document_content(document: Path | str) -> str:
     return document
 
 
+async def _get_python_code(code_input: Path | str) -> tuple[str, Path | None]:
+    """Helper function to extract Python code from either a file path or direct string.
+
+    Returns:
+        tuple: (code_content, file_path if input was a file, otherwise None)
+    """
+    if isinstance(code_input, Path):
+        if not code_input.exists():
+            raise ValueError(f"File not found: {code_input}")
+
+        if code_input.suffix.lower() != ".py":
+            raise ValueError(f"Unsupported file type: {code_input.suffix}. Only .py files are supported")
+
+        with Path.open(code_input, encoding="utf-8") as f:
+            return f.read(), code_input
+
+    # Check if it's a short string that might be a file path
+    if len(code_input) < 500 and "\n" not in code_input:
+        potential_path = Path(code_input)
+        if potential_path.exists() and potential_path.suffix.lower() == ".py":
+            with Path.open(potential_path, encoding="utf-8") as f:
+                return f.read(), potential_path
+
+    # It's direct code content
+    return code_input, None
+
+
 mcp = FastMCP(
     name="AxEquationExplorer Server",
     instructions="""This server provides tools to compose and analyze equations.
+
+CRITICAL: For the derive_all_equations workflow, you MUST follow this exact pattern:
+
+1. Call derive_all_equations_analyze
+2. Show results to user and ASK: "Are you satisfied with this categorization, or would you like to make changes?"
+3. Based on user response:
+   - If user wants changes: call derive_all_equations_modify → show results → ASK AGAIN (repeat as needed)
+   - If user approves: IMMEDIATELY call derive_all_equations_execute (don't ask again, just do it)
+4. NEVER skip asking the user for approval after analyze/modify
+5. ALWAYS execute automatically once user approves (this is the final step, no more modifications)
+
+The modify tool is OPTIONAL and should only be called if user explicitly wants changes. Otherwise proceed directly to execute after user approval.
     """
-    + get_feedback_prompt("find_functional_form, check_equation"),
+    + get_feedback_prompt(
+        "find_functional_form, check_equation, generate_derivation_graph, "
+        "derive_all_equations_analyze, derive_all_equations_modify, derive_all_equations_execute"
+    ),
     version="0.0.1",
     middleware=get_mcp_middleware(),
     tools=get_mcp_tools(),
@@ -61,7 +103,10 @@ mcp = FastMCP(
     tags=["equations", "compose", "derive", "find", "function-finder"],
 )
 async def find_expression(
-    document: Annotated[Path | str, "Either a file path to a PDF document or the document content as a string"],
+    document: Annotated[
+        Path | str,
+        "Either a file path to a PDF document or the document content as a string",
+    ],
     task: Annotated[str, "The task to be done for expression composition"],
 ) -> ToolResult:
     """If you have scientific text with equations, but you don't see the equation you're
@@ -110,8 +155,14 @@ async def find_expression(
     tags=["equations", "check", "error-correction", "validate"],
 )
 async def check_equation(
-    document: Annotated[Path | str, "Either a file path to a PDF document or the document content as a string"],
-    task: Annotated[str, "The task to be done for equation checking (e.g., 'check if E=mc² is correct')"],
+    document: Annotated[
+        Path | str,
+        "Either a file path to a PDF document or the document content as a string",
+    ],
+    task: Annotated[
+        str,
+        "The task to be done for equation checking (e.g., 'check if E=mc² is correct')",
+    ],
 ) -> ToolResult:
     """Use this tool to validate equations or check for errors in mathematical expressions.
     For example: 'Check if the equation F = ma is dimensionally consistent' or
@@ -131,3 +182,254 @@ async def check_equation(
 
     except Exception as e:
         raise ToolError(f"Failed to check equations in document: {e!s}") from e
+
+
+@mcp.tool(
+    name="generate_derivation_graph",
+    description=(
+        "Generates a Mermaid flowchart representing the mathematical derivation steps in SymPy code. "
+        "Analyzes the provided SymPy code and creates a visual flowchart showing the derivation flow, "
+        "intermediate calculations, and dependencies between steps."
+    ),
+    tags=["equations", "derivation", "graph", "flowchart", "visualization", "sympy"],
+)
+async def generate_derivation_graph(
+    sympy_code: Annotated[
+        Path | str,
+        "Either a file path to a Python file containing SymPy code or the SymPy code as a string",
+    ],
+) -> ToolResult:
+    """Use this tool to visualize the derivation steps in SymPy code as a Mermaid flowchart.
+
+    This is particularly useful for:
+    - Understanding complex mathematical derivations
+    - Visualizing the flow from input variables to final results
+    - Identifying dependencies between intermediate calculations
+    - Creating documentation of derivation steps
+
+    Example usage:
+    - "Create a flowchart showing the derivation steps in this Euler-Lagrange code"
+    - "Visualize how the Maxwell equations are derived in this SymPy script"
+    - "Generate a graph showing the dependencies in this quantum mechanics derivation"
+
+    The tool returns a Mermaid flowchart text that can be rendered in Markdown or visualization tools.
+    """
+    try:
+        code_content, original_file_path = await _get_python_code(sympy_code)
+
+        # Prepare the request data as form data (not JSON)
+        # The backend expects multipart/form-data with Form() fields
+        # We need to use files parameter to trigger multipart/form-data encoding
+        form_data = {
+            "sympy_code": (None, code_content),
+        }
+
+        # Call the API endpoint - using files parameter ensures multipart/form-data
+        response = AxiomaticAPIClient().post(
+            "/equations/compose/derivation-graph",
+            files=form_data,  # Send as files to ensure multipart/form-data encoding
+        )
+
+        mermaid_text = response.get("mermaid_text", "")
+        metadata = response.get("metadata")
+
+        if not mermaid_text:
+            raise ToolError("No mermaid_text returned from service")
+
+        # Save the Mermaid output to a file
+        if original_file_path:
+            output_path = original_file_path.parent / f"{original_file_path.stem}_derivation.mmd"
+        else:
+            output_path = Path.cwd() / "derivation_graph.mmd"
+
+        with Path.open(output_path, "w", encoding="utf-8") as f:
+            f.write(mermaid_text)
+
+        # Prepare result content
+        # Check if mermaid_text already has code fences
+        if mermaid_text.strip().startswith("```"):
+            # Already wrapped, don't add more backticks
+            mermaid_display = f"\nMermaid Flowchart:\n{mermaid_text}"
+        else:
+            # Not wrapped, add mermaid code fence
+            mermaid_display = f"\nMermaid Flowchart:\n```mermaid\n{mermaid_text}\n```"
+
+        result_content = [
+            TextContent(type="text", text=f"Mermaid flowchart saved to: {output_path}"),
+            TextContent(type="text", text=mermaid_display),
+        ]
+
+        if metadata:
+            result_content.append(TextContent(type="text", text=f"\nMetadata: {metadata}"))
+
+        return ToolResult(content=result_content)
+
+    except Exception as e:
+        raise ToolError(f"Failed to generate derivation graph: {e!s}") from e
+
+
+@mcp.tool(
+    name="derive_all_equations_analyze",
+    description=(
+        "Step 1: Analyzes a scientific document and categorizes equations. "
+        "CRITICAL: After calling this, you MUST ask user if they approve or want changes. "
+        "Do not proceed without explicit user approval."
+    ),
+    tags=["equations", "derive", "analyze", "categorize"],
+)
+async def derive_all_equations_analyze(
+    document: Annotated[
+        Path | str,
+        "Either a file path to a PDF/markdown document or the document content as a string",
+    ],
+) -> ToolResult:
+    """Step 1: Analyze and categorize equations.
+
+    After calling this tool, you MUST:
+    1. Show the results to the user
+    2. Ask: "Are you satisfied with this categorization, or would you like to make changes?"
+    3. If user wants changes, directly modify the eligible_equations list yourself
+    4. Wait for user approval before calling execute
+    """
+    try:
+        doc_content = await _get_document_content(document)
+
+        analysis_response = AxiomaticAPIClient().post(
+            "/equations/derive-all/analyze",
+            data={"markdown": doc_content},
+        )
+
+        eligible_equations = analysis_response.get("eligible_equations", [])
+        not_eligible_equations = analysis_response.get("not_eligible_equations", [])
+        summary = analysis_response.get("summary", "")
+
+        # Format analysis results for display
+        analysis_text = f"## Equation Analysis Complete\n\n{summary}\n\n"
+        analysis_text += f"### ✅ ELIGIBLE FOR DERIVATION ({len(eligible_equations)} equations):\n\n"
+
+        for i, eq in enumerate(eligible_equations, 1):
+            analysis_text += f"{i}. {eq.get('equation', 'N/A')}\n"
+            analysis_text += f"   Context: {eq.get('context', 'N/A')}\n"
+            analysis_text += f"   Rationale: {eq.get('rationale', 'N/A')}\n\n"
+
+        analysis_text += f"### ❌ NOT ELIGIBLE ({len(not_eligible_equations)} equations):\n\n"
+        for i, eq in enumerate(not_eligible_equations, 1):
+            analysis_text += f"{i}. {eq.get('equation', 'N/A')}\n"
+            analysis_text += f"   Context: {eq.get('context', 'N/A')}\n"
+            analysis_text += f"   Rationale: {eq.get('rationale', 'N/A')}\n\n"
+
+        return ToolResult(content=[TextContent(type="text", text=analysis_text)])
+
+    except Exception as e:
+        raise ToolError(f"Failed to analyze equations: {e!s}") from e
+
+
+@mcp.tool(
+    name="derive_all_equations_execute",
+    description=(
+        "Step 2: Execute derivations after user approval. "
+        "Call this IMMEDIATELY when user approves the categorization (don't ask again). "
+        "This is the final step - takes 2-10 minutes, generates .py files."
+    ),
+    tags=["equations", "derive", "execute", "batch", "parallel"],
+)
+async def derive_all_equations_execute(
+    document: Annotated[
+        Path | str,
+        "The same document used in analyze step",
+    ],
+    eligible_equations: Annotated[
+        list[dict],
+        "Final approved list of equations to derive (from analyze or modify step)",
+    ],
+    output_directory: Annotated[
+        str | None,
+        "Directory where the equation .py files will be saved. Defaults to current directory.",
+    ] = None,
+) -> ToolResult:
+    """Step 2: Execute derivations (call immediately after user approves).
+
+    IMPORTANT: This should be called automatically when the user approves the categorization.
+    Do not ask the user again - just execute.
+
+    This is a synchronous operation (2-10 minutes) that:
+    1. Derives all equations in parallel batches
+    2. Generates SymPy code files
+    3. Returns success/failure summary
+    """
+    try:
+        doc_content = await _get_document_content(document)
+
+        # Extract just the equation strings from the dict objects
+        equations_to_derive = [eq.get("equation") for eq in eligible_equations]
+
+        if not equations_to_derive:
+            return ToolResult(content=[TextContent(type="text", text="No eligible equations to derive.")])
+
+        num_equations = len(equations_to_derive)
+        estimated_minutes = max(2, (num_equations // 10) * 3)
+
+        # Show progress message before starting
+        progress_text = f"🚀 Deriving {num_equations} equations...\n"
+        progress_text += f"⏳ Estimated time: {estimated_minutes}-{estimated_minutes + 2} minutes (processing in parallel batches)\n"
+        progress_text += "⏳ Please wait...\n\n"
+
+        # Call synchronous execute endpoint (will block until complete)
+        execute_response = AxiomaticAPIClient().post(
+            "/equations/derive-all/execute",
+            data={"markdown": doc_content, "eligible_equations": equations_to_derive},
+        )
+
+        derivation_results = execute_response.get("derivation_results", [])
+        total_equations = execute_response.get("total_equations", 0)
+        successful = execute_response.get("successful_derivations", 0)
+        failed = execute_response.get("failed_derivations", 0)
+
+        # Save files
+        output_dir = Path(output_directory) if output_directory else Path.cwd()
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        saved_files = []
+        failed_equations = []
+
+        for i, result in enumerate(derivation_results, 1):
+            if result.get("success"):
+                equation = result.get("equation", "")
+                comments = result.get("comments", "")
+                code = result.get("composer_code", "")
+
+                file_content = f'"""\nDerivation of: {equation}\n\n{comments}\n"""\n\n{code}'
+
+                file_path = output_dir / f"equation_{i}.py"
+                with Path.open(file_path, "w", encoding="utf-8") as f:
+                    f.write(file_content)
+
+                saved_files.append(str(file_path))
+            else:
+                error_msg = result.get("error_message", "Unknown error")
+                failed_equations.append(f"Equation {i} ({result.get('equation', 'N/A')}): {error_msg}")
+
+        # Format results
+        result_text = progress_text
+        result_text += "✅ Derivation complete!\n\n"
+        result_text += "## Summary\n\n"
+        result_text += f"- **Total equations**: {total_equations}\n"
+        result_text += f"- **✅ Successfully derived**: {successful}\n"
+        result_text += f"- **❌ Failed**: {failed}\n\n"
+
+        if saved_files:
+            result_text += "### Successfully created files:\n\n"
+            for file_path in saved_files:
+                result_text += f"- [{Path(file_path).name}]({file_path})\n"
+            result_text += "\n"
+
+        if failed_equations:
+            result_text += "### Failed derivations:\n\n"
+            for failure in failed_equations:
+                result_text += f"- {failure}\n"
+            result_text += "\n"
+
+        return ToolResult(content=[TextContent(type="text", text=result_text)])
+
+    except Exception as e:
+        raise ToolError(f"Failed to execute derivations: {e!s}") from e
