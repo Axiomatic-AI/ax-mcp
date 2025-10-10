@@ -288,7 +288,8 @@ async def derive_all_equations_analyze(
     After calling this tool, you MUST:
     1. Show the results to the user
     2. Ask: "Are you satisfied with this categorization, or would you like to make changes?"
-    3. Wait for user response before proceeding
+    3. If user wants changes, directly modify the eligible_equations list yourself
+    4. Wait for user approval before calling execute
     """
     try:
         doc_content = await _get_document_content(document)
@@ -324,85 +325,9 @@ async def derive_all_equations_analyze(
 
 
 @mcp.tool(
-    name="derive_all_equations_modify",
-    description=(
-        "Step 2 (OPTIONAL): Modify categorization based on user instructions. "
-        "CRITICAL: After calling this, you MUST ask user if they approve the changes or want more changes. "
-        "Only call this if user explicitly requested modifications."
-    ),
-    tags=["equations", "derive", "modify", "categorize"],
-)
-async def derive_all_equations_modify(
-    document: Annotated[
-        Path | str,
-        "The same document used in analyze step",
-    ],
-    user_instructions: Annotated[
-        str,
-        "Natural language instructions for modifying the categorization",
-    ],
-    eligible_equations: Annotated[
-        list[dict],
-        "Current list of eligible equations (from analyze or previous modify call)",
-    ],
-    not_eligible_equations: Annotated[
-        list[dict],
-        "Current list of not eligible equations (from analyze or previous modify call)",
-    ],
-) -> ToolResult:
-    """Step 2 (OPTIONAL): Modify categorization based on user instructions.
-
-    After calling this tool, you MUST:
-    1. Show the updated results to the user
-    2. Ask: "Are you satisfied with these changes, or would you like more modifications?"
-    3. Wait for user response before proceeding
-    """
-    try:
-        modify_response = AxiomaticAPIClient().post(
-            "/equations/derive-all/modify-categorization",
-            data={
-                "eligible_equations": eligible_equations,
-                "not_eligible_equations": not_eligible_equations,
-                "user_instructions": user_instructions,
-            },
-        )
-
-        updated_eligible = modify_response.get("eligible_equations", [])
-        updated_not_eligible = modify_response.get("not_eligible_equations", [])
-        summary = modify_response.get("summary", "")
-        changes_made = modify_response.get("changes_made", [])
-
-        # Format results
-        result_text = f"## Categorization Modified\n\n{summary}\n\n"
-
-        if changes_made:
-            result_text += "**Changes made:**\n"
-            for change in changes_made:
-                result_text += f"- {change}\n"
-            result_text += "\n"
-
-        result_text += f"### ✅ ELIGIBLE FOR DERIVATION ({len(updated_eligible)} equations):\n\n"
-        for i, eq in enumerate(updated_eligible, 1):
-            result_text += f"{i}. {eq.get('equation', 'N/A')}\n"
-            result_text += f"   Context: {eq.get('context', 'N/A')}\n"
-            result_text += f"   Rationale: {eq.get('rationale', 'N/A')}\n\n"
-
-        result_text += f"### ❌ NOT ELIGIBLE ({len(updated_not_eligible)} equations):\n\n"
-        for i, eq in enumerate(updated_not_eligible, 1):
-            result_text += f"{i}. {eq.get('equation', 'N/A')}\n"
-            result_text += f"   Context: {eq.get('context', 'N/A')}\n"
-            result_text += f"   Rationale: {eq.get('rationale', 'N/A')}\n\n"
-
-        return ToolResult(content=[TextContent(type="text", text=result_text)])
-
-    except Exception as e:
-        raise ToolError(f"Failed to modify categorization: {e!s}") from e
-
-
-@mcp.tool(
     name="derive_all_equations_execute",
     description=(
-        "Step 3: Execute derivations after user approval. "
+        "Step 2: Execute derivations after user approval. "
         "Call this IMMEDIATELY when user approves the categorization (don't ask again). "
         "This is the final step - takes 2-10 minutes, generates .py files."
     ),
@@ -422,7 +347,7 @@ async def derive_all_equations_execute(
         "Directory where the equation .py files will be saved. Defaults to current directory.",
     ] = None,
 ) -> ToolResult:
-    """Step 3: Execute derivations (call immediately after user approves).
+    """Step 2: Execute derivations (call immediately after user approves).
 
     IMPORTANT: This should be called automatically when the user approves the categorization.
     Do not ask the user again - just execute.
@@ -435,6 +360,7 @@ async def derive_all_equations_execute(
     try:
         doc_content = await _get_document_content(document)
 
+        # Extract just the equation strings from the dict objects
         equations_to_derive = [eq.get("equation") for eq in eligible_equations]
 
         if not equations_to_derive:
