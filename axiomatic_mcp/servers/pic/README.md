@@ -279,6 +279,7 @@ This server requires extra dependencies, please see [Check system requirements](
 1. **Design Generation**: Use the MCP server to create initial designs
 2. **Local Execution**: Run generated code with GDSFactory
 3. **Simulation**: Use `simulate_circuit` to generate wavelength sweeps and notebook results
+4. **Optimization**: Use `optimize_circuit` to refine the circuit code and parameters based on formalized design constraints
 
 ---
 
