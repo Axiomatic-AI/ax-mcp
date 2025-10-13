@@ -15,6 +15,7 @@ from ...providers.toolset_provider import get_mcp_tools
 from ...shared.utils.prompt_utils import get_feedback_prompt
 from .services.circuit_service import CircuitService
 from .services.notebook_service import NotebookService
+from .services.optimization_service import OptimizationService
 from .services.pdk_service import PdkService
 from .services.simulation_service import SimulationService
 from .services.statements_service import StatementsService
@@ -38,6 +39,7 @@ simulation_service = SimulationService()
 notebook_service = NotebookService()
 pdk_service = PdkService()
 statements_service = StatementsService()
+optimization_service = OptimizationService()
 
 
 @mcp.tool(
@@ -255,6 +257,56 @@ async def validate_statements(
         structured_content={
             "verified_statements_path": str(verified_statements_path),
             "verified_statements": verified_statements,
+        },
+    )
+
+
+@mcp.tool(
+    name="optimize_circuit",
+    description="Optimizes a photonic circuit by refining the generated code using its statements.",
+    tags=["optimize", "gfsfactory"],
+)
+async def optimize_circuit(
+    code_path: Annotated[Path, "Path to the Python file containing the circuit code"],
+    statements_path: Annotated[Path, "Path to the JSON file containing the circuit statements"],
+) -> ToolResult:
+    """Optimize a photonic integrated circuit."""
+    if not code_path.exists():
+        raise FileNotFoundError(f"Circuit code not found: {code_path}")
+    if not statements_path.exists():
+        raise FileNotFoundError(f"Statements file not found: {statements_path}")
+
+    code = code_path.read_text(encoding="utf-8")
+
+    with statements_path.open("r", encoding="utf-8") as f:
+        statements_json = json.load(f)
+
+    statements_list = statements_json.get("statements", [])
+
+    request_body = {
+        "code": code,
+        "statements": statements_list,
+    }
+
+    response = await optimization_service.optimize_code(request_body)
+
+    optimized_code = response.get("optimized_code", "")
+
+    optimized_file_path = code_path.parent / f"{code_path.stem}_optimized.py"
+
+    with optimized_file_path.open("w", encoding="utf-8") as f:
+        f.write(optimized_code)
+
+    return ToolResult(
+        content=[
+            TextContent(
+                type="text",
+                text=f"Optimized circuit saved at {optimized_file_path}",
+            )
+        ],
+        structured_content={
+            "optimized_file_path": str(optimized_file_path),
+            "optimized_code": optimized_code,
         },
     )
 
