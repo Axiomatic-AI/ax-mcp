@@ -14,8 +14,11 @@ class AxiomaticAPIClient:
         if not api_key:
             raise ValueError("AXIOMATIC_API_KEY environment variable is not set")
 
+        # Allow overriding the API URL for local development
+        base_url = os.getenv("AXIOMATIC_API_URL", API_URL)
+
         self.client = httpx.Client(
-            base_url=API_URL,
+            base_url=base_url,
             timeout=TIMEOUT,
             headers={
                 "X-API-Key": api_key,

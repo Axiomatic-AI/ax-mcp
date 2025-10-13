@@ -74,20 +74,15 @@ mcp = FastMCP(
 
 CRITICAL: For the derive_all_equations workflow, you MUST follow this exact pattern:
 
-1. Call derive_all_equations_analyze
+1. Call select_relevant_equations
 2. Show results to user and ASK: "Are you satisfied with this categorization, or would you like to make changes?"
 3. Based on user response:
-   - If user wants changes: call derive_all_equations_modify → show results → ASK AGAIN (repeat as needed)
-   - If user approves: IMMEDIATELY call derive_all_equations_execute (don't ask again, just do it)
-4. NEVER skip asking the user for approval after analyze/modify
+   - If user wants changes: modify the relevant_equations as requested → show results → ASK AGAIN (repeat as needed)
+   - If user approves: IMMEDIATELY call derive_all_equations (don't ask again, just do it)
+4. NEVER skip asking the user for approval after selecting the relevant equations
 5. ALWAYS execute automatically once user approves (this is the final step, no more modifications)
-
-The modify tool is OPTIONAL and should only be called if user explicitly wants changes. Otherwise proceed directly to execute after user approval.
     """
-    + get_feedback_prompt(
-        "find_functional_form, check_equation, generate_derivation_graph, "
-        "derive_all_equations_analyze, derive_all_equations_modify, derive_all_equations_execute"
-    ),
+    + get_feedback_prompt("find_functional_form, check_equation, generate_derivation_graph, select_relevant_equations, derive_all_equations"),
     version="0.0.1",
     middleware=get_mcp_middleware(),
     tools=get_mcp_tools(),
@@ -269,7 +264,7 @@ async def generate_derivation_graph(
 
 
 @mcp.tool(
-    name="derive_all_equations_analyze",
+    name="select_relevant_equations",
     description=(
         "Step 1: Analyzes a scientific document and categorizes equations. "
         "CRITICAL: After calling this, you MUST ask user if they approve or want changes. "
@@ -277,7 +272,7 @@ async def generate_derivation_graph(
     ),
     tags=["equations", "derive", "analyze", "categorize"],
 )
-async def derive_all_equations_analyze(
+async def select_relevant_equations(
     document: Annotated[
         Path | str,
         "Either a file path to a PDF/markdown document or the document content as a string",
@@ -288,32 +283,32 @@ async def derive_all_equations_analyze(
     After calling this tool, you MUST:
     1. Show the results to the user
     2. Ask: "Are you satisfied with this categorization, or would you like to make changes?"
-    3. If user wants changes, directly modify the eligible_equations list yourself
+    3. If user wants changes, directly modify the relevant_equations list yourself
     4. Wait for user approval before calling execute
     """
     try:
         doc_content = await _get_document_content(document)
 
         analysis_response = AxiomaticAPIClient().post(
-            "/equations/derive-all/analyze",
+            "/equations/select-relevant-equations",
             data={"markdown": doc_content},
         )
 
-        eligible_equations = analysis_response.get("eligible_equations", [])
-        not_eligible_equations = analysis_response.get("not_eligible_equations", [])
+        relevant_equations = analysis_response.get("relevant_equations", [])
+        irrelevant_equations = analysis_response.get("irrelevant_equations", [])
         summary = analysis_response.get("summary", "")
 
         # Format analysis results for display
         analysis_text = f"## Equation Analysis Complete\n\n{summary}\n\n"
-        analysis_text += f"### ✅ ELIGIBLE FOR DERIVATION ({len(eligible_equations)} equations):\n\n"
+        analysis_text += f"### ✅ RELEVANT FOR DERIVATION ({len(relevant_equations)} equations):\n\n"
 
-        for i, eq in enumerate(eligible_equations, 1):
+        for i, eq in enumerate(relevant_equations, 1):
             analysis_text += f"{i}. {eq.get('equation', 'N/A')}\n"
             analysis_text += f"   Context: {eq.get('context', 'N/A')}\n"
             analysis_text += f"   Rationale: {eq.get('rationale', 'N/A')}\n\n"
 
-        analysis_text += f"### ❌ NOT ELIGIBLE ({len(not_eligible_equations)} equations):\n\n"
-        for i, eq in enumerate(not_eligible_equations, 1):
+        analysis_text += f"### ❌ IRRELEVANT ({len(irrelevant_equations)} equations):\n\n"
+        for i, eq in enumerate(irrelevant_equations, 1):
             analysis_text += f"{i}. {eq.get('equation', 'N/A')}\n"
             analysis_text += f"   Context: {eq.get('context', 'N/A')}\n"
             analysis_text += f"   Rationale: {eq.get('rationale', 'N/A')}\n\n"
@@ -325,7 +320,7 @@ async def derive_all_equations_analyze(
 
 
 @mcp.tool(
-    name="derive_all_equations_execute",
+    name="derive_all_equations",
     description=(
         "Step 2: Execute derivations after user approval. "
         "Call this IMMEDIATELY when user approves the categorization (don't ask again). "
@@ -333,12 +328,12 @@ async def derive_all_equations_analyze(
     ),
     tags=["equations", "derive", "execute", "batch", "parallel"],
 )
-async def derive_all_equations_execute(
+async def derive_all_equations(
     document: Annotated[
         Path | str,
         "The same document used in analyze step",
     ],
-    eligible_equations: Annotated[
+    relevant_equations: Annotated[
         list[dict],
         "Final approved list of equations to derive (from analyze or modify step)",
     ],
@@ -361,10 +356,10 @@ async def derive_all_equations_execute(
         doc_content = await _get_document_content(document)
 
         # Extract just the equation strings from the dict objects
-        equations_to_derive = [eq.get("equation") for eq in eligible_equations]
+        equations_to_derive = [eq.get("equation") for eq in relevant_equations]
 
         if not equations_to_derive:
-            return ToolResult(content=[TextContent(type="text", text="No eligible equations to derive.")])
+            return ToolResult(content=[TextContent(type="text", text="No relevant equations to derive.")])
 
         num_equations = len(equations_to_derive)
         estimated_minutes = max(2, (num_equations // 10) * 3)
@@ -376,8 +371,8 @@ async def derive_all_equations_execute(
 
         # Call synchronous execute endpoint (will block until complete)
         execute_response = AxiomaticAPIClient().post(
-            "/equations/derive-all/execute",
-            data={"markdown": doc_content, "eligible_equations": equations_to_derive},
+            "/equations/derive-all/markdown",
+            data={"markdown": doc_content, "relevant_equations": equations_to_derive},
         )
 
         derivation_results = execute_response.get("derivation_results", [])
