@@ -6,9 +6,11 @@ from fastmcp.exceptions import ToolError
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
-from ...providers.moesif_provider import add_moesif_middleware
+from ...providers.middleware_provider import get_mcp_middleware
+from ...providers.toolset_provider import get_mcp_tools
 from ...shared.api_client import AxiomaticAPIClient
 from ...shared.documents.pdf_to_markdown import pdf_to_markdown
+from ...shared.utils.prompt_utils import get_feedback_prompt
 
 
 async def _get_document_content(document: Path | str) -> str:
@@ -41,11 +43,13 @@ async def _get_document_content(document: Path | str) -> str:
 
 mcp = FastMCP(
     name="AxEquationExplorer Server",
-    instructions="""This server provides tools to compose and analyze equations.""",
+    instructions="""This server provides tools to compose and analyze equations.
+    """
+    + get_feedback_prompt("find_functional_form, check_equation"),
     version="0.0.1",
+    middleware=get_mcp_middleware(),
+    tools=get_mcp_tools(),
 )
-
-add_moesif_middleware(mcp)
 
 
 @mcp.tool(
@@ -68,7 +72,7 @@ async def find_expression(
         doc_content = await _get_document_content(document)
 
         input_body = {"markdown": doc_content, "task": task}
-        response = AxiomaticAPIClient().post("/document/expression/compose/fast/markdown", data=input_body)
+        response = AxiomaticAPIClient().post("/equations/derive/markdown", data=input_body)
 
         code = response.get("composer_code", "")
 
@@ -116,7 +120,7 @@ async def check_equation(
         doc_content = await _get_document_content(document)
         input_body = {"markdown": doc_content, "task": task}
         # Note: Using the same endpoint for now, but this could be changed to a dedicated checking endpoint
-        response = AxiomaticAPIClient().post("/document/expression/compose/fast/markdown", data=input_body)
+        response = AxiomaticAPIClient().post("/equations/check/markdown", data=input_body)
 
         return ToolResult(
             content=[

@@ -9,17 +9,16 @@ This folder contains examples demonstrating potential use cases of two tools:
 Each example folder contains:
 - `prompt.md` - The original query/task description
 - `code.py` - Generated SymPy-based script that performs the verification or derivation
-- `response.md` - Detailed explanation of the process and results
 - Additional context files (e.g., PDFs or supplementary markdown files)
 
 ## Available Examples
 
 ### Check Equation Examples
 
-1. **Derive H Energy States**
-   - Location: `/derive_H_energy_states/`
-   - Description: Verifies and derives energy states in quantum mechanics
-   - Context: Uses quantum basics from supplementary markdown file
+1. **Checking correctness of the FHS algorithm**
+   - Location: `/check_FHS_algorithm/`
+   - Description: Verifies and derives the Fukui-Hatsugai-Suzuki formula for calculating Chern numbers in lattice models
+   - Context: Uses [this paper](https://arxiv.org/pdf/1912.12736) 
 
 2. **Transmission with Loss Modulation Check**
    - Location: `/transmission_with_loss_modulation_check/`
@@ -28,10 +27,10 @@ Each example folder contains:
 
 ### Find Functional Form Examples
 
-1. **Kinetic Energy in Terms of Momentum**
-   - Location: `/kinetic_energy_in_terms_of_momentum/`
-   - Description: Derives the functional form of kinetic energy expressed through momentum
-   - Context: Based on quantum mechanics principles
+1. **Derivation of the second order perturbation formula**
+   - Location: `/derive_perturbation_result/`
+   - Description: Derives the functional form of the second order perturbation approximation for the quasi-flat band width
+   - Context: Based on [this paper](https://journals.aps.org/prb/pdf/10.1103/PhysRevB.102.235126) 
 
 2. **Dynamical Transmission as Function of C**
    - Location: `/dynamical_transmission_as_function_of_C/`

@@ -3,34 +3,42 @@
 import asyncio
 import json
 from pathlib import Path
+from textwrap import dedent
 from typing import Annotated
 
 from fastmcp import Context, FastMCP
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
-from ...providers.moesif_provider import add_moesif_middleware
+from ...providers.middleware_provider import get_mcp_middleware
+from ...providers.toolset_provider import get_mcp_tools
+from ...shared.utils.prompt_utils import get_feedback_prompt
 from .services.circuit_service import CircuitService
 from .services.notebook_service import NotebookService
 from .services.optimization_service import OptimizationService
 from .services.pdk_service import PdkService
 from .services.simulation_service import SimulationService
+from .services.statements_service import StatementsService
 from .utils.pdk import extract_pdk_type_from_code, flatten_pdks_response
 from .utils.wavelengths import resolve_wavelengths
 
 mcp = FastMCP(
     name="AxPhotonicsPreview Server",
-    instructions="""This server provides tools to design, optimize,
-    and simulate photonic integrated circuits.""",
+    instructions=dedent(
+        """This server provides tools to design
+    and simulate photonic integrated circuits.
+    """
+        + get_feedback_prompt("design_circuit, simulate_circuit, list_available_pdks, get_pdk_info")
+    ),
     version="0.0.1",
+    middleware=get_mcp_middleware(),
+    tools=get_mcp_tools(),
 )
-
-add_moesif_middleware(mcp)
-
 circuit_service = CircuitService()
 simulation_service = SimulationService()
 notebook_service = NotebookService()
 pdk_service = PdkService()
+statements_service = StatementsService()
 optimization_service = OptimizationService()
 
 
@@ -92,7 +100,12 @@ async def design(
         json.dump(formalize_response, f)
 
     return ToolResult(
-        content=[TextContent(type="text", text=(f"Generated circuit at {circuit_file_path}, statements at {statements_file_path}"))],
+        content=[
+            TextContent(
+                type="text",
+                text=(f"Generated circuit at {circuit_file_path}, statements at {statements_file_path}.\n\n"),
+            )
+        ],
         structured_content={
             "circuit_file_path": str(circuit_file_path),
             "code": code,
@@ -191,6 +204,59 @@ async def simulate_circuit(
                 "end": max(wavelengths),
                 "points": len(wavelengths),
             },
+        },
+    )
+
+
+@mcp.tool(
+    name="validate_statements",
+    description="Validates the statements in a photonic circuit design.",
+    tags=["validate", "statements"],
+)
+async def validate_statements(
+    file_path: Annotated[Path, "Path to the Python file containing the circuit code"],
+    statements_path: Annotated[Path, "Path to the JSON file containing the circuit statements"],
+) -> ToolResult:
+    """Validates the statements in a photonic circuit design."""
+    if not file_path.exists():
+        raise FileNotFoundError(f"Circuit code file not found: {file_path}")
+    if not statements_path.exists():
+        raise FileNotFoundError(f"Statements file not found: {statements_path}")
+    if not statements_path.read_text().strip():  # raise error if statements file is empty
+        raise ValueError(f"Statements file is empty: {statements_path}")
+
+    code = await asyncio.to_thread(file_path.read_bytes)
+    netlist = await circuit_service.get_netlist_from_code(code)
+
+    with statements_path.open("r", encoding="utf-8") as f:
+        statements_json = json.load(f)
+
+    statements_list = statements_json.get("statements", [])
+
+    request_body = {
+        "netlist": netlist,
+        "statements": statements_list,
+    }
+
+    verified_statements = await statements_service.validate_statements(request_body)
+
+    # Convert to pretty JSON
+    verified_statements_json = json.dumps(verified_statements, indent=2)
+
+    verified_statements_path = statements_path.parent / "verified_statements.json"
+    with verified_statements_path.open("w", encoding="utf-8") as f:
+        f.write(verified_statements_json)
+
+    return ToolResult(
+        content=[
+            TextContent(
+                type="text",
+                text=f"Verified statements saved at {verified_statements_path}",
+            )
+        ],
+        structured_content={
+            "verified_statements_path": str(verified_statements_path),
+            "verified_statements": verified_statements,
         },
     )
 

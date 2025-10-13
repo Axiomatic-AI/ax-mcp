@@ -250,6 +250,10 @@ For development or local modifications:
 
 See the [main README](https://github.com/Axiomatic-AI/ax-mcp#getting-an-api-key) for instructions on obtaining an API key.
 
+### Required dependencies
+
+This server requires extra dependencies, please see [Check system requirements](https://github.com/Axiomatic-AI/ax-mcp#1-check-system-requirements)
+
 ---
 
 ## Best Practices
@@ -280,7 +284,7 @@ See the [main README](https://github.com/Axiomatic-AI/ax-mcp#getting-an-api-key)
 
 ## Examples
 
-Please find several use cases to walk you through [here](https://github.com/Axiomatic-AI/ax-mcp/examples/pic/README.md/).
+Please find several use cases to walk you through [here](https://github.com/Axiomatic-AI/ax-mcp/blob/main/examples/pic/README.md).
 
 ---
 

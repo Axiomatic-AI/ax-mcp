@@ -10,17 +10,21 @@ from fastmcp.exceptions import ToolError
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
-from ...providers.moesif_provider import add_moesif_middleware
+from ...providers.middleware_provider import get_mcp_middleware
+from ...providers.toolset_provider import get_mcp_tools
 from ...shared.documents.pdf_to_markdown import pdf_to_markdown
+from ...shared.utils.prompt_utils import get_feedback_prompt
 
 mcp = FastMCP(
     name="AxDocumentParser Server",
     instructions="""This server provides tools to read, analyze, and process documents
-    from the filesystem using the Axiomatic_AI Platform.""",
+    from the filesystem using the Axiomatic_AI Platform.
+    """
+    + get_feedback_prompt("parse_pdf_to_md"),
     version="0.0.1",
+    middleware=get_mcp_middleware(),
+    tools=get_mcp_tools(),
 )
-
-add_moesif_middleware(mcp)
 
 
 @mcp.tool(
