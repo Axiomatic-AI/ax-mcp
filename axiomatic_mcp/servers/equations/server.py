@@ -10,6 +10,7 @@ from ...providers.middleware_provider import get_mcp_middleware
 from ...providers.toolset_provider import get_mcp_tools
 from ...shared.api_client import AxiomaticAPIClient
 from ...shared.documents.pdf_to_markdown import pdf_to_markdown
+from ...shared.utils.code_utils import get_python_code
 from ...shared.utils.prompt_utils import get_feedback_prompt
 
 
@@ -39,33 +40,6 @@ async def _get_document_content(document: Path | str) -> str:
                     return f.read()
 
     return document
-
-
-async def _get_python_code(code_input: Path | str) -> tuple[str, Path | None]:
-    """Helper function to extract Python code from either a file path or direct string.
-
-    Returns:
-        tuple: (code_content, file_path if input was a file, otherwise None)
-    """
-    if isinstance(code_input, Path):
-        if not code_input.exists():
-            raise ValueError(f"File not found: {code_input}")
-
-        if code_input.suffix.lower() != ".py":
-            raise ValueError(f"Unsupported file type: {code_input.suffix}. Only .py files are supported")
-
-        with Path.open(code_input, encoding="utf-8") as f:
-            return f.read(), code_input
-
-    # Check if it's a short string that might be a file path
-    if len(code_input) < 500 and "\n" not in code_input:
-        potential_path = Path(code_input)
-        if potential_path.exists() and potential_path.suffix.lower() == ".py":
-            with Path.open(potential_path, encoding="utf-8") as f:
-                return f.read(), potential_path
-
-    # It's direct code content
-    return code_input, None
 
 
 mcp = FastMCP(
@@ -174,7 +148,14 @@ async def check_equation(
     description=(
         "Generates a Mermaid flowchart representing the mathematical derivation steps in SymPy code. "
         "Analyzes the provided SymPy code and creates a visual flowchart showing the derivation flow, "
-        "intermediate calculations, and dependencies between steps."
+        "intermediate calculations, and dependencies between steps. "
+        "This is particularly useful for: understanding complex mathematical derivations, "
+        "visualizing the flow from input variables to final results, identifying dependencies between "
+        "intermediate calculations, and creating documentation of derivation steps. "
+        "Example usage: 'Create a flowchart showing the derivation steps in this Euler-Lagrange code', "
+        "'Visualize how the Maxwell equations are derived in this SymPy script', or "
+        "'Generate a graph showing the dependencies in this quantum mechanics derivation'. "
+        "The tool returns a Mermaid flowchart text that can be rendered in Markdown or visualization tools."
     ),
     tags=["equations", "derivation", "graph", "flowchart", "visualization", "sympy"],
 )
@@ -183,54 +164,15 @@ async def generate_derivation_graph(
         Path | str,
         "Either a file path to a Python file containing SymPy code or the SymPy code as a string",
     ],
-    system_prompt: Annotated[
-        str | None,
-        "Optional system prompt to guide the graph generation. If not provided, a default prompt will be used.",
-    ] = None,
 ) -> ToolResult:
-    """Use this tool to visualize the derivation steps in SymPy code as a Mermaid flowchart.
-
-    This is particularly useful for:
-    - Understanding complex mathematical derivations
-    - Visualizing the flow from input variables to final results
-    - Identifying dependencies between intermediate calculations
-    - Creating documentation of derivation steps
-
-    Example usage:
-    - "Create a flowchart showing the derivation steps in this Euler-Lagrange code"
-    - "Visualize how the Maxwell equations are derived in this SymPy script"
-    - "Generate a graph showing the dependencies in this quantum mechanics derivation"
-
-    The tool returns a Mermaid flowchart text that can be rendered in Markdown or visualization tools.
-    """
     try:
-        code_content, original_file_path = await _get_python_code(sympy_code)
+        code_content = await get_python_code(sympy_code)
 
-        # Use default system prompt if not provided
-        # TODO fix system_prompt handling: should already be used in core/services so this one is not used
-        if not system_prompt:
-            system_prompt = (
-                "You are an expert in analyzing SymPy code and creating Mermaid flowcharts. "
-                "Analyze the provided SymPy derivation code and create a Mermaid flowchart that shows:\n"
-                "1. The main steps in the mathematical derivation\n"
-                "2. The flow from input variables to the final result\n"
-                "3. Key intermediate calculations\n"
-                "4. Dependencies between steps\n\n"
-                "Output a valid Mermaid flowchart using the 'flowchart TD' syntax."
-            )
+        form_data = {"sympy_code": code_content}
 
-        # Prepare the request data as form data (not JSON)
-        # The backend expects multipart/form-data with Form() fields
-        # We need to use files parameter to trigger multipart/form-data encoding
-        form_data = {
-            "system_prompt": (None, system_prompt),
-            "sympy_code": (None, code_content),
-        }
-
-        # Call the API endpoint - using files parameter ensures multipart/form-data
         response = AxiomaticAPIClient().post(
             "/equations/compose/derivation-graph",
-            files=form_data,  # Send as files to ensure multipart/form-data encoding
+            files=form_data,
         )
 
         mermaid_text = response.get("mermaid_text", "")
@@ -239,22 +181,15 @@ async def generate_derivation_graph(
         if not mermaid_text:
             raise ToolError("No mermaid_text returned from service")
 
-        # Save the Mermaid output to a file
-        if original_file_path:
-            output_path = original_file_path.parent / f"{original_file_path.stem}_derivation.mmd"
-        else:
-            output_path = Path.cwd() / "derivation_graph.mmd"
+        # Save output file next to input file if it's a file, otherwise use current directory
+        output_path = sympy_code.parent / f"{sympy_code.stem}_derivation.mmd" if isinstance(sympy_code, Path) else Path.cwd() / "derivation_graph.mmd"
 
         with Path.open(output_path, "w", encoding="utf-8") as f:
             f.write(mermaid_text)
 
-        # Prepare result content
-        # Check if mermaid_text already has code fences
         if mermaid_text.strip().startswith("```"):
-            # Already wrapped, don't add more backticks
             mermaid_display = f"\nMermaid Flowchart:\n{mermaid_text}"
         else:
-            # Not wrapped, add mermaid code fence
             mermaid_display = f"\nMermaid Flowchart:\n```mermaid\n{mermaid_text}\n```"
 
         result_content = [
