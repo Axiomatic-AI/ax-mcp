@@ -166,9 +166,10 @@ async def generate_derivation_graph(
     ],
 ) -> ToolResult:
     try:
-        code_content = await get_python_code(sympy_code)
+        code_content, input_file_path = await get_python_code(sympy_code)
 
-        form_data = {"sympy_code": code_content}
+        # Send as multipart form-data with sympy_code as a text field
+        form_data = {"sympy_code": (None, code_content)}
 
         response = AxiomaticAPIClient().post(
             "/equations/compose/derivation-graph",
@@ -181,8 +182,8 @@ async def generate_derivation_graph(
         if not mermaid_text:
             raise ToolError("No mermaid_text returned from service")
 
-        # Save output file next to input file if it's a file, otherwise use current directory
-        output_path = sympy_code.parent / f"{sympy_code.stem}_derivation.mmd" if isinstance(sympy_code, Path) else Path.cwd() / "derivation_graph.mmd"
+        # Save output file next to input file if it was a file, otherwise use current directory
+        output_path = input_file_path.parent / f"{input_file_path.stem}_derivation.mmd" if input_file_path else Path.cwd() / "derivation_graph.mmd"
 
         with Path.open(output_path, "w", encoding="utf-8") as f:
             f.write(mermaid_text)
