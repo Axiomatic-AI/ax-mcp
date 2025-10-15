@@ -166,7 +166,7 @@ async def generate_derivation_graph(
     ],
 ) -> ToolResult:
     try:
-        code_content, input_file_path = await get_python_code(sympy_code)
+        code_content, input_file_path = get_python_code(sympy_code)
 
         # Send as multipart form-data with sympy_code as a text field
         form_data = {"sympy_code": (None, code_content)}

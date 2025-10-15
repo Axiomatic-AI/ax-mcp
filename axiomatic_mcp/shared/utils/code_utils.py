@@ -3,7 +3,7 @@
 from pathlib import Path
 
 
-async def get_python_code(code_input: Path | str) -> tuple[str, Path | None]:
+def get_python_code(code_input: Path | str) -> tuple[str, Path | None]:
     """Extract Python code from either a file path or direct string.
 
     Args:
@@ -28,16 +28,17 @@ async def get_python_code(code_input: Path | str) -> tuple[str, Path | None]:
         with Path.open(code_input, encoding="utf-8") as f:
             return f.read(), code_input
 
-    # Check if it's a short string that might be a file path
     if len(code_input) < 500 and "\n" not in code_input:
         potential_path = Path(code_input)
-        if potential_path.suffix.lower() == ".py":
+
+        if potential_path.suffix:
             if not potential_path.exists():
                 raise ValueError(f"File not found: {potential_path}")
+
+            if potential_path.suffix.lower() != ".py":
+                raise ValueError(f"Unsupported file type: {potential_path.suffix}. Only .py files are supported")
+
             with Path.open(potential_path, encoding="utf-8") as f:
                 return f.read(), potential_path
-        if potential_path.exists():
-            raise ValueError(f"Unsupported file type: {potential_path.suffix}. Only .py files are supported")
 
-    # It's direct code content
     return code_input, None
