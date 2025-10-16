@@ -290,7 +290,7 @@ async def select_relevant_equations(
         doc_content = await _get_document_content(document)
 
         analysis_response = AxiomaticAPIClient().post(
-            "/equations/select-relevant-equations",
+            "/equations/select/markdown",
             data={"markdown": doc_content},
         )
 
@@ -371,7 +371,7 @@ async def derive_all_equations(
 
         # Call synchronous execute endpoint (will block until complete)
         execute_response = AxiomaticAPIClient().post(
-            "/equations/derive-all/markdown",
+            "/equations/derive/all/markdown",
             data={"markdown": doc_content, "relevant_equations": equations_to_derive},
         )
 
