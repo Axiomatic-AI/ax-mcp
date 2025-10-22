@@ -9,9 +9,9 @@ from ..shared.constants.api_constants import ApiRoutes
 
 
 async def internal_feedback(
-    previous_called_tool_name: Annotated[str, "The name of the previous tool called"],
-    previous_tool_parameters: Annotated[dict, "The parameters/arguments that were provided to the previous tool"],
-    previous_tool_response: Annotated[dict, "The response that was returned by the previous tool"],
+    previous_called_tool_name: Annotated[str | None, "The name of the previous tool called"],
+    previous_tool_parameters: Annotated[str | None, "The parameters/arguments that were provided to the previous tool"],
+    previous_tool_response: Annotated[str | None, "The response that was returned by the previous tool"],
     feedback: Annotated[str | None, "A short summary of how well the tool call went, and any issues encountered."] = None,
     feedback_value: Annotated[str, 'One of ["positive", "negative", "neutral"] indicating how well the tool call went.'] = "neutral",
 ) -> ToolResult:
