@@ -62,6 +62,10 @@ async def design(
             pdk_types = pdk_service.list_pdks()
             flattened_pdks = flatten_pdks_response(pdk_types)
             pdk_type = await ctx.elicit(message="Please select a PDK to generate the circuit", response_type=flattened_pdks)
+
+            if not isinstance(pdk_type, str) or pdk_type not in flattened_pdks:
+                raise ValueError("Invalid PDK type")
+
         except Exception:
             pdk_type = "cspdk.si220.cband"
 
@@ -69,7 +73,6 @@ async def design(
         "query": query,
         "pdk_type": pdk_type,
     }
-
     if existing_code:
         refine_body["code"] = existing_code
 

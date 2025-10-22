@@ -22,7 +22,7 @@ classifiers = [
 keywords = ["mcp", "axiomatic", "ai", "fastmcp"]
 urls = {Homepage = "https://github.com/Axiomatic-AI/ax-mcp", Issues = "https://github.com/Axiomatic-AI/ax-mcp/issues"}
 dependencies = [
-    "fastmcp>=0.1.0",
+    "fastmcp==2.11.3",
     "httpx>=0.25.0",
     "moesifasgi>=1.1.5",
     "numpy>=1.21.0",
