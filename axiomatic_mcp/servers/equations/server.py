@@ -55,7 +55,7 @@ mcp = FastMCP(
 @mcp.tool(
     name="find_functional_form",
     description=(
-        "Compose an expression of your interest given the information from the source documents "
+        "Derive an expression of your interest given the information from the source documents "
         "and equations residing there. Provide description of the expression you want to compose."
     ),
     tags=["equations", "compose", "derive", "find", "function-finder"],
@@ -74,13 +74,6 @@ async def find_expression(
         input_body = {"markdown": doc_content, "task": task}
         response = AxiomaticAPIClient().post("/equations/derive/markdown", data=input_body)
 
-        code = response.get("composer_code", "")
-
-        if not code:
-            raise ToolError("No composer_code returned from service")
-
-        code = response.get("composer_code", "")
-
         if isinstance(document, Path) or (isinstance(document, str) and Path(document).exists()):
             doc_path = Path(document)
             file_path = doc_path.parent / f"{doc_path.stem}_code.py"
@@ -88,17 +81,17 @@ async def find_expression(
             file_path = Path.cwd() / "expression_code.py"
 
         with Path.open(file_path, "w", encoding="utf-8") as f:
-            f.write(code)
+            f.write(response.get("code", ""))
 
         return ToolResult(
             content=[
-                TextContent(type="text", text=f"Comments: {response.get('comments', '')}"),
-                TextContent(type="text", text=f"Code: {response.get('composer_code', '')}"),
+                TextContent(type="text", text=f"Explanation: {response.get('explanation', '')}"),
+                TextContent(type="text", text=f"Code: {response.get('code', '')}"),
             ]
         )
 
     except Exception as e:
-        raise ToolError(f"Failed to analyze document: {e!s}") from e
+        raise ToolError(f"Failed to derive the equation in the document: {e!s}") from e
 
 
 @mcp.tool(
@@ -122,10 +115,19 @@ async def check_equation(
         # Note: Using the same endpoint for now, but this could be changed to a dedicated checking endpoint
         response = AxiomaticAPIClient().post("/equations/check/markdown", data=input_body)
 
+        if isinstance(document, Path) or (isinstance(document, str) and Path(document).exists()):
+            doc_path = Path(document)
+            file_path = doc_path.parent / f"{doc_path.stem}_code.py"
+        else:
+            file_path = Path.cwd() / "expression_code.py"
+
+        with Path.open(file_path, "w", encoding="utf-8") as f:
+            f.write(response.get("code", ""))
+
         return ToolResult(
             content=[
-                TextContent(type="text", text=f"Comments: {response.get('comments', '')}"),
-                TextContent(type="text", text=f"Code: {response.get('composer_code', '')}"),
+                TextContent(type="text", text=f"Explanation: {response.get('explanation', '')}"),
+                TextContent(type="text", text=f"Code: {response.get('code', '')}"),
             ]
         )
 
