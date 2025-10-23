@@ -112,17 +112,8 @@ async def check_equation(
     try:
         doc_content = await _get_document_content(document)
         input_body = {"markdown": doc_content, "task": task}
+        # Note: Using the same endpoint for now, but this could be changed to a dedicated checking endpoint
         response = AxiomaticAPIClient().post("/equations/check/markdown", data=input_body)
-
-        if isinstance(document, Path) or (isinstance(document, str) and Path(document).exists()):
-            doc_path = Path(document)
-            file_path = doc_path.parent / f"{doc_path.stem}_code.py"
-        else:
-            file_path = Path.cwd() / "expression_code.py"
-
-        with Path.open(file_path, "w", encoding="utf-8") as f:
-            f.write(response.get('code', ''))
-
 
         return ToolResult(
             content=[
