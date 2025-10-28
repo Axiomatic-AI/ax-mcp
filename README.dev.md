@@ -35,10 +35,10 @@ make install-dev
 
 ### Using staging or local environment
 
-In your MCP settings, change the `BASE_URL` parameter to point to the staging or local API (see configuration above):
+In your MCP settings, change the `API_URL` parameter to point to the staging or local API (see configuration above):
 
-- staging: `"BASE_URL": "https://api.staging.axiomatic-ai.com"`
-- local: `"BASE_URL": "http://localhost:8000"` (or your chosen port to run ax-stack)
+- staging: `"API_URL": "https://api.staging.axiomatic-ai.com"`
+- local: `"API_URL": "http://localhost:8000"` (or your chosen port to run ax-stack)
 
 ### Adding a New Server
 
