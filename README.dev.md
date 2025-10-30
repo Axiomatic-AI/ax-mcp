@@ -26,11 +26,19 @@ make install-dev
     "args": ["-m", "axiomatic_mcp.servers.documents"],
     "env": {
       "AXIOMATIC_API_KEY": "your-api-key-here",
-      "DISABLE_TELEMETRY": "true" // optionally prevent sending logs to Moesif
+      "DISABLE_TELEMETRY": "true", // optionally prevent sending logs to Moesif
+      "API_URL": "https://api.staging.axiomatic-ai.com" // optionally point to staging/local environment
     }
   }
 }
 ```
+
+### Using staging or local environment
+
+In your MCP settings, change the `API_URL` parameter to point to the staging or local API (see configuration above):
+
+- staging: `"API_URL": "https://api.staging.axiomatic-ai.com"`
+- local: `"API_URL": "http://localhost:8000"` (or your chosen port to run ax-stack)
 
 ### Adding a New Server
 
