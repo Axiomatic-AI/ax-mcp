@@ -47,7 +47,7 @@ lean = [
 ]
 pic = [
     "cspdk>=1.0.1",
-    "gdsfactory>=9.7.0",
+    "gdsfactory==9.11.6",
     "iklayout>=0.0.8",
     "ipympl>=0.9.7",
     "kfactory>=1.7.3",
@@ -64,7 +64,7 @@ pic = [
 all = [
     "leanclient==0.1.14",
     "cspdk>=1.0.1",
-    "gdsfactory>=9.7.0",
+    "gdsfactory==9.11.6",
     "iklayout>=0.0.8",
     "ipympl>=0.9.7",
     "kfactory>=1.7.3",
