@@ -26,7 +26,6 @@ make install-dev
     "args": ["-m", "axiomatic_mcp.servers.documents"],
     "env": {
       "AXIOMATIC_API_KEY": "your-api-key-here",
-      "DISABLE_TELEMETRY": "true", // optionally prevent sending logs to Moesif
       "API_URL": "https://api.staging.axiomatic-ai.com" // optionally point to staging/local environment
     }
   }
