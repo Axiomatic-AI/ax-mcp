@@ -71,7 +71,7 @@ claude mcp add axiomatic-mcp --env AXIOMATIC_API_KEY=your-api-key-here -- uvx --
 <details>
 <summary><strong>🔮 Gemini CLI</strong></summary>
 
-Follow the MCP install guide and use the standard configuration above.  
+Follow the MCP install guide and use the standard configuration above.
 See the official instructions here: [Gemini CLI MCP Server Guide](https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md#configure-the-mcp-server-in-settingsjson)
 
 ```json
@@ -91,7 +91,7 @@ See the official instructions here: [Gemini CLI MCP Server Guide](https://github
 <details>
 <summary><strong>🌬️ Windsurf</strong></summary>
 
-Follow the [Windsurf MCP documentation](https://docs.windsurf.com/windsurf/cascade/mcp).  
+Follow the [Windsurf MCP documentation](https://docs.windsurf.com/windsurf/cascade/mcp).
 Use the standard configuration above.
 
 ```json
@@ -139,7 +139,7 @@ env = { AXIOMATIC_API_KEY = "your-api-key-here" }
 
 For more information, see the [Codex MCP documentation](https://github.com/openai/codex/blob/main/codex-rs/config.md#mcp_servers)
 
-</details> 
+</details>
 <details>
 <summary><strong>🌊 Other MCP Clients</strong></summary>
 
@@ -248,6 +248,10 @@ Design photonic integrated circuits using natural language descriptions. Additio
 ### 📊 [AxPlotToData](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/plots/)
 
 Extract numerical data from plot images for analysis and reproduction.
+
+### ⚙️ [AxModelFitter](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/axmodelfitter/)
+
+Fit parametric models or digital twins to observational data using advanced statistical analysis and optimization algorithms.
 
 ## Requesting Features
 
