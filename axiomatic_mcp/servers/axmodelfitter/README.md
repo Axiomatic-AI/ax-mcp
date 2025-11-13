@@ -227,7 +227,7 @@ x,y
 ## Optimization Algorithms
 
 - **NLopt (Default)**: Global search, gradient-based and gradient-free optimization, constraint support
-- **SciPy**: Fast local search. easy tasks
+- **SciPy**: Fast local search for easy tasks
 - **Nevergrad**: Global optimization, gradient-free
 
 ## Cost Functions
