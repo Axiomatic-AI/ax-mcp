@@ -12,11 +12,11 @@ AxModelFitter enables AI assistants to fit mathematical models against experimen
 
 ### Installation (via PyPI)
 
-If you are using Cursor, click the buttom below for 1-click installation.
+If you are using Cursor, click the button below for 1-click installation.
 
 [![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=axiomatic-axmodelfitter&config=eyJjb21tYW5kIjoidXZ4IC0tZnJvbSBheGlvbWF0aWMtbWNwIGF4aW9tYXRpYy1heG1vZGVsZml0dGVyIiwiZW52Ijp7IkFYSU9NQVRJQ19BUElfS0VZIjoieW91ci1hcGkta2V5LWhlcmUifX0%3D)
 
-Otherwise, add to the MCP client configuration of your preferred IDE or langauge model app:
+Otherwise, add to the MCP client configuration of your preferred IDE or language model app:
 
 ```json
 {

@@ -13,9 +13,9 @@ from typing import Annotated
 import numpy as np
 from fastmcp import FastMCP
 from fastmcp.tools.tool import ToolResult
-from ...providers.middleware_provider import get_mcp_middleware
 from mcp.types import TextContent
 
+from ...providers.middleware_provider import get_mcp_middleware
 from ...shared import AxiomaticAPIClient
 from .data_file_utils import resolve_data_input, resolve_output_data_only
 
@@ -692,7 +692,7 @@ Ready to optimize? Get templates with `get_fitting_examples`!"""
     - Correct pint units
     - Realistic parameter bounds
     - File-based data structure examples
-    
+
     Use these as starting points - copy the structure and modify for your specific model.
     Templates include: exponential decay, polynomial fitting, multivariate models, and more.
     """,
@@ -766,7 +766,7 @@ async def get_fitting_examples() -> ToolResult:
             "description": "Multivariate polynomial of order 2 - shows how to deal with mulitple inputs",
             "model_name": "MultivariatePolynomialModel",
             "function_source": """def f(x, y, a, b, c):
-    return a*x^2 + b*y^2 + c""",
+    return a*x**2 + b*y**2 + c""",
             "function_name": "f",
             "docstring": "Multiple input varaibles template",
             "parameters": [
@@ -946,7 +946,7 @@ def c_obs(ts, A0, B0, C0, D0, k1, k2, k3):
     out /= 1 - jnp.sqrt(transmission) * 10 ** (-loss * ring_length / 20.0) * jnp.exp(1j * phi)
     detected = jnp.abs(out) ** 2
     return detected""",
-            "function_name": "power_transfer",
+            "function_name": "T",
             "docstring": "RingResonatorModel - power transfer from input to output for a ring resonator",
             "parameters": [
                 {"name": "neff_0", "value": {"magnitude": 2.3, "unit": "dimensionless"}},
@@ -2109,7 +2109,7 @@ models = [
     {{
         "name": "PolynomialModel",
         "loss_value": 0.02,
-        "cost_function_type": "mse", 
+        "cost_function_type": "mse",
         "n_parameters": 4
     }}
 ]
