@@ -80,15 +80,19 @@ def determine_sig_figs(response: dict) -> tuple[int, int]:
 
     x_max_sig_figs = 0
     for value in x_tick_values:
-        if value is not None:
+        try:
             sig_figs = count_significant_figures(float(value))
             x_max_sig_figs = max(x_max_sig_figs, sig_figs)
+        except (TypeError, ValueError):
+            continue
 
     y_max_sig_figs = 0
     for value in y_tick_values:
-        if value is not None:
+        try:
             sig_figs = count_significant_figures(float(value))
             y_max_sig_figs = max(y_max_sig_figs, sig_figs)
+        except (TypeError, ValueError):
+            continue
 
     x_sig_figs = max(MIN_SIG_FIGS, min(MAX_SIG_FIGS, x_max_sig_figs))
     y_sig_figs = max(MIN_SIG_FIGS, min(MAX_SIG_FIGS, y_max_sig_figs))
