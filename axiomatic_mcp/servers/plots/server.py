@@ -20,6 +20,9 @@ from ...providers.toolset_provider import get_mcp_tools
 from ...shared import AxiomaticAPIClient
 from ...shared.utils.prompt_utils import get_feedback_prompt
 
+MIN_SIG_FIGS = 4
+MAX_SIG_FIGS = 7
+
 
 class Point(BaseModel):
     """Extracted point of a series from a plot"""
@@ -41,7 +44,62 @@ class SeriesPointsData(BaseModel):
     series_points: list[SeriesPoints]
 
 
-def process_plot_parser_output(response_json, max_points: int = 100, sig_figs: int = 5) -> SeriesPointsData:
+def count_significant_figures(value: float) -> int:
+    """Counts significant figures in a float"""
+    if value == 0:
+        return 1
+
+    num_str = str(abs(value))
+
+    # scientific notation
+    if "e" in num_str.lower():
+        num_str = num_str.lower().split("e")[0]
+
+    if "." in num_str:
+        parts = num_str.split(".")
+        if parts[0] == "0" or parts[0] == "":
+            frac = parts[1].lstrip("0")
+            return len(frac) if frac else 1
+        else:
+            return len(parts[0]) + len(parts[1])
+    else:
+        stripped = num_str.lstrip("0")
+        return len(stripped) if stripped else 1
+
+
+def determine_sig_figs(response: dict) -> tuple[int, int]:
+    """
+    determines sigfigs for x and y axes by analyzing tick values
+    uses the maximum sigfigs found in tick values
+    clamped between MIN_SIG_FIGS and MAX_SIG_FIGS
+    """
+    plot_info = response.get("plot_info", {})
+
+    x_tick_values = plot_info.get("x_axis_tick_values", [])
+    y_tick_values = plot_info.get("y_axis_tick_values", [])
+
+    x_max_sig_figs = 0
+    for value in x_tick_values:
+        if value is not None:
+            sig_figs = count_significant_figures(float(value))
+            x_max_sig_figs = max(x_max_sig_figs, sig_figs)
+
+    y_max_sig_figs = 0
+    for value in y_tick_values:
+        if value is not None:
+            sig_figs = count_significant_figures(float(value))
+            y_max_sig_figs = max(y_max_sig_figs, sig_figs)
+
+    x_sig_figs = max(MIN_SIG_FIGS, min(MAX_SIG_FIGS, x_max_sig_figs))
+    y_sig_figs = max(MIN_SIG_FIGS, min(MAX_SIG_FIGS, y_max_sig_figs))
+
+    return x_sig_figs, y_sig_figs
+
+
+def process_plot_parser_output(response_json, max_points: int = 100) -> SeriesPointsData:
+    """Process plot parser output and extract series data for mcp"""
+    x_sig_figs, y_sig_figs = determine_sig_figs(response_json)
+
     extracted_series_list: list[SeriesPoints] = []
 
     series_array = (response_json or {}).get("extracted_series") or []
@@ -66,8 +124,8 @@ def process_plot_parser_output(response_json, max_points: int = 100, sig_figs: i
                 continue
             if not math.isfinite(x_num) or not math.isfinite(y_num):
                 continue
-            x_val = float(format(x_num, f".{sig_figs}g"))
-            y_val = float(format(y_num, f".{sig_figs}g"))
+            x_val = float(format(x_num, f".{x_sig_figs}g"))
+            y_val = float(format(y_num, f".{y_sig_figs}g"))
             condensed_points_list.append(Point(x_value=x_val, y_value=y_val))
         if not condensed_points_list:
             continue
