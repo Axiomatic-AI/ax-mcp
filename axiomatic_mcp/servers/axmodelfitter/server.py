@@ -2178,10 +2178,7 @@ async def compute_parameter_covariance(
         prepare_bounds_for_optimization(bounds, input_names, const_names, resolved_output_data["name"])
 
         if variance <= 0:
-            raise ValueError(
-                "variance must be positive (σ² > 0). "
-                "Estimate it from residuals (e.g., final_loss for MSE) or domain knowledge."
-            )
+            raise ValueError("variance must be positive (σ² > 0). " "Estimate it from residuals (e.g., final_loss for MSE) or domain knowledge.")
 
     except ValueError as e:
         return ToolResult(content=[TextContent(type="text", text=str(e))])
@@ -2265,12 +2262,14 @@ Status: {"Success" if has_cov else "Failed"}
                 result_text += f"- **{name}:** {std_err:.6g} {param_unit} ({relative_error:.2f}% relative)\n"
 
             result_text += "\n### Correlation Matrix\n"
+            # Use len(cov_param_names) consistently to handle case where parameter_names is shorter than covariance matrix
+            n_display_params = len(cov_param_names)
             result_text += "| Parameter | " + " | ".join(cov_param_names) + " |\n"
-            result_text += "|-----------|" + "|".join(["-------"] * n_cov_params) + "|\n"
+            result_text += "|-----------|" + "|".join(["-------"] * n_display_params) + "|\n"
 
             for i, name_i in enumerate(cov_param_names):
                 row_text = f"| **{name_i}** |"
-                for j in range(n_cov_params):
+                for j in range(n_display_params):
                     if std_errors[i] > 0 and std_errors[j] > 0:
                         corr = cov_array[i, j] / (std_errors[i] * std_errors[j])
                         row_text += f" {corr:+.3f} |"
