@@ -114,6 +114,7 @@ Provides step-by-step guidance for setting up and executing model fitting workfl
 - **`cross_validate_model`** - Perform cross-validation to assess model generalization
 - **`calculate_information_criteria`** - Compute AIC/BIC for model comparison
 - **`compare_models`** - Statistical comparison of multiple models
+- **`compute_parameter_covariance`** - Provides estimates to quantify parameter uncertainty and correlations.
 
 ## Data Requirements
 

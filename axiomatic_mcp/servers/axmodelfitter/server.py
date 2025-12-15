@@ -2120,6 +2120,205 @@ output_data = {{"columns": ["y"], "name": "y", "unit": "dimensionless"}}
         return ToolResult(content=[TextContent(type="text", text=error_text)])
 
 
+@mcp.tool(
+    name="compute_parameter_covariance",
+    description="""Compute parameter covariance matrices for fitted model parameters.
+
+    Provides uncertainty estimates using robust Huber-White sandwich estimator and
+    classical inverse Hessian approach. Use after fit_model to quantify parameter
+    uncertainty and correlations.
+
+    REQUIRED: Fitted parameters, model definition, same data used in fitting, variance estimate.
+    RETURNS: Covariance matrices, standard errors, correlation matrix.
+    """,
+    tags=["statistics", "uncertainty", "covariance", "parameter_estimation"],
+)
+async def compute_parameter_covariance(
+    model_name: Annotated[str, "Model name (e.g., 'ExponentialDecay', 'RingResonator')"],
+    function_source: Annotated[str, "JAX function source code. MUST use jnp operations: jnp.exp, jnp.sin, etc."],
+    function_name: Annotated[str, "Function name that computes the model output"],
+    parameters: Annotated[list, "Fitted parameter values: [{'name': 'a', 'value': {'magnitude': 2.0, 'unit': 'dimensionless'}}]"],
+    bounds: Annotated[
+        list,
+        "ALL parameter/input/output bounds: [{'name': 'a', 'lower': {'magnitude': 0, 'unit': 'dimensionless'}, 'upper': {'magnitude': 10, 'unit': 'dimensionless'}}]",  # noqa E501
+    ],
+    data_file: Annotated[str, "Path to data file (CSV, Excel, JSON, Parquet). All data must be provided via file."],
+    input_data: Annotated[
+        list, "Input column mappings: [{'column': 'time', 'name': 't', 'unit': 'second'}, {'column': 'x_col', 'name': 'x', 'unit': 'meter'}]"
+    ],
+    output_data: Annotated[
+        dict, "Output column mapping: {'columns': ['signal'], 'name': 'y', 'unit': 'volt'} OR {'columns': ['y1', 'y2'], 'name': 'y', 'unit': 'volt'}"
+    ],
+    file_format: Annotated[str | None, "File format: 'csv', 'excel', 'json', 'parquet' (auto-detect if None)"] = None,
+    variance: Annotated[float, "Noise variance (σ²) for uncertainty quantification. Estimate from residuals or domain knowledge."] = 1.0,
+    constants: Annotated[list | None, "Fixed constants: [{'name': 'c', 'value': {'magnitude': 3.0, 'unit': 'meter'}}]"] = None,
+    docstring: Annotated[str, "Brief description of the model"] = "",
+    cost_function_type: Annotated[str, "Cost function: 'mse' (default), 'mae'"] = "mse",
+    jit_compile: Annotated[bool, "Enable JIT compilation for performance"] = True,
+    scale_params: Annotated[bool, "Enable parameter scaling for numerical stability"] = False,
+) -> ToolResult:
+    """Compute parameter covariance matrix for fitted model parameters."""
+
+    try:
+        if data_file is None:
+            raise ValueError("data_file is required. All data must be provided via file.")
+        if input_data is None:
+            raise ValueError("input_data is required when using file-based input.")
+        if output_data is None:
+            raise ValueError("output_data is required when using file-based input.")
+
+        resolved_input_data, resolved_output_data = resolve_data_input(
+            data_file=data_file, input_data=input_data, output_data=output_data, file_format=file_format
+        )
+
+        input_names, const_names, param_names, bounds_names, n = validate_optimization_inputs(
+            resolved_input_data, resolved_output_data, parameters, bounds, constants
+        )
+
+        prepare_bounds_for_optimization(bounds, input_names, const_names, resolved_output_data["name"])
+
+    except ValueError as e:
+        return ToolResult(content=[TextContent(type="text", text=str(e))])
+
+    if constants is None:
+        constants = []
+    request_data = {
+        "model_name": model_name,
+        "parameters": parameters,
+        "bounds": bounds,
+        "constants": constants,
+        "input": resolved_input_data,
+        "target": resolved_output_data,
+        "function_source": function_source,
+        "function_name": function_name,
+        "docstring": docstring,
+        "jit_compile": jit_compile,
+        "cost_function_type": cost_function_type,
+        "scale_params": scale_params,
+        "variance": variance,
+    }
+
+    try:
+        with AxiomaticAPIClient() as client:
+            response = client.post("/digital-twin/compute-parameter-covariance", data=request_data)
+
+        # New success criterion: treat as success if either covariance matrix is present
+        robust_cov = response.get("sandwich_covariance")
+        classical_cov = response.get("inverse_hessian_covariance")
+        has_cov = (isinstance(robust_cov, list) and len(robust_cov) > 0) or (isinstance(classical_cov, list) and len(classical_cov) > 0)
+
+        if not has_cov:
+            error_msg = response.get("error", "Unknown error occurred")
+            # Include full response for debugging if error message is generic
+            debug_info = ""
+            if error_msg == "Unknown error occurred":
+                import json
+
+                debug_info = f"\n\nFull API response:\n{json.dumps(response, indent=2)}"
+            return ToolResult(content=[TextContent(type="text", text=f"Parameter covariance computation failed: {error_msg}{debug_info}")])
+
+        result_text = f"""# Parameter Covariance Analysis: {model_name}
+
+Status: {"Success" if has_cov else "Failed"}
+
+## Fitted Parameters
+"""
+
+        for param in parameters:
+            name = param["name"]
+            value = param["value"]["magnitude"]
+            unit = param["value"]["unit"]
+            result_text += f"- **{name}:** {value:.6g} {unit}\n"
+
+        # Use provided param_names if present, else fall back to parameters list
+        parameter_names = response.get("param_names", param_names)
+
+        if robust_cov is not None:
+            result_text += "\n## Robust Covariance (Huber-White Sandwich)\n\n"
+            cov_array = np.array(robust_cov)
+            std_errors = np.sqrt(np.diag(cov_array))
+
+            result_text += "### Standard Errors\n"
+            for i, (name, std_err) in enumerate(zip(parameter_names, std_errors)):
+                param_value = parameters[i]["value"]["magnitude"]
+                param_unit = parameters[i]["value"]["unit"]
+                relative_error = (std_err / abs(param_value) * 100) if param_value != 0 else float("inf")
+                result_text += f"- **{name}:** {std_err:.6g} {param_unit} ({relative_error:.2f}% relative)\n"
+
+            result_text += "\n### Correlation Matrix\n"
+            result_text += "| Parameter | " + " | ".join(parameter_names) + " |\n"
+            result_text += "|-----------|" + "|".join(["-------"] * len(parameter_names)) + "|\n"
+
+            for i, name_i in enumerate(parameter_names):
+                row_text = f"| **{name_i}** |"
+                for j in range(len(parameter_names)):
+                    if std_errors[i] > 0 and std_errors[j] > 0:
+                        corr = cov_array[i, j] / (std_errors[i] * std_errors[j])
+                        row_text += f" {corr:+.3f} |"
+                    else:
+                        row_text += " N/A |"
+                result_text += row_text + "\n"
+
+        if classical_cov is not None:
+            result_text += "\n## Classical Covariance (Inverse Hessian)\n\n"
+            cov_array_classical = np.array(classical_cov)
+            std_errors_classical = np.sqrt(np.diag(cov_array_classical))
+
+            result_text += "### Standard Errors\n"
+            for i, (name, std_err) in enumerate(zip(parameter_names, std_errors_classical)):
+                param_value = parameters[i]["value"]["magnitude"]
+                param_unit = parameters[i]["value"]["unit"]
+                relative_error = (std_err / abs(param_value) * 100) if param_value != 0 else float("inf")
+                result_text += f"- **{name}:** {std_err:.6g} {param_unit} ({relative_error:.2f}% relative)\n"
+
+        result_text += "\n## Notes\n"
+        result_text += "- Standard errors indicate parameter constraint quality\n"
+        result_text += "- 95% confidence interval: parameter ± 1.96 × std_error\n"
+        result_text += "- Correlation near ±1 shows parameters trade off\n"
+        result_text += "- Use robust when model may be misspecified\n"
+
+        return ToolResult(
+            content=[TextContent(type="text", text=result_text)],
+            structured_content={
+                "parameters": parameters,
+                "sandwich_covariance": robust_cov,
+                "inverse_hessian_covariance": classical_cov,
+                "parameter_names": parameter_names,
+                "sandwich_std_errors": std_errors.tolist() if robust_cov is not None else None,
+                "inverse_hessian_std_errors": std_errors_classical.tolist() if classical_cov is not None else None,
+            },
+        )
+
+    except Exception as e:
+        # Enhanced error handling for HTTP errors
+        import httpx
+
+        error_msg = str(e)
+        if isinstance(e, httpx.HTTPStatusError):
+            # Extract detailed error from HTTP response
+            try:
+                error_body = e.response.json()
+                if "detail" in error_body:
+                    error_msg = error_body["detail"]
+                else:
+                    error_msg = str(error_body)
+            except Exception:
+                error_msg = e.response.text if hasattr(e.response, "text") else str(e)
+
+        error_details = f"""Parameter covariance computation failed: {error_msg}
+
+Troubleshooting:
+- Ensure parameters match those from fit_model call
+- Use same data file and mappings as in fitting
+- Provide realistic noise variance from residuals
+- Verify all required fields are provided
+- Check that all units are valid pint units (e.g., "1/volt" not "dimensionless" for inverse volts)
+
+Variance can be estimated from final_loss: variance ≈ final_loss (for MSE)
+"""
+        return ToolResult(content=[TextContent(type="text", text=error_details)])
+
+
 def main():
     """Main entry point for the model fitting MCP server."""
     mcp.run()
