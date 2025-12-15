@@ -2177,6 +2177,12 @@ async def compute_parameter_covariance(
 
         prepare_bounds_for_optimization(bounds, input_names, const_names, resolved_output_data["name"])
 
+        if variance <= 0:
+            raise ValueError(
+                "variance must be positive (σ² > 0). "
+                "Estimate it from residuals (e.g., final_loss for MSE) or domain knowledge."
+            )
+
     except ValueError as e:
         return ToolResult(content=[TextContent(type="text", text=str(e))])
 
@@ -2233,6 +2239,10 @@ Status: {"Success" if has_cov else "Failed"}
         # Use provided param_names if present, else fall back to parameters list
         parameter_names = response.get("param_names", param_names)
 
+        # Create lookup from parameter name to value/unit for robust matching
+        # (handles case where API returns param_names in different order than input parameters)
+        param_lookup = {p["name"]: p["value"] for p in parameters}
+
         # Track std_errors for structured output
         sandwich_std_errors = None
         hessian_std_errors = None
@@ -2247,9 +2257,10 @@ Status: {"Success" if has_cov else "Failed"}
             cov_param_names = parameter_names[:n_cov_params]
 
             result_text += "### Standard Errors\n"
-            for i, (name, std_err) in enumerate(zip(cov_param_names, std_errors)):
-                param_value = parameters[i]["value"]["magnitude"]
-                param_unit = parameters[i]["value"]["unit"]
+            for name, std_err in zip(cov_param_names, std_errors):
+                param_info = param_lookup.get(name, {"magnitude": float("nan"), "unit": "?"})
+                param_value = param_info["magnitude"]
+                param_unit = param_info["unit"]
                 relative_error = (std_err / abs(param_value) * 100) if param_value != 0 else float("inf")
                 result_text += f"- **{name}:** {std_err:.6g} {param_unit} ({relative_error:.2f}% relative)\n"
 
@@ -2277,9 +2288,10 @@ Status: {"Success" if has_cov else "Failed"}
             cov_param_names_classical = parameter_names[:n_cov_params_classical]
 
             result_text += "### Standard Errors\n"
-            for i, (name, std_err) in enumerate(zip(cov_param_names_classical, std_errors_classical)):
-                param_value = parameters[i]["value"]["magnitude"]
-                param_unit = parameters[i]["value"]["unit"]
+            for name, std_err in zip(cov_param_names_classical, std_errors_classical):
+                param_info = param_lookup.get(name, {"magnitude": float("nan"), "unit": "?"})
+                param_value = param_info["magnitude"]
+                param_unit = param_info["unit"]
                 relative_error = (std_err / abs(param_value) * 100) if param_value != 0 else float("inf")
                 result_text += f"- **{name}:** {std_err:.6g} {param_unit} ({relative_error:.2f}% relative)\n"
 
