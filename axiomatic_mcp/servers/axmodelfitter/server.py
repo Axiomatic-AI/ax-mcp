@@ -2233,25 +2233,33 @@ Status: {"Success" if has_cov else "Failed"}
         # Use provided param_names if present, else fall back to parameters list
         parameter_names = response.get("param_names", param_names)
 
-        if robust_cov is not None:
+        # Track std_errors for structured output
+        sandwich_std_errors = None
+        hessian_std_errors = None
+
+        if isinstance(robust_cov, list) and len(robust_cov) > 0:
             result_text += "\n## Robust Covariance (Huber-White Sandwich)\n\n"
             cov_array = np.array(robust_cov)
             std_errors = np.sqrt(np.diag(cov_array))
+            sandwich_std_errors = std_errors.tolist()
+            # Use covariance matrix dimensions to avoid out-of-bounds access
+            n_cov_params = cov_array.shape[0]
+            cov_param_names = parameter_names[:n_cov_params]
 
             result_text += "### Standard Errors\n"
-            for i, (name, std_err) in enumerate(zip(parameter_names, std_errors)):
+            for i, (name, std_err) in enumerate(zip(cov_param_names, std_errors)):
                 param_value = parameters[i]["value"]["magnitude"]
                 param_unit = parameters[i]["value"]["unit"]
                 relative_error = (std_err / abs(param_value) * 100) if param_value != 0 else float("inf")
                 result_text += f"- **{name}:** {std_err:.6g} {param_unit} ({relative_error:.2f}% relative)\n"
 
             result_text += "\n### Correlation Matrix\n"
-            result_text += "| Parameter | " + " | ".join(parameter_names) + " |\n"
-            result_text += "|-----------|" + "|".join(["-------"] * len(parameter_names)) + "|\n"
+            result_text += "| Parameter | " + " | ".join(cov_param_names) + " |\n"
+            result_text += "|-----------|" + "|".join(["-------"] * n_cov_params) + "|\n"
 
-            for i, name_i in enumerate(parameter_names):
+            for i, name_i in enumerate(cov_param_names):
                 row_text = f"| **{name_i}** |"
-                for j in range(len(parameter_names)):
+                for j in range(n_cov_params):
                     if std_errors[i] > 0 and std_errors[j] > 0:
                         corr = cov_array[i, j] / (std_errors[i] * std_errors[j])
                         row_text += f" {corr:+.3f} |"
@@ -2259,13 +2267,17 @@ Status: {"Success" if has_cov else "Failed"}
                         row_text += " N/A |"
                 result_text += row_text + "\n"
 
-        if classical_cov is not None:
+        if isinstance(classical_cov, list) and len(classical_cov) > 0:
             result_text += "\n## Classical Covariance (Inverse Hessian)\n\n"
             cov_array_classical = np.array(classical_cov)
             std_errors_classical = np.sqrt(np.diag(cov_array_classical))
+            hessian_std_errors = std_errors_classical.tolist()
+            # Use covariance matrix dimensions to avoid out-of-bounds access
+            n_cov_params_classical = cov_array_classical.shape[0]
+            cov_param_names_classical = parameter_names[:n_cov_params_classical]
 
             result_text += "### Standard Errors\n"
-            for i, (name, std_err) in enumerate(zip(parameter_names, std_errors_classical)):
+            for i, (name, std_err) in enumerate(zip(cov_param_names_classical, std_errors_classical)):
                 param_value = parameters[i]["value"]["magnitude"]
                 param_unit = parameters[i]["value"]["unit"]
                 relative_error = (std_err / abs(param_value) * 100) if param_value != 0 else float("inf")
@@ -2284,8 +2296,8 @@ Status: {"Success" if has_cov else "Failed"}
                 "sandwich_covariance": robust_cov,
                 "inverse_hessian_covariance": classical_cov,
                 "parameter_names": parameter_names,
-                "sandwich_std_errors": std_errors.tolist() if robust_cov is not None else None,
-                "inverse_hessian_std_errors": std_errors_classical.tolist() if classical_cov is not None else None,
+                "sandwich_std_errors": sandwich_std_errors,
+                "inverse_hessian_std_errors": hessian_std_errors,
             },
         )
 
