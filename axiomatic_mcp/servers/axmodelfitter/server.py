@@ -2285,7 +2285,8 @@ Status: {"Success" if has_cov else "Failed"}
                         row_text += " N/A |"
                 result_text += row_text + "\n"
 
-            robust_corr = corr_array.tolist()
+            # put correlation matrix into JSON-compatible format
+            robust_corr = [[None if np.isnan(x) else float(x) for x in row] for row in corr_array]
 
         if isinstance(classical_cov, list) and len(classical_cov) > 0:
             result_text += "\n## Classical Covariance (Inverse Hessian)\n\n"
@@ -2326,7 +2327,8 @@ Status: {"Success" if has_cov else "Failed"}
                         row_text += " N/A |"
                 result_text += row_text + "\n"
 
-            classical_corr = corr_array_classical.tolist()
+            # put correlation matrix into JSON-compatible format
+            classical_corr = [[None if np.isnan(x) else float(x) for x in row] for row in corr_array_classical]
 
         result_text += "\n## Notes\n"
         result_text += "- Standard errors indicate parameter constraint quality\n"
