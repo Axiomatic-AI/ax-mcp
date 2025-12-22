@@ -2150,7 +2150,7 @@ async def compute_parameter_covariance(
         dict, "Output column mapping: {'columns': ['signal'], 'name': 'y', 'unit': 'volt'} OR {'columns': ['y1', 'y2'], 'name': 'y', 'unit': 'volt'}"
     ],
     file_format: Annotated[str | None, "File format: 'csv', 'excel', 'json', 'parquet' (auto-detect if None)"] = None,
-    variance: Annotated[float, "Noise variance (σ²) for uncertainty quantification. Estimate from residuals or domain knowledge."] = 1.0,
+    variance: Annotated[float, "Noise variance (σ²) for uncertainty quantification. Estimate from residuals or domain knowledge. (estimated from loss if None)"]= None,
     constants: Annotated[list | None, "Fixed constants: [{'name': 'c', 'value': {'magnitude': 3.0, 'unit': 'meter'}}]"] = None,
     docstring: Annotated[str, "Brief description of the model"] = "",
     cost_function_type: Annotated[str, "Cost function: 'mse' (default), 'mae'"] = "mse",
@@ -2261,6 +2261,14 @@ Status: {"Success" if has_cov else "Failed"}
                 relative_error = (std_err / abs(param_value) * 100) if param_value != 0 else float("inf")
                 result_text += f"- **{name}:** {std_err:.6g} {param_unit} ({relative_error:.2f}% relative)\n"
 
+            # compute correlation matrix
+            normalization_mask = std_errors > 1e-10
+            corr_array = np.where(
+                normalization_mask[:, None] & normalization_mask[None, :], 
+                cov_array / np.outer(std_errors, std_errors), 
+                np.nan
+            )
+            
             result_text += "\n### Correlation Matrix\n"
             # Use len(cov_param_names) consistently to handle case where parameter_names is shorter than covariance matrix
             n_display_params = len(cov_param_names)
@@ -2270,12 +2278,13 @@ Status: {"Success" if has_cov else "Failed"}
             for i, name_i in enumerate(cov_param_names):
                 row_text = f"| **{name_i}** |"
                 for j in range(n_display_params):
-                    if std_errors[i] > 0 and std_errors[j] > 0:
-                        corr = cov_array[i, j] / (std_errors[i] * std_errors[j])
-                        row_text += f" {corr:+.3f} |"
+                    if normalization_mask[i] and normalization_mask[j]:
+                        row_text += f" {corr_array[i,j]:+.3f} |"
                     else:
                         row_text += " N/A |"
                 result_text += row_text + "\n"
+
+            robust_corr = corr_array.tolist()
 
         if isinstance(classical_cov, list) and len(classical_cov) > 0:
             result_text += "\n## Classical Covariance (Inverse Hessian)\n\n"
@@ -2293,12 +2302,36 @@ Status: {"Success" if has_cov else "Failed"}
                 param_unit = param_info["unit"]
                 relative_error = (std_err / abs(param_value) * 100) if param_value != 0 else float("inf")
                 result_text += f"- **{name}:** {std_err:.6g} {param_unit} ({relative_error:.2f}% relative)\n"
+            
+            normalization_mask = std_errors_classical > 1e-10
+            corr_array_classical = np.where(
+                normalization_mask[:, None] & normalization_mask[None, :], 
+                cov_array_classical / np.outer(std_errors_classical, std_errors_classical), 
+                np.nan
+            )
+
+            result_text += "\n### Correlation Matrix\n"
+            # Use len(cov_param_names) consistently to handle case where parameter_names is shorter than covariance matrix
+            n_display_params = len(cov_param_names)
+            result_text += "| Parameter | " + " | ".join(cov_param_names) + " |\n"
+            result_text += "|-----------|" + "|".join(["-------"] * n_display_params) + "|\n"
+
+            for i, name_i in enumerate(cov_param_names):
+                row_text = f"| **{name_i}** |"
+                for j in range(n_display_params):
+                    if normalization_mask[i] and normalization_mask[j]:
+                        row_text += f" {corr_array_classical[i,j]:+.3f} |"
+                    else:
+                        row_text += " N/A |"
+                result_text += row_text + "\n"
+
+            classical_corr = corr_array_classical.tolist()
 
         result_text += "\n## Notes\n"
         result_text += "- Standard errors indicate parameter constraint quality\n"
-        result_text += "- 95% confidence interval: parameter ± 1.96 × std_error\n"
+        result_text += "- Under Gaussianity assumption -- 95% confidence interval: parameter ± 1.96 × std_error\n"
         result_text += "- Correlation near ±1 shows parameters trade off\n"
-        result_text += "- Use robust when model may be misspecified\n"
+        result_text += "- Use robust estimators when model may be misspecified\n"
 
         return ToolResult(
             content=[TextContent(type="text", text=result_text)],
@@ -2306,6 +2339,8 @@ Status: {"Success" if has_cov else "Failed"}
                 "parameters": parameters,
                 "sandwich_covariance": robust_cov,
                 "inverse_hessian_covariance": classical_cov,
+                "sandwich_correlation": robust_corr,
+                "inverse_hessian_correlation": classical_corr,
                 "parameter_names": parameter_names,
                 "sandwich_std_errors": sandwich_std_errors,
                 "inverse_hessian_std_errors": hessian_std_errors,
