@@ -2150,7 +2150,9 @@ async def compute_parameter_covariance(
         dict, "Output column mapping: {'columns': ['signal'], 'name': 'y', 'unit': 'volt'} OR {'columns': ['y1', 'y2'], 'name': 'y', 'unit': 'volt'}"
     ],
     file_format: Annotated[str | None, "File format: 'csv', 'excel', 'json', 'parquet' (auto-detect if None)"] = None,
-    variance: Annotated[float | None, "Noise variance (σ²) for uncertainty quantification. Estimate from residuals or domain knowledge. (estimated from loss if None)"]= None,
+    variance: Annotated[
+        float | None, "Noise variance (σ²) for uncertainty quantification. Estimate from residuals or domain knowledge. (estimated from loss if None)"
+    ] = None,
     constants: Annotated[list | None, "Fixed constants: [{'name': 'c', 'value': {'magnitude': 3.0, 'unit': 'meter'}}]"] = None,
     docstring: Annotated[str, "Brief description of the model"] = "",
     cost_function_type: Annotated[str, "Cost function: 'mse' (default), 'mae'"] = "mse",
@@ -2266,12 +2268,8 @@ Status: {"Success" if has_cov else "Failed"}
 
             # compute correlation matrix
             normalization_mask = std_errors > 1e-10
-            corr_array = np.where(
-                normalization_mask[:, None] & normalization_mask[None, :], 
-                cov_array / np.outer(std_errors, std_errors), 
-                np.nan
-            )
-            
+            corr_array = np.where(normalization_mask[:, None] & normalization_mask[None, :], cov_array / np.outer(std_errors, std_errors), np.nan)
+
             result_text += "\n### Correlation Matrix\n"
             # Use len(cov_param_names) consistently to handle case where parameter_names is shorter than covariance matrix
             n_display_params = len(cov_param_names)
@@ -2305,12 +2303,12 @@ Status: {"Success" if has_cov else "Failed"}
                 param_unit = param_info["unit"]
                 relative_error = (std_err / abs(param_value) * 100) if param_value != 0 else float("inf")
                 result_text += f"- **{name}:** {std_err:.6g} {param_unit} ({relative_error:.2f}% relative)\n"
-            
+
             normalization_mask = std_errors_classical > 1e-10
             corr_array_classical = np.where(
-                normalization_mask[:, None] & normalization_mask[None, :], 
-                cov_array_classical / np.outer(std_errors_classical, std_errors_classical), 
-                np.nan
+                normalization_mask[:, None] & normalization_mask[None, :],
+                cov_array_classical / np.outer(std_errors_classical, std_errors_classical),
+                np.nan,
             )
 
             result_text += "\n### Correlation Matrix\n"
