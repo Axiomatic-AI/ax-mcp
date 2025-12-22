@@ -2177,7 +2177,7 @@ async def compute_parameter_covariance(
 
         prepare_bounds_for_optimization(bounds, input_names, const_names, resolved_output_data["name"])
 
-        if variance <= 0:
+        if variance and variance <= 0:
             raise ValueError("variance must be positive (σ² > 0). " "Estimate it from residuals (e.g., final_loss for MSE) or domain knowledge.")
 
     except ValueError as e:
