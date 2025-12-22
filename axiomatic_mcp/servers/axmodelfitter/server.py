@@ -2150,7 +2150,7 @@ async def compute_parameter_covariance(
         dict, "Output column mapping: {'columns': ['signal'], 'name': 'y', 'unit': 'volt'} OR {'columns': ['y1', 'y2'], 'name': 'y', 'unit': 'volt'}"
     ],
     file_format: Annotated[str | None, "File format: 'csv', 'excel', 'json', 'parquet' (auto-detect if None)"] = None,
-    variance: Annotated[float, "Noise variance (σ²) for uncertainty quantification. Estimate from residuals or domain knowledge. (estimated from loss if None)"]= None,
+    variance: Annotated[float | None, "Noise variance (σ²) for uncertainty quantification. Estimate from residuals or domain knowledge. (estimated from loss if None)"]= None,
     constants: Annotated[list | None, "Fixed constants: [{'name': 'c', 'value': {'magnitude': 3.0, 'unit': 'meter'}}]"] = None,
     docstring: Annotated[str, "Brief description of the model"] = "",
     cost_function_type: Annotated[str, "Cost function: 'mse' (default), 'mae'"] = "mse",
