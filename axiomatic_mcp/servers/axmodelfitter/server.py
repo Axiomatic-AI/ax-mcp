@@ -2244,6 +2244,9 @@ Status: {"Success" if has_cov else "Failed"}
         sandwich_std_errors = None
         hessian_std_errors = None
 
+        robust_corr = None
+        classical_corr = None
+
         if isinstance(robust_cov, list) and len(robust_cov) > 0:
             result_text += "\n## Robust Covariance (Huber-White Sandwich)\n\n"
             cov_array = np.array(robust_cov)
@@ -2312,11 +2315,11 @@ Status: {"Success" if has_cov else "Failed"}
 
             result_text += "\n### Correlation Matrix\n"
             # Use len(cov_param_names) consistently to handle case where parameter_names is shorter than covariance matrix
-            n_display_params = len(cov_param_names)
-            result_text += "| Parameter | " + " | ".join(cov_param_names) + " |\n"
+            n_display_params = len(cov_param_names_classical)
+            result_text += "| Parameter | " + " | ".join(cov_param_names_classical) + " |\n"
             result_text += "|-----------|" + "|".join(["-------"] * n_display_params) + "|\n"
 
-            for i, name_i in enumerate(cov_param_names):
+            for i, name_i in enumerate(cov_param_names_classical):
                 row_text = f"| **{name_i}** |"
                 for j in range(n_display_params):
                     if normalization_mask[i] and normalization_mask[j]:
