@@ -1,5 +1,6 @@
 """Service for computing parameter covariance matrices."""
 
+import asyncio
 import json
 
 import httpx
@@ -53,7 +54,7 @@ class CovarianceService(SingletonBase):
         """
         try:
             # Make API call
-            response = self._make_api_call(request_data)
+            response = await self._make_api_call(request_data)
 
             # Validate response has covariance matrices
             if not self._has_valid_covariance(response):
@@ -75,7 +76,7 @@ class CovarianceService(SingletonBase):
         except Exception as e:
             return self._handle_exception(e)
 
-    def _make_api_call(self, request_data: dict) -> dict:
+    async def _make_api_call(self, request_data: dict) -> dict:
         """
         Make HTTP POST to /digital-twin/compute-parameter-covariance.
 
@@ -86,7 +87,7 @@ class CovarianceService(SingletonBase):
             API response dict
         """
         with AxiomaticAPIClient() as client:
-            return client.post("/digital-twin/compute-parameter-covariance", data=request_data)
+            return await asyncio.to_thread(client.post, "/digital-twin/compute-parameter-covariance", data=request_data)
 
     def _has_valid_covariance(self, response: dict) -> bool:
         """

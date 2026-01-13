@@ -2152,7 +2152,8 @@ async def compute_parameter_covariance(
     ],
     file_format: Annotated[str | None, "File format: 'csv', 'excel', 'json', 'parquet' (auto-detect if None)"] = None,
     variance: Annotated[
-        float | None, "Noise variance (σ²) for uncertainty quantification. Estimate from residuals or domain knowledge. (estimated from loss if None)"
+        float | str | None,
+        "Noise variance (σ²) for uncertainty quantification. Estimate from residuals or domain knowledge. (estimated from loss if None)",
     ] = None,
     constants: Annotated[list | None, "Fixed constants: [{'name': 'c', 'value': {'magnitude': 3.0, 'unit': 'meter'}}]"] = None,
     docstring: Annotated[str, "Brief description of the model"] = "",
@@ -2169,6 +2170,13 @@ async def compute_parameter_covariance(
             raise ValueError("input_data is required when using file-based input.")
         if output_data is None:
             raise ValueError("output_data is required when using file-based input.")
+
+        # Handle string-to-float conversion for variance (JSON might pass it as string)
+        if variance is not None:
+            try:
+                variance = float(variance)
+            except Exception as e:
+                raise ValueError(f"variance must be a number. Error: {e!s}") from e
 
         resolved_input_data, resolved_output_data = resolve_data_input(
             data_file=data_file, input_data=input_data, output_data=output_data, file_format=file_format
