@@ -139,7 +139,7 @@ class CovarianceService(SingletonBase):
         # Process robust (sandwich) covariance if available
         robust_cov = response.get("sandwich_covariance")
         if isinstance(robust_cov, list) and len(robust_cov) > 0:
-            robust_processed = self._process_single_covariance(robust_cov, parameter_names)
+            robust_processed = self._process_single_covariance(robust_cov)
             result["sandwich_covariance"] = robust_cov
             result["sandwich_correlation"] = robust_processed["correlation"]
             result["sandwich_std_errors"] = robust_processed["std_errors"]
@@ -147,20 +147,19 @@ class CovarianceService(SingletonBase):
         # Process classical (inverse Hessian) covariance if available
         classical_cov = response.get("inverse_hessian_covariance")
         if isinstance(classical_cov, list) and len(classical_cov) > 0:
-            classical_processed = self._process_single_covariance(classical_cov, parameter_names)
+            classical_processed = self._process_single_covariance(classical_cov)
             result["inverse_hessian_covariance"] = classical_cov
             result["inverse_hessian_correlation"] = classical_processed["correlation"]
             result["inverse_hessian_std_errors"] = classical_processed["std_errors"]
 
         return result
 
-    def _process_single_covariance(self, cov_matrix: list, parameter_names: list) -> dict:
+    def _process_single_covariance(self, cov_matrix: list) -> dict:
         """
         Process a single covariance matrix to compute correlation and std errors.
 
         Args:
             cov_matrix: Covariance matrix as list of lists
-            parameter_names: List of parameter names
 
         Returns:
             dict with:
