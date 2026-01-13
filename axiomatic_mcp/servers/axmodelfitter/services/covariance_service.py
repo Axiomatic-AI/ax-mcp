@@ -230,7 +230,7 @@ Status: Success
 
         result_text += "\n## Notes\n"
         result_text += "- Standard errors indicate parameter constraint quality\n"
-        result_text += "- Under Gaussianity assumption -- 95% confidence interval: parameter ± 1.96 × std_error\n"
+        result_text += "- Under Gaussianity assumption -- 95% confidence interval: parameter ± 1.96 x std_error\n"
         result_text += "- Correlation near ±1 shows parameters trade off\n"
         result_text += "- Use robust estimators when model may be misspecified\n"
 
