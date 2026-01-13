@@ -18,6 +18,7 @@ from mcp.types import TextContent
 from ...providers.middleware_provider import get_mcp_middleware
 from ...shared import AxiomaticAPIClient
 from .data_file_utils import resolve_data_input, resolve_output_data_only
+from .services import CovarianceService
 
 
 def validate_optimization_inputs(input_data: list, output_data: dict, parameters: list, bounds: list, constants: list | None = None):
@@ -2180,13 +2181,14 @@ async def compute_parameter_covariance(
         prepare_bounds_for_optimization(bounds, input_names, const_names, resolved_output_data["name"])
 
         if variance is not None and variance <= 0:
-            raise ValueError("variance must be positive (σ² > 0). " "Estimate it from residuals (e.g., final_loss for MSE) or domain knowledge.")
+            raise ValueError("variance must be positive (σ² > 0). Estimate it from residuals (e.g., final_loss for MSE) or domain knowledge.")
 
     except ValueError as e:
         return ToolResult(content=[TextContent(type="text", text=str(e))])
 
     if constants is None:
         constants = []
+
     request_data = {
         "model_name": model_name,
         "parameters": parameters,
@@ -2203,181 +2205,27 @@ async def compute_parameter_covariance(
         "variance": variance,
     }
 
-    try:
-        with AxiomaticAPIClient() as client:
-            response = client.post("/digital-twin/compute-parameter-covariance", data=request_data)
+    # Delegate to service
+    service = CovarianceService()
+    result = await service.compute_covariance(request_data)
 
-        # New success criterion: treat as success if either covariance matrix is present
-        robust_cov = response.get("sandwich_covariance")
-        classical_cov = response.get("inverse_hessian_covariance")
-        has_cov = (isinstance(robust_cov, list) and len(robust_cov) > 0) or (isinstance(classical_cov, list) and len(classical_cov) > 0)
+    # Return formatted result
+    if not result["success"]:
+        return ToolResult(content=[TextContent(type="text", text=result["error"])])
 
-        if not has_cov:
-            error_msg = response.get("error", "Unknown error occurred")
-            # Include full response for debugging if error message is generic
-            debug_info = ""
-            if error_msg == "Unknown error occurred":
-                import json
-
-                debug_info = f"\n\nFull API response:\n{json.dumps(response, indent=2)}"
-            return ToolResult(content=[TextContent(type="text", text=f"Parameter covariance computation failed: {error_msg}{debug_info}")])
-
-        result_text = f"""# Parameter Covariance Analysis: {model_name}
-
-Status: {"Success" if has_cov else "Failed"}
-
-## Fitted Parameters
-"""
-
-        for param in parameters:
-            name = param["name"]
-            value = param["value"]["magnitude"]
-            unit = param["value"]["unit"]
-            result_text += f"- **{name}:** {value:.6g} {unit}\n"
-
-        # Use provided param_names if present, else fall back to parameters list
-        parameter_names = response.get("param_names", param_names)
-
-        # Create lookup from parameter name to value/unit for robust matching
-        # (handles case where API returns param_names in different order than input parameters)
-        param_lookup = {p["name"]: p["value"] for p in parameters}
-
-        # Track std_errors for structured output
-        sandwich_std_errors = None
-        hessian_std_errors = None
-
-        robust_corr = None
-        classical_corr = None
-
-        if isinstance(robust_cov, list) and len(robust_cov) > 0:
-            result_text += "\n## Robust Covariance (Huber-White Sandwich)\n\n"
-            cov_array = np.array(robust_cov)
-            std_errors = np.sqrt(np.diag(cov_array))
-            sandwich_std_errors = std_errors.tolist()
-            # Use covariance matrix dimensions to avoid out-of-bounds access
-            n_cov_params = cov_array.shape[0]
-            cov_param_names = parameter_names[:n_cov_params]
-
-            result_text += "### Standard Errors\n"
-            for name, std_err in zip(cov_param_names, std_errors):
-                param_info = param_lookup.get(name, {"magnitude": float("nan"), "unit": "?"})
-                param_value = param_info["magnitude"]
-                param_unit = param_info["unit"]
-                relative_error = (std_err / abs(param_value) * 100) if param_value != 0 else float("inf")
-                result_text += f"- **{name}:** {std_err:.6g} {param_unit} ({relative_error:.2f}% relative)\n"
-
-            # compute correlation matrix
-            normalization_mask = std_errors > 1e-10
-            corr_array = np.where(normalization_mask[:, None] & normalization_mask[None, :], cov_array / np.outer(std_errors, std_errors), np.nan)
-
-            result_text += "\n### Correlation Matrix\n"
-            # Use len(cov_param_names) consistently to handle case where parameter_names is shorter than covariance matrix
-            n_display_params = len(cov_param_names)
-            result_text += "| Parameter | " + " | ".join(cov_param_names) + " |\n"
-            result_text += "|-----------|" + "|".join(["-------"] * n_display_params) + "|\n"
-
-            for i, name_i in enumerate(cov_param_names):
-                row_text = f"| **{name_i}** |"
-                for j in range(n_display_params):
-                    if normalization_mask[i] and normalization_mask[j]:
-                        row_text += f" {corr_array[i,j]:+.3f} |"
-                    else:
-                        row_text += " N/A |"
-                result_text += row_text + "\n"
-
-            # put correlation matrix into JSON-compatible format
-            robust_corr = [[None if np.isnan(x) else float(x) for x in row] for row in corr_array]
-
-        if isinstance(classical_cov, list) and len(classical_cov) > 0:
-            result_text += "\n## Classical Covariance (Inverse Hessian)\n\n"
-            cov_array_classical = np.array(classical_cov)
-            std_errors_classical = np.sqrt(np.diag(cov_array_classical))
-            hessian_std_errors = std_errors_classical.tolist()
-            # Use covariance matrix dimensions to avoid out-of-bounds access
-            n_cov_params_classical = cov_array_classical.shape[0]
-            cov_param_names_classical = parameter_names[:n_cov_params_classical]
-
-            result_text += "### Standard Errors\n"
-            for name, std_err in zip(cov_param_names_classical, std_errors_classical):
-                param_info = param_lookup.get(name, {"magnitude": float("nan"), "unit": "?"})
-                param_value = param_info["magnitude"]
-                param_unit = param_info["unit"]
-                relative_error = (std_err / abs(param_value) * 100) if param_value != 0 else float("inf")
-                result_text += f"- **{name}:** {std_err:.6g} {param_unit} ({relative_error:.2f}% relative)\n"
-
-            normalization_mask = std_errors_classical > 1e-10
-            corr_array_classical = np.where(
-                normalization_mask[:, None] & normalization_mask[None, :],
-                cov_array_classical / np.outer(std_errors_classical, std_errors_classical),
-                np.nan,
-            )
-
-            result_text += "\n### Correlation Matrix\n"
-            # Use len(cov_param_names) consistently to handle case where parameter_names is shorter than covariance matrix
-            n_display_params = len(cov_param_names_classical)
-            result_text += "| Parameter | " + " | ".join(cov_param_names_classical) + " |\n"
-            result_text += "|-----------|" + "|".join(["-------"] * n_display_params) + "|\n"
-
-            for i, name_i in enumerate(cov_param_names_classical):
-                row_text = f"| **{name_i}** |"
-                for j in range(n_display_params):
-                    if normalization_mask[i] and normalization_mask[j]:
-                        row_text += f" {corr_array_classical[i,j]:+.3f} |"
-                    else:
-                        row_text += " N/A |"
-                result_text += row_text + "\n"
-
-            # put correlation matrix into JSON-compatible format
-            classical_corr = [[None if np.isnan(x) else float(x) for x in row] for row in corr_array_classical]
-
-        result_text += "\n## Notes\n"
-        result_text += "- Standard errors indicate parameter constraint quality\n"
-        result_text += "- Under Gaussianity assumption -- 95% confidence interval: parameter ± 1.96 × std_error\n"
-        result_text += "- Correlation near ±1 shows parameters trade off\n"
-        result_text += "- Use robust estimators when model may be misspecified\n"
-
-        return ToolResult(
-            content=[TextContent(type="text", text=result_text)],
-            structured_content={
-                "parameters": parameters,
-                "sandwich_covariance": robust_cov,
-                "inverse_hessian_covariance": classical_cov,
-                "sandwich_correlation": robust_corr,
-                "inverse_hessian_correlation": classical_corr,
-                "parameter_names": parameter_names,
-                "sandwich_std_errors": sandwich_std_errors,
-                "inverse_hessian_std_errors": hessian_std_errors,
-            },
-        )
-
-    except Exception as e:
-        # Enhanced error handling for HTTP errors
-        import httpx
-
-        error_msg = str(e)
-        if isinstance(e, httpx.HTTPStatusError):
-            # Extract detailed error from HTTP response
-            try:
-                error_body = e.response.json()
-                if "detail" in error_body:
-                    error_msg = error_body["detail"]
-                else:
-                    error_msg = str(error_body)
-            except Exception:
-                error_msg = e.response.text if hasattr(e.response, "text") else str(e)
-
-        error_details = f"""Parameter covariance computation failed: {error_msg}
-
-Troubleshooting:
-- Ensure parameters match those from fit_model call
-- Use same data file and mappings as in fitting
-- Provide realistic noise variance from residuals
-- Verify all required fields are provided
-- Check that all units are valid pint units (e.g., "1/volt" not "dimensionless" for inverse volts)
-
-Variance can be estimated from final_loss: variance ≈ final_loss (for MSE)
-"""
-        return ToolResult(content=[TextContent(type="text", text=error_details)])
+    return ToolResult(
+        content=[TextContent(type="text", text=result["markdown_report"])],
+        structured_content={
+            "parameters": result["parameters"],
+            "sandwich_covariance": result["sandwich_covariance"],
+            "inverse_hessian_covariance": result["inverse_hessian_covariance"],
+            "sandwich_correlation": result["sandwich_correlation"],
+            "inverse_hessian_correlation": result["inverse_hessian_correlation"],
+            "parameter_names": result["parameter_names"],
+            "sandwich_std_errors": result["sandwich_std_errors"],
+            "inverse_hessian_std_errors": result["inverse_hessian_std_errors"],
+        },
+    )
 
 
 def main():
