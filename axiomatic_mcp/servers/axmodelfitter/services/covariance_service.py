@@ -1,6 +1,5 @@
 """Service for computing parameter covariance matrices."""
 
-import asyncio
 import json
 
 import httpx
@@ -53,17 +52,14 @@ class CovarianceService(SingletonBase):
                 - markdown_report: str (formatted results)
         """
         try:
-            # Make API call
-            response = await self._make_api_call(request_data)
+            with AxiomaticAPIClient() as client:
+                response = client.post("/digital-twin/compute-parameter-covariance", data=request_data)
 
-            # Validate response has covariance matrices
             if not self._has_valid_covariance(response):
                 return self._format_error_response(response)
 
-            # Process covariance matrices
             processed = self._process_covariance_results(response, request_data["parameters"])
 
-            # Format markdown report
             markdown = self._format_markdown_report(processed, request_data["model_name"], request_data["parameters"])
 
             return {
@@ -76,19 +72,7 @@ class CovarianceService(SingletonBase):
         except Exception as e:
             return self._handle_exception(e)
 
-    async def _make_api_call(self, request_data: dict) -> dict:
-        """
-        Make HTTP POST to /digital-twin/compute-parameter-covariance.
-
-        Args:
-            request_data: Complete request payload
-
-        Returns:
-            API response dict
-        """
-        with AxiomaticAPIClient() as client:
-            return await asyncio.to_thread(client.post, "/digital-twin/compute-parameter-covariance", data=request_data)
-
+    # TODO: move to "/digital-twin/compute-parameter-covariance" endpoint
     def _has_valid_covariance(self, response: dict) -> bool:
         """
         Check if response contains at least one valid covariance matrix.
@@ -103,6 +87,7 @@ class CovarianceService(SingletonBase):
         classical_cov = response.get("inverse_hessian_covariance")
         return (isinstance(robust_cov, list) and len(robust_cov) > 0) or (isinstance(classical_cov, list) and len(classical_cov) > 0)
 
+    # TODO: move to "/digital-twin/compute-parameter-covariance" endpoint
     def _process_covariance_results(self, response: dict, parameters: list) -> dict:
         """
         Process covariance matrices, compute correlations and standard errors.
@@ -154,6 +139,7 @@ class CovarianceService(SingletonBase):
 
         return result
 
+    # TODO: move to "/digital-twin/compute-parameter-covariance" endpoint
     def _process_single_covariance(self, cov_matrix: list) -> dict:
         """
         Process a single covariance matrix to compute correlation and std errors.
