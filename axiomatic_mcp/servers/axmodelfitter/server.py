@@ -89,13 +89,11 @@ def check_initial_guess_consistency(parameters: list, bounds: list):
         if bound is None:
             raise ValueError(f"Parameter {param_name} has no bounds. Please add bounds.")
         if param["value"]["magnitude"] < bound["lower"]["magnitude"] or param["value"]["magnitude"] > bound["upper"]["magnitude"]:
-            raise ValueError(
-                f"""Initial guess for {param_name} is not within bounds:
+            raise ValueError(f"""Initial guess for {param_name} is not within bounds:
 - Initial guess: {param["value"]["magnitude"]}
 - Lower bound: {bound["lower"]["magnitude"]}
 - Upper bound: {bound["upper"]["magnitude"]}
-Adjust the initial guess!"""
-            )
+Adjust the initial guess!""")
 
 
 def compute_r_squared_from_mse_and_data(mse: float, output_magnitudes: list):

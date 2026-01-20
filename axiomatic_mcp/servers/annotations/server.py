@@ -95,8 +95,7 @@ class AnnotationsResponse(BaseModel):
 mcp = FastMCP(
     name="AxDocumentAnnotator Server",
     instructions="""This server provides tools to annotate pdfs with detailed analysis.
-    """
-    + get_feedback_prompt("annotate_pdf"),
+    """ + get_feedback_prompt("annotate_pdf"),
     version="0.0.1",
     middleware=get_mcp_middleware(),
     tools=get_mcp_tools(),
@@ -170,12 +169,10 @@ async def annotate_file_main(file_path: Path, query: str) -> ToolResult:
             content=[
                 TextContent(
                     type="text",
-                    text=textwrap.dedent(
-                        f"""Successfully annotated {file_path.name}\n\n
+                    text=textwrap.dedent(f"""Successfully annotated {file_path.name}\n\n
                     Failed to save markdown file: {e!s}\n\n
                     **Query:** {query}\n\n
-                    **Annotations:**\n\n{annotations_text}"""
-                    ),
+                    **Annotations:**\n\n{annotations_text}"""),
                 )
             ]
         )
@@ -185,13 +182,11 @@ async def annotate_file_main(file_path: Path, query: str) -> ToolResult:
         content=[
             TextContent(
                 type="text",
-                text=textwrap.dedent(
-                    f"""Successfully annotated {file_path.name}\n\n
+                text=textwrap.dedent(f"""Successfully annotated {file_path.name}\n\n
                     Successfully saved markdown file: {file_path.parent / f"{file_path.stem}_annotations.md"}\n\n
                     **Query:** {query}\n\n
                     **Annotations:**\n\n
-                    {annotations_text}"""
-                ),
+                    {annotations_text}"""),
             )
         ]
     )

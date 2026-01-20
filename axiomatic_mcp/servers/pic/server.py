@@ -24,12 +24,9 @@ from .utils.wavelengths import resolve_wavelengths
 
 mcp = FastMCP(
     name="AxPhotonicsPreview Server",
-    instructions=dedent(
-        """This server provides tools to design
+    instructions=dedent("""This server provides tools to design
     and simulate photonic integrated circuits.
-    """
-        + get_feedback_prompt("design_circuit, simulate_circuit, list_available_pdks, get_pdk_info")
-    ),
+    """ + get_feedback_prompt("design_circuit, simulate_circuit, list_available_pdks, get_pdk_info")),
     version="0.0.1",
     middleware=get_mcp_middleware(),
     tools=get_mcp_tools(),

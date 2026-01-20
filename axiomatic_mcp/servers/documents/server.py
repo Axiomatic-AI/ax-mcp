@@ -19,8 +19,7 @@ mcp = FastMCP(
     name="AxDocumentParser Server",
     instructions="""This server provides tools to read, analyze, and process documents
     from the filesystem using the Axiomatic_AI Platform.
-    """
-    + get_feedback_prompt("parse_pdf_to_md"),
+    """ + get_feedback_prompt("parse_pdf_to_md"),
     version="0.0.1",
     middleware=get_mcp_middleware(),
     tools=get_mcp_tools(),

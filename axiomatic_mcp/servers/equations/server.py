@@ -44,8 +44,7 @@ async def _get_document_content(document: Path | str) -> str:
 mcp = FastMCP(
     name="AxEquationExplorer Server",
     instructions="""This server provides tools to compose and analyze equations.
-    """
-    + get_feedback_prompt("find_functional_form, check_equation"),
+    """ + get_feedback_prompt("find_functional_form, check_equation"),
     version="0.0.1",
     middleware=get_mcp_middleware(),
     tools=get_mcp_tools(),
