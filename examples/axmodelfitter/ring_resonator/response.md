@@ -59,3 +59,29 @@ The Lorentzian dip model fitted against all data:
 - **Execution Time:** 7.51s with nlopt optimizer
 
 **Physical Interpretation:** The ring resonator exhibits a classical Lorentzian line shape with a quality factor that can be estimated from the ratio of the resonance frequency to the linewidth. The fitted parameters indicate a high-quality resonator with ~17% transmission dip at resonance and a half-width of ~31 MHz.
+
+## 4. Uncertainty Quantification
+
+Parameter uncertainty was quantified using the parameter covariance matrix.
+
+### Robust covariance (Huber-White / sandwich)
+
+**Standard errors:**
+- T_max: 0.00196612 (dimensionless) (0.20% relative)
+- T_min: 0.00775136 (dimensionless) (0.93% relative)
+- f_h: 0.00161295 (GHz) (5.25% relative)
+
+**Correlation matrix:**
+
+| Parameter | T_max | T_min | f_h |
+|-----------|-------|-------|-----|
+| **T_max** | +1.000 | +0.050 | +0.542 |
+| **T_min** | +0.050 | +1.000 | +0.597 |
+| **f_h** | +0.542 | +0.597 | +1.000 |
+
+### Classical covariance (inverse Hessian)
+
+**Standard errors:**
+- T_max: 0.00212173 (dimensionless) (0.21% relative)
+- T_min: 0.00660559 (dimensionless) (0.79% relative)
+- f_h: 0.00204305 (GHz) (6.65% relative)

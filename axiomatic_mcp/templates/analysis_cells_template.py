@@ -9,8 +9,7 @@ class AnalysisCellsTemplate:
         """Return nbformat cells for simulation analysis."""
         return [
             # SimulationResult class definition
-            nbformat.v4.new_code_cell(
-                """class SimulationResult:
+            nbformat.v4.new_code_cell("""class SimulationResult:
     # The component's range of wavelengths in nanometers
     wavelengths: list[float]
     # The simulated transmission spectrum in dimensionless units.
@@ -35,11 +34,9 @@ class AnalysisCellsTemplate:
         self.port_pairs = list(self.transmission_lin.keys())
 
 
-simulation_result = SimulationResult(wavelengths, simulation_data)"""
-            ),
+simulation_result = SimulationResult(wavelengths, simulation_data)"""),
             # Markdown explanation
-            nbformat.v4.new_markdown_cell(
-                """# Your Simulation Results
+            nbformat.v4.new_markdown_cell("""# Your Simulation Results
 
 Welcome! This interactive notebook has been generated to help you explore
 the data from your component simulation.
@@ -64,11 +61,9 @@ You can directly interact with this plot:
 
 The plot is created with [Plotly](https://plotly.com/). If you'd like to make
 custom changes, such as changing titles or colors, you can find many examples
-in the [Plotly documentation](https://plotly.com/python)."""
-            ),
+in the [Plotly documentation](https://plotly.com/python)."""),
             # Plotly visualization
-            nbformat.v4.new_code_cell(
-                """import plotly.graph_objects as go
+            nbformat.v4.new_code_cell("""import plotly.graph_objects as go
 import plotly.express as px
 
 
@@ -150,6 +145,5 @@ fig.update_layout(
     ],
 )
 
-fig.show()"""
-            ),
+fig.show()"""),
         ]

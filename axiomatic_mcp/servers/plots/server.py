@@ -150,8 +150,7 @@ It can analyze line plots and scatter plots and convert visual data points into 
 
 plots = FastMCP(
     name="""AxPlotToData server
-    """
-    + get_feedback_prompt("extract_numerical_series"),
+    """ + get_feedback_prompt("extract_numerical_series"),
     instructions=PLOTS_SERVER_INSTRUCTIONS,
     version="0.0.1",
     middleware=get_mcp_middleware(),

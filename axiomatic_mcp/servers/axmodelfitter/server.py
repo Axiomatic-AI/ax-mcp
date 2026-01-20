@@ -18,6 +18,7 @@ from mcp.types import TextContent
 from ...providers.middleware_provider import get_mcp_middleware
 from ...shared import AxiomaticAPIClient
 from .data_file_utils import resolve_data_input, resolve_output_data_only
+from .services import CovarianceService
 
 
 def validate_optimization_inputs(input_data: list, output_data: dict, parameters: list, bounds: list, constants: list | None = None):
@@ -88,13 +89,11 @@ def check_initial_guess_consistency(parameters: list, bounds: list):
         if bound is None:
             raise ValueError(f"Parameter {param_name} has no bounds. Please add bounds.")
         if param["value"]["magnitude"] < bound["lower"]["magnitude"] or param["value"]["magnitude"] > bound["upper"]["magnitude"]:
-            raise ValueError(
-                f"""Initial guess for {param_name} is not within bounds:
+            raise ValueError(f"""Initial guess for {param_name} is not within bounds:
 - Initial guess: {param["value"]["magnitude"]}
 - Lower bound: {bound["lower"]["magnitude"]}
 - Upper bound: {bound["upper"]["magnitude"]}
-Adjust the initial guess!"""
-            )
+Adjust the initial guess!""")
 
 
 def compute_r_squared_from_mse_and_data(mse: float, output_magnitudes: list):
@@ -2118,6 +2117,121 @@ output_data = {{"columns": ["y"], "name": "y", "unit": "dimensionless"}}
 ```
 """
         return ToolResult(content=[TextContent(type="text", text=error_text)])
+
+
+@mcp.tool(
+    name="compute_parameter_covariance",
+    description="""Compute parameter covariance matrices for fitted model parameters.
+
+    Provides uncertainty estimates using robust Huber-White sandwich estimator and
+    classical inverse Hessian approach. Use after fit_model to quantify parameter
+    uncertainty and correlations.
+
+    REQUIRED: Fitted parameters, model definition, same data used in fitting, variance estimate.
+    RETURNS: Covariance matrices, standard errors, correlation matrix.
+    """,
+    tags=["statistics", "uncertainty", "covariance", "parameter_estimation"],
+)
+async def compute_parameter_covariance(
+    model_name: Annotated[str, "Model name (e.g., 'ExponentialDecay', 'RingResonator')"],
+    function_source: Annotated[str, "JAX function source code. MUST use jnp operations: jnp.exp, jnp.sin, etc."],
+    function_name: Annotated[str, "Function name that computes the model output"],
+    parameters: Annotated[list, "Fitted parameter values: [{'name': 'a', 'value': {'magnitude': 2.0, 'unit': 'dimensionless'}}]"],
+    bounds: Annotated[
+        list,
+        "ALL parameter/input/output bounds: [{'name': 'a', 'lower': {'magnitude': 0, 'unit': 'dimensionless'}, 'upper': {'magnitude': 10, 'unit': 'dimensionless'}}]",  # noqa E501
+    ],
+    data_file: Annotated[str, "Path to data file (CSV, Excel, JSON, Parquet). All data must be provided via file."],
+    input_data: Annotated[
+        list, "Input column mappings: [{'column': 'time', 'name': 't', 'unit': 'second'}, {'column': 'x_col', 'name': 'x', 'unit': 'meter'}]"
+    ],
+    output_data: Annotated[
+        dict, "Output column mapping: {'columns': ['signal'], 'name': 'y', 'unit': 'volt'} OR {'columns': ['y1', 'y2'], 'name': 'y', 'unit': 'volt'}"
+    ],
+    file_format: Annotated[str | None, "File format: 'csv', 'excel', 'json', 'parquet' (auto-detect if None)"] = None,
+    variance: Annotated[
+        float | str | None,
+        "Noise variance (σ²) for uncertainty quantification. Estimate from residuals or domain knowledge. (estimated from loss if None)",
+    ] = None,
+    constants: Annotated[list | None, "Fixed constants: [{'name': 'c', 'value': {'magnitude': 3.0, 'unit': 'meter'}}]"] = None,
+    docstring: Annotated[str, "Brief description of the model"] = "",
+    cost_function_type: Annotated[str, "Cost function: 'mse' (default), 'mae'"] = "mse",
+    jit_compile: Annotated[bool, "Enable JIT compilation for performance"] = True,
+    scale_params: Annotated[bool, "Enable parameter scaling for numerical stability"] = False,
+) -> ToolResult:
+    """Compute parameter covariance matrix for fitted model parameters."""
+
+    try:
+        if data_file is None:
+            raise ValueError("data_file is required. All data must be provided via file.")
+        if input_data is None:
+            raise ValueError("input_data is required when using file-based input.")
+        if output_data is None:
+            raise ValueError("output_data is required when using file-based input.")
+
+        # Handle string-to-float conversion for variance (JSON might pass it as string)
+        if variance is not None:
+            try:
+                variance = float(variance)
+            except Exception as e:
+                raise ValueError(f"variance must be a number. Error: {e!s}") from e
+
+        resolved_input_data, resolved_output_data = resolve_data_input(
+            data_file=data_file, input_data=input_data, output_data=output_data, file_format=file_format
+        )
+
+        input_names, const_names, param_names, bounds_names, n = validate_optimization_inputs(
+            resolved_input_data, resolved_output_data, parameters, bounds, constants
+        )
+
+        prepare_bounds_for_optimization(bounds, input_names, const_names, resolved_output_data["name"])
+
+        if variance is not None and variance <= 0:
+            raise ValueError("variance must be positive (σ² > 0). Estimate it from residuals (e.g., final_loss for MSE) or domain knowledge.")
+
+    except ValueError as e:
+        return ToolResult(content=[TextContent(type="text", text=str(e))])
+
+    if constants is None:
+        constants = []
+
+    request_data = {
+        "model_name": model_name,
+        "parameters": parameters,
+        "bounds": bounds,
+        "constants": constants,
+        "input": resolved_input_data,
+        "target": resolved_output_data,
+        "function_source": function_source,
+        "function_name": function_name,
+        "docstring": docstring,
+        "jit_compile": jit_compile,
+        "cost_function_type": cost_function_type,
+        "scale_params": scale_params,
+        "variance": variance,
+    }
+
+    # Delegate to service
+    service = CovarianceService()
+    result = await service.compute_covariance(request_data)
+
+    # Return formatted result
+    if not result["success"]:
+        return ToolResult(content=[TextContent(type="text", text=result["error"])])
+
+    return ToolResult(
+        content=[TextContent(type="text", text=result["markdown_report"])],
+        structured_content={
+            "parameters": result["parameters"],
+            "sandwich_covariance": result["sandwich_covariance"],
+            "inverse_hessian_covariance": result["inverse_hessian_covariance"],
+            "sandwich_correlation": result["sandwich_correlation"],
+            "inverse_hessian_correlation": result["inverse_hessian_correlation"],
+            "parameter_names": result["parameter_names"],
+            "sandwich_std_errors": result["sandwich_std_errors"],
+            "inverse_hessian_std_errors": result["inverse_hessian_std_errors"],
+        },
+    )
 
 
 def main():
