@@ -3,14 +3,14 @@ from typing import Any
 
 import httpx
 
-API_URL = os.getenv("API_URL", "https://api.axiomatic-ai.com")
+API_URL = os.getenv("API_URL", "http://localhost:8000")
 
 TIMEOUT = 1000
 
 
 class AxiomaticAPIClient:
     def __init__(self):
-        api_key = os.getenv("AXIOMATIC_API_KEY")
+        api_key = "478be067-ad13-4ca7-8c17-5322070172e1"
         if not api_key:
             raise ValueError("AXIOMATIC_API_KEY environment variable is not set")
 
