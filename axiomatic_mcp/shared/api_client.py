@@ -3,7 +3,7 @@ from typing import Any
 
 import httpx
 
-API_URL = os.getenv("API_URL", "https://api.axiomatic-ai.com")
+API_URL = os.getenv("API_URL", "https://api.staging.axiomatic-ai.com")
 
 TIMEOUT = 1000
 

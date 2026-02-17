@@ -1,0 +1,3 @@
+# Chemical Equilibrium
+
+Find the equilibrium composition for a gas-phase system with 3 coupled reactions and 5 species (A, B, C, D, E). The reactions and equilibrium constants are: (1) A + B <-> C, K1 = 10, (2) C + B <-> D, K2 = 5, (3) 2A <-> E, K3 = 2. The equilibrium conditions are: K1 = [C]/([A]*[B]), K2 = [D]/([C]*[B]), K3 = [E]/[A]^2. The element balances (conservation of mass) with initial moles A0=2.0, B0=2.0, C0=0, D0=0, E0=0 in a volume V=1 are: A0 = [A] + [C] + [D] + 2*[E] (element balance for A-atoms), B0 = [B] + [C] + 2*[D] (element balance for B-atoms). Solve the 5 equations (3 equilibrium + 2 element balances) for the 5 unknown concentrations [A],[B],[C],[D],[E]. All concentrations must be positive. Use initial guesses around 0.5 for all species.
