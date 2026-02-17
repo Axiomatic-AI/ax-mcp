@@ -15,8 +15,7 @@ mcp = FastMCP(
     instructions="""This server provides tools for numerical optimization, rootfinding, ODE simulation, and optimal control
     using the argmin library. Use generate_code to produce executable code from a problem description,
     then execute_code to run it in a sandboxed environment.
-    """
-    + get_feedback_prompt(["generate_code", "execute_code"]),
+    """ + get_feedback_prompt(["generate_code", "execute_code"]),
     version="0.0.1",
     middleware=get_mcp_middleware(),
     tools=get_mcp_tools(),

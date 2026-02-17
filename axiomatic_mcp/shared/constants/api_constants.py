@@ -15,7 +15,5 @@ class ApiRoutes:
     PDK_PERMISSION = "/users/pdk-permissions/me"
     PDK_INFO = "/pic/pdk/{pdk_type}/info"
     MCP_MODEL_FEEDBACK = "/mcp/model-feedback"
-
-    # Argmin endpoints
     ARGMIN_WRITE_CODE = "/numerics/argmin/write-code"
     ARGMIN_EXECUTE = "/numerics/argmin/execute"
