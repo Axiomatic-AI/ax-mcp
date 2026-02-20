@@ -26,7 +26,7 @@ make install-dev
     "args": ["-m", "axiomatic_mcp.servers.documents"],
     "env": {
       "AXIOMATIC_API_KEY": "your-api-key-here",
-      "API_URL": "https://api.staging.axiomatic-ai.com" // optionally point to staging/local environment
+      "AXIOMATIC_API_URL": "https://api.staging.axiomatic-ai.com" // optionally point to staging/local environment
     }
   }
 }
@@ -34,10 +34,11 @@ make install-dev
 
 ### Using staging or local environment
 
-In your MCP settings, change the `API_URL` parameter to point to the staging or local API (see configuration above):
+In your MCP settings, change the `AXIOMATIC_API_URL` parameter to point to the staging or local API (see configuration above):
 
-- staging: `"API_URL": "https://api.staging.axiomatic-ai.com"`
-- local: `"API_URL": "http://localhost:8000"` (or your chosen port to run ax-stack)
+- production (default): No `AXIOMATIC_API_URL` needed, uses `https://api.axiomatic-ai.com`
+- staging: `"AXIOMATIC_API_URL": "https://api.staging.axiomatic-ai.com"`
+- local: `"AXIOMATIC_API_URL": "http://localhost:8000"` (or your chosen port to run ax-stack)
 
 ### Adding a New Server
 

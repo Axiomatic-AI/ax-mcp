@@ -3,19 +3,24 @@ from typing import Any
 
 import httpx
 
-API_URL = os.getenv("API_URL", "https://api.axiomatic-ai.com")
+# Default to production for PyPI package
+DEFAULT_API_URL = "https://api.axiomatic-ai.com"
 
 TIMEOUT = 1000
 
 
 class AxiomaticAPIClient:
     def __init__(self):
+        # Get API URL
+        api_url = os.getenv("AXIOMATIC_API_URL", DEFAULT_API_URL)
+
+        # Get API Key
         api_key = os.getenv("AXIOMATIC_API_KEY")
         if not api_key:
             raise ValueError("AXIOMATIC_API_KEY environment variable is not set")
 
         self.client = httpx.Client(
-            base_url=API_URL,
+            base_url=api_url,
             timeout=TIMEOUT,
             headers={
                 "X-API-Key": api_key,
