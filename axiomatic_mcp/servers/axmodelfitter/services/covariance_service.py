@@ -16,6 +16,10 @@ class CovarianceService(SingletonBase):
     Provides uncertainty estimates using robust Huber-White sandwich estimator and
     classical inverse Hessian approach.
     """
+    def __init__(self):
+        if hasattr(self, '_client'):
+            return
+        self._client = AxiomaticAPIClient()
 
     async def compute_covariance(self, request_data: dict) -> dict:
         """
@@ -52,8 +56,7 @@ class CovarianceService(SingletonBase):
                 - markdown_report: str (formatted results)
         """
         try:
-            with AxiomaticAPIClient() as client:
-                response = client.post("/digital-twin/compute-parameter-covariance", data=request_data)
+            response = self._client.post("/digital-twin/compute-parameter-covariance", data=request_data)
 
             if not self._has_valid_covariance(response):
                 return self._format_error_response(response)
@@ -72,7 +75,7 @@ class CovarianceService(SingletonBase):
         except Exception as e:
             return self._handle_exception(e)
 
-    # TODO: move to "/digital-twin/compute-parameter-covariance" endpoint
+    # TODO: move to "/digital-twin/compute-parameter-covariance" endpoint - doesn't need to be an instance method!
     def _has_valid_covariance(self, response: dict) -> bool:
         """
         Check if response contains at least one valid covariance matrix.
@@ -85,7 +88,10 @@ class CovarianceService(SingletonBase):
         """
         robust_cov = response.get("sandwich_covariance")
         classical_cov = response.get("inverse_hessian_covariance")
-        return (isinstance(robust_cov, list) and len(robust_cov) > 0) or (isinstance(classical_cov, list) and len(classical_cov) > 0)
+        is_square = lambda mat: isinstance(mat, list) and all(isinstance(row, list) and len(row) == len(mat) for row in mat)
+        is_symmetric = lambda mat: is_square(mat) and all(np.isclose(mat[i][j], mat[j][i]) for i in range(len(mat)) for j in range(len(mat)))
+        is_positive_definite = lambda mat: is_square(mat) and np.all(np.linalg.eigvals(np.array(mat)) >= 0)
+        return ((isinstance(robust_cov, list) and len(robust_cov) > 0) or (isinstance(classical_cov, list) and len(classical_cov) > 0)) and ((is_symmetric(robust_cov) and is_positive_definite(robust_cov)) or (is_symmetric(classical_cov) and is_positive_definite(classical_cov))) and (is_square(robust_cov) or is_square(classical_cov))
 
     # TODO: move to "/digital-twin/compute-parameter-covariance" endpoint
     def _process_covariance_results(self, response: dict, parameters: list) -> dict:
