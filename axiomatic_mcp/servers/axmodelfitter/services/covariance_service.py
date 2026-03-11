@@ -330,7 +330,7 @@ Status: Success
             except Exception:
                 error_msg = e.response.text if hasattr(e.response, "text") else str(e)
 
-        error_details = f"""Parameter covariance computation failed: {error_msg}
+        error_details = f'''Parameter covariance computation failed: {error_msg}
 
 Troubleshooting:
 - Ensure parameters match those from fit_model call
@@ -340,5 +340,5 @@ Troubleshooting:
 - Check that all units are valid pint units (e.g., "1/volt" not "dimensionless" for inverse volts)
 
 Variance can be estimated from final_loss: variance ≈ final_loss (for MSE)
-"""
+'''
         return {"success": False, "error": error_details}
