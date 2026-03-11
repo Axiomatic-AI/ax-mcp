@@ -286,7 +286,7 @@ def simple_response_parameter_covariance():
 
 @pytest.fixture
 def linear_response_parameter_covariance():
-    {
+    return {
     "param_names": [
         "a",
         "b"
@@ -314,6 +314,7 @@ def linear_response_parameter_covariance():
     "scale_params": "false"
     }
 
+@pytest.fixture
 def nonlinear_response_parameter_covariance():
     return {
     "param_names": [

@@ -1,5 +1,6 @@
 """Service for computing parameter covariance matrices."""
 
+import atexit
 import json
 
 import httpx
@@ -17,9 +18,19 @@ class CovarianceService(SingletonBase):
     classical inverse Hessian approach.
     """
     def __init__(self):
-        if hasattr(self, '_client'):
+        if getattr(self, "_client", None) is not None:
             return
         self._client = AxiomaticAPIClient()
+        atexit.register(self.close)
+
+    def close(self) -> None:
+        """Close underlying HTTP client used by this singleton."""
+        if getattr(self, "_client", None) is not None:
+            self._client.client.close()
+            self._client = None
+
+    def __del__(self):
+        self.close()
 
     async def compute_covariance(self, request_data: dict) -> dict:
         """
