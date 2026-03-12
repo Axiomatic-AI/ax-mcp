@@ -15,6 +15,14 @@ from fastmcp import FastMCP
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
+from axiomatic_mcp.servers.axmodelfitter.templates.ODE_system_example import ODE_SYSTEM_TEMPLATE
+from axiomatic_mcp.servers.axmodelfitter.templates.analytical_complex_ring import ANALYTICAL_COMPLEX_RING_TEMPLATE
+from axiomatic_mcp.servers.axmodelfitter.templates.analytical_exponential import ANALYTICAL_EXPONENTIAL_TEMPLATE
+from axiomatic_mcp.servers.axmodelfitter.templates.analytical_multivariate import ANALYTICAL_MULTIVARIATE_TEMPLATE
+from axiomatic_mcp.servers.axmodelfitter.templates.analytical_polynomial import ANALYTICAL_POLYNOMIAL_TEMPLATE
+from axiomatic_mcp.servers.axmodelfitter.templates.analytical_trigonometric import ANALYTICAL_TRIGONOMETRIC_TEMPLATE
+from axiomatic_mcp.servers.axmodelfitter.templates.workflow_prompt import WORKFLOW_PROMPT
+
 from ...providers.middleware_provider import get_mcp_middleware
 from ...shared import AxiomaticAPIClient
 from .data_file_utils import resolve_data_input, resolve_output_data_only
@@ -631,55 +639,7 @@ Use `get_fitting_examples` to see working examples.
 )
 def get_workflow_prompt() -> str:
     """Generate a generic optimization workflow guide."""
-
-    return """# Model Fitting Workflow
-
-## Step-by-Step Process:
-
-### 1️⃣ **Define Your Mathematical Model**
-Write your model as a JAX function:
-```python
-def output_variable_name(input_var, param1, param2, ...):
-    # Analytical functions - use jnp.* operations
-    return param1 * jnp.exp(-param2 * input_var) + param3
-```
-
-### 2️⃣ **Choose a Template**
-Call `get_fitting_examples` to see available templates:
-- **Analytical functions** (exponential, polynomial, trigonometric)
-- **ODE systems** (population dynamics, chemical kinetics)
-
-Pick the template closest to your model structure as context for the optimization.
-
-### 3️⃣ **Adapt the Template**
-- Replace the function with your model
-- Update parameter names and initial guesses
-- *Set realistic bounds for ALL PARAMETERS, ALL INPUTS, AND ALL OUTPUTS variables*
-- Use proper pint units ('dimensionless', 'nanometer', 'volt', 'second', etc.)
-
-### 4️⃣ **Prepare Your Data File and Mapping**
-Create a CSV/Excel file with your data, then map columns to variables:
-```python
-data_file = "/path/to/your/data.csv"
-input_data = [{"column": "time_col", "name": "time", "unit": "second"}]
-output_data = {"columns": ["concentration_col"], "name": "concentration", "unit": "molar"}
-```
-
-### 5️⃣ **Run Optimization**
-Use `fit_model` with your adapted template.
-
-## Template Selection Guide:
-1. **Simple analytical?** → Use polynomial/exponential templates
-2. **Complex analytical?** → Use complex helper function example
-2. **Time-dependent dynamics?** → Use ODE templates
-3. **Custom physics?** → Adapt the closest template structure
-
-## Key Requirements:
-- ALL functions must use JAX operations or JAX libraries (jnp.exp, jnp.sin, etc.)
-- Every parameter needs bounds (reasonable ranges)
-- Input AND output variables need bounds too
-
-Ready to optimize? Get templates with `get_fitting_examples`!"""
+    return WORKFLOW_PROMPT
 
 
 @mcp.tool(
@@ -702,278 +662,12 @@ async def get_fitting_examples() -> ToolResult:
 
     # Generic templates covering different model categories
     templates = {
-        "analytical_exponential": {
-            "category": "Analytical Function",
-            "description": "Single exponential decay/growth with offset - good for radioactive decay, signal attenuation, population growth",
-            "model_name": "ExponentialModel",
-            "function_source": """def y(t, amplitude, decay_rate, offset):
-    return amplitude * jnp.exp(-decay_rate * t) + offset""",
-            "function_name": "y",
-            "docstring": "Exponential model template",
-            "parameters": [
-                {"name": "amplitude", "value": {"magnitude": 2.0, "unit": "dimensionless"}},
-                {"name": "decay_rate", "value": {"magnitude": 0.5, "unit": "dimensionless"}},
-                {"name": "offset", "value": {"magnitude": 0.0, "unit": "dimensionless"}},
-            ],
-            "bounds": [
-                {"name": "amplitude", "lower": {"magnitude": 0.1, "unit": "dimensionless"}, "upper": {"magnitude": 10.0, "unit": "dimensionless"}},
-                {"name": "decay_rate", "lower": {"magnitude": 0.01, "unit": "dimensionless"}, "upper": {"magnitude": 5.0, "unit": "dimensionless"}},
-                {"name": "offset", "lower": {"magnitude": -5.0, "unit": "dimensionless"}, "upper": {"magnitude": 5.0, "unit": "dimensionless"}},
-                {"name": "t", "lower": {"magnitude": 0.0, "unit": "dimensionless"}, "upper": {"magnitude": 10.0, "unit": "dimensionless"}},
-                {"name": "y", "lower": {"magnitude": -1.0, "unit": "dimensionless"}, "upper": {"magnitude": 10.0, "unit": "dimensionless"}},
-            ],
-            "data_file": "data.csv",
-            "input_data": [{"column": "time", "name": "t", "unit": "dimensionless"}],
-            "output_data": {"columns": ["signal"], "name": "y", "unit": "dimensionless"},
-            "optimizer_type": "nlopt",
-            "cost_function_type": "mse",
-            "max_time": 5,
-            "jit_compile": True,
-            "optimizer_config": {"use_gradient": True, "tol": 1e-06},
-        },
-        "analytical_polynomial": {
-            "category": "Analytical Function",
-            "description": "Polynomial function - good for parabolic relationships, response curves",
-            "model_name": "PolynomialModel",
-            "function_source": """def y(x, a, b, c):
-    return a * x**2 + b * x + c""",
-            "function_name": "y",
-            "docstring": "Polynomial model template",
-            "parameters": [
-                {"name": "a", "value": {"magnitude": 1.0, "unit": "dimensionless"}},
-                {"name": "b", "value": {"magnitude": 0.0, "unit": "dimensionless"}},
-                {"name": "c", "value": {"magnitude": 1.0, "unit": "dimensionless"}},
-            ],
-            "bounds": [
-                {"name": "a", "lower": {"magnitude": -10.0, "unit": "dimensionless"}, "upper": {"magnitude": 10.0, "unit": "dimensionless"}},
-                {"name": "b", "lower": {"magnitude": -10.0, "unit": "dimensionless"}, "upper": {"magnitude": 10.0, "unit": "dimensionless"}},
-                {"name": "c", "lower": {"magnitude": -10.0, "unit": "dimensionless"}, "upper": {"magnitude": 10.0, "unit": "dimensionless"}},
-                {"name": "x", "lower": {"magnitude": -5.0, "unit": "dimensionless"}, "upper": {"magnitude": 5.0, "unit": "dimensionless"}},
-                {"name": "y", "lower": {"magnitude": -10.0, "unit": "dimensionless"}, "upper": {"magnitude": 50.0, "unit": "dimensionless"}},
-            ],
-            "data_file": "data.csv",
-            "input_data": [{"column": "x", "name": "x", "unit": "dimensionless"}],
-            "output_data": {"columns": ["y"], "name": "y", "unit": "dimensionless"},
-            "optimizer_type": "nlopt",
-            "cost_function_type": "mse",
-            "max_time": 5,
-            "jit_compile": True,
-            "optimizer_config": {"use_gradient": True, "tol": 1e-06},
-        },
-        "analytical_multivariate": {
-            "category": "Analytical Function",
-            "description": "Multivariate polynomial of order 2 - shows how to deal with mulitple inputs",
-            "model_name": "MultivariatePolynomialModel",
-            "function_source": """def f(x, y, a, b, c):
-    return a*x**2 + b*y**2 + c""",
-            "function_name": "f",
-            "docstring": "Multiple input varaibles template",
-            "parameters": [
-                {"name": "a", "value": {"magnitude": 2.0, "unit": "dimensionless"}},
-                {"name": "b", "value": {"magnitude": 0.5, "unit": "dimensionless"}},
-                {"name": "c", "value": {"magnitude": 0.0, "unit": "dimensionless"}},
-            ],
-            "bounds": [
-                {"name": "x", "lower": {"magnitude": -1.0, "unit": "dimensionless"}, "upper": {"magnitude": 1.0, "unit": "dimensionless"}},
-                {"name": "y", "lower": {"magnitude": -1.0, "unit": "dimensionless"}, "upper": {"magnitude": 1.0, "unit": "dimensionless"}},
-                {
-                    "name": "f",
-                    "lower": {"magnitude": -float("inf"), "unit": "dimensionless"},
-                    "upper": {"magnitude": float("inf"), "unit": "dimensionless"},
-                },
-                {"name": "a", "lower": {"magnitude": -2.0, "unit": "dimensionless"}, "upper": {"magnitude": 2.0, "unit": "dimensionless"}},
-                {"name": "b", "lower": {"magnitude": -2.0, "unit": "dimensionless"}, "upper": {"magnitude": 2.0, "unit": "dimensionless"}},
-                {"name": "c", "lower": {"magnitude": -2.0, "unit": "dimensionless"}, "upper": {"magnitude": 2.0, "unit": "dimensionless"}},
-            ],
-            "data_file": "data.csv",
-            "input_data": [{"column": "x", "name": "x", "unit": "dimensionless"}, {"column": "y", "name": "y", "unit": "dimensionless"}],
-            "output_data": {"columns": ["f"], "name": "f", "unit": "dimensionless"},
-            "optimizer_type": "nlopt",
-            "cost_function_type": "mse",
-            "max_time": 5,
-            "jit_compile": True,
-            "optimizer_config": {"use_gradient": True, "tol": 1e-06},
-        },
-        "analytical_trigonometric": {
-            "category": "Analytical Function",
-            "description": "Sinusoidal oscillation - good for periodic signals, vibrations, waves",
-            "model_name": "SinusoidalModel",
-            "function_source": """def y(t, amplitude, frequency, phase, offset):
-    return amplitude * jnp.sin(2 * jnp.pi * frequency * t + phase) + offset""",
-            "function_name": "y",
-            "docstring": "Sinusoidal model template",
-            "parameters": [
-                {"name": "amplitude", "value": {"magnitude": 1.0, "unit": "dimensionless"}},
-                {"name": "frequency", "value": {"magnitude": 0.5, "unit": "dimensionless"}},
-                {"name": "phase", "value": {"magnitude": 0.0, "unit": "dimensionless"}},
-                {"name": "offset", "value": {"magnitude": 0.0, "unit": "dimensionless"}},
-            ],
-            "bounds": [
-                {"name": "amplitude", "lower": {"magnitude": 0.1, "unit": "dimensionless"}, "upper": {"magnitude": 5.0, "unit": "dimensionless"}},
-                {"name": "frequency", "lower": {"magnitude": 0.1, "unit": "dimensionless"}, "upper": {"magnitude": 2.0, "unit": "dimensionless"}},
-                {"name": "phase", "lower": {"magnitude": -3.14, "unit": "dimensionless"}, "upper": {"magnitude": 3.14, "unit": "dimensionless"}},
-                {"name": "offset", "lower": {"magnitude": -2.0, "unit": "dimensionless"}, "upper": {"magnitude": 2.0, "unit": "dimensionless"}},
-                {"name": "t", "lower": {"magnitude": 0.0, "unit": "dimensionless"}, "upper": {"magnitude": 10.0, "unit": "dimensionless"}},
-                {"name": "y", "lower": {"magnitude": -3.0, "unit": "dimensionless"}, "upper": {"magnitude": 3.0, "unit": "dimensionless"}},
-            ],
-            "data_file": "data.csv",
-            "input_data": [{"column": "time", "name": "t", "unit": "dimensionless"}],
-            "output_data": {"columns": ["amplitude"], "name": "y", "unit": "dimensionless"},
-            "optimizer_type": "nlopt",
-            "cost_function_type": "mse",
-            "max_time": 5,
-            "jit_compile": True,
-            "optimizer_config": {"use_gradient": True, "tol": 1e-06},
-        },
-        "ODE_system_example": {
-            "category": "ODE System",
-            "description": "Chemical reactor model for the reaction A+B <=> C => D is happening. Concentrations of A and D are observed.",
-            "model_name": "ODESystem",
-            "function_source": """import diffrax
-import jax.numpy as jnp
-
-def c_obs(ts, A0, B0, C0, D0, k1, k2, k3):
-    def dc(t, c, p):
-        k1, k2, k3 = p
-        A, B, C, D = c
-        dA = -k1 * A * B + k2 * C
-        dB = -k1 * A * B + k2 * C
-        dC = k1 * A * B - k2 * C - k3 * C
-        dD = k3 * C
-        return jnp.array([dA, dB, dC, dD])
-
-    c0 = jnp.array([A0, B0, C0, D0])
-    k = jnp.array([k1, k2, k3])
-
-    saveat = diffrax.SaveAt(ts=ts)
-    sol = diffrax.diffeqsolve(
-        diffrax.ODETerm(dc),
-        diffrax.Dopri5(),
-        t0=0.0,
-        t1=ts[-1],
-        dt0=0.01,
-        y0=c0,
-        args=k,
-        saveat=saveat,
-    )
-    return sol.ys[:, [0, 3]]""",
-            "function_name": "c_obs",
-            "docstring": "ODE model template",
-            "parameters": [
-                {"name": "A0", "value": {"magnitude": 2.0, "unit": "dimensionless"}},
-                {"name": "B0", "value": {"magnitude": 2.0, "unit": "dimensionless"}},
-                {"name": "C0", "value": {"magnitude": 0.0, "unit": "dimensionless"}},
-                {"name": "D0", "value": {"magnitude": 0.0, "unit": "dimensionless"}},
-                {"name": "k1", "value": {"magnitude": 1.0, "unit": "dimensionless"}},
-                {"name": "k2", "value": {"magnitude": 1.0, "unit": "dimensionless"}},
-                {"name": "k3", "value": {"magnitude": 1.0, "unit": "dimensionless"}},
-            ],
-            "bounds": [
-                {
-                    "name": "A0",
-                    "lower": {"magnitude": 0.0, "unit": "dimensionless"},
-                    "upper": {"magnitude": 5.0, "unit": "dimensionless"},
-                },
-                {
-                    "name": "B0",
-                    "lower": {"magnitude": 0.0, "unit": "dimensionless"},
-                    "upper": {"magnitude": 5.0, "unit": "dimensionless"},
-                },
-                {
-                    "name": "C0",
-                    "lower": {"magnitude": 0.0, "unit": "dimensionless"},
-                    "upper": {"magnitude": 5.0, "unit": "dimensionless"},
-                },
-                {
-                    "name": "D0",
-                    "lower": {"magnitude": 0.0, "unit": "dimensionless"},
-                    "upper": {"magnitude": 5.0, "unit": "dimensionless"},
-                },
-                {
-                    "name": "k1",
-                    "lower": {"magnitude": 0.0, "unit": "dimensionless"},
-                    "upper": {"magnitude": 5.0, "unit": "dimensionless"},
-                },
-                {
-                    "name": "k2",
-                    "lower": {"magnitude": 0.0, "unit": "dimensionless"},
-                    "upper": {"magnitude": 5.0, "unit": "dimensionless"},
-                },
-                {
-                    "name": "k3",
-                    "lower": {"magnitude": 0.0, "unit": "dimensionless"},
-                    "upper": {"magnitude": 5.0, "unit": "dimensionless"},
-                },
-                {
-                    "name": "ts",
-                    "lower": {"magnitude": 0.0, "unit": "dimensionless"},
-                    "upper": {"magnitude": 5.0, "unit": "dimensionless"},
-                },
-                {
-                    "name": "c_obs",
-                    "lower": {"magnitude": 0.0, "unit": "dimensionless"},
-                    "upper": {"magnitude": 10.0, "unit": "dimensionless"},
-                },
-            ],
-            "constants": [],
-            "data_file": "data.csv",
-            "input_data": [{"column": "time", "name": "ts", "unit": "dimensionless"}],
-            "output_data": {"columns": ["concentration_A", "concentration_D"], "name": "c_obs", "unit": "dimensionless"},
-            "optimizer_type": "nlopt",
-            "cost_function_type": "mse",
-            "max_time": 5,
-            "jit_compile": True,
-            "optimizer_config": {"use_gradient": True, "tol": 1e-06},
-        },
-        "analytical_complex_ring": {
-            "category": "Complex Analytical Function",
-            "description": "This models a ring resonator with a complex transfer function.",
-            "model_name": "RingResonatorModel",
-            "function_source": """def T(wls, wl0, neff_0, dneff_dwl, loss, ring_length, coupling):
-    def compute_neff(wls, wl0, neff_0, dneff_dwl):
-        return neff_0 + dneff_dwl * (wls - wl0)
-
-    def compute_phi(wls, n, ring_length):
-        return 2 * jnp.pi * n * ring_length / wls
-
-    neff = compute_neff(wls, wl0, neff_0, dneff_dwl)
-    phi = compute_phi(wls, neff, ring_length)
-
-    transmission = 1 - coupling
-
-    out = jnp.sqrt(transmission) - 10 ** (-loss * ring_length / 20.0) * jnp.exp(1j * phi)
-    out /= 1 - jnp.sqrt(transmission) * 10 ** (-loss * ring_length / 20.0) * jnp.exp(1j * phi)
-    detected = jnp.abs(out) ** 2
-    return detected""",
-            "function_name": "T",
-            "docstring": "RingResonatorModel - power transfer from input to output for a ring resonator",
-            "parameters": [
-                {"name": "neff_0", "value": {"magnitude": 2.3, "unit": "dimensionless"}},
-                {"name": "dneff_dwl", "value": {"magnitude": 0.0, "unit": "dimensionless"}},
-                {"name": "loss", "value": {"magnitude": 0.0, "unit": "dimensionless"}},
-                {"name": "ring_length", "value": {"magnitude": 30.0, "unit": "dimensionless"}},
-                {"name": "coupling", "value": {"magnitude": 0.3, "unit": "dimensionless"}},
-            ],
-            "bounds": [
-                {"name": "T", "lower": {"magnitude": -0.1, "unit": "dimensionless"}, "upper": {"magnitude": 1.1, "unit": "dimensionless"}},
-                {"name": "wls", "lower": {"magnitude": 1.0, "unit": "dimensionless"}, "upper": {"magnitude": 2.0, "unit": "dimensionless"}},
-                {"name": "wl0", "lower": {"magnitude": 1.0, "unit": "dimensionless"}, "upper": {"magnitude": 2.0, "unit": "dimensionless"}},
-                {"name": "neff_0", "lower": {"magnitude": 2.2, "unit": "dimensionless"}, "upper": {"magnitude": 2.4, "unit": "dimensionless"}},
-                {"name": "dneff_dwl", "lower": {"magnitude": -0.4, "unit": "dimensionless"}, "upper": {"magnitude": 0.4, "unit": "dimensionless"}},
-                {"name": "loss", "lower": {"magnitude": 0.0, "unit": "dimensionless"}, "upper": {"magnitude": 0.5, "unit": "dimensionless"}},
-                {"name": "ring_length", "lower": {"magnitude": 27.0, "unit": "dimensionless"}, "upper": {"magnitude": 33.0, "unit": "dimensionless"}},
-                {"name": "coupling", "lower": {"magnitude": 0.0, "unit": "dimensionless"}, "upper": {"magnitude": 0.8, "unit": "dimensionless"}},
-            ],
-            "constants": [{"name": "wl0", "value": {"magnitude": 1.55, "unit": "dimensionless"}}],
-            "data_file": "data.csv",
-            "input_data": [{"column": "wavelength", "name": "wls", "unit": "dimensionless"}],
-            "output_data": {"columns": ["transmission"], "name": "T", "unit": "dimensionless"},
-            "optimizer_type": "nlopt",
-            "cost_function_type": "mse",
-            "max_time": 5,
-            "jit_compile": True,
-            "optimizer_config": {"use_gradient": True, "tol": 1e-06},
-        },
+        "analytical_exponential": ANALYTICAL_EXPONENTIAL_TEMPLATE,
+        "analytical_polynomial": ANALYTICAL_POLYNOMIAL_TEMPLATE,
+        "analytical_multivariate": ANALYTICAL_MULTIVARIATE_TEMPLATE,
+        "analytical_trigonometric": ANALYTICAL_TRIGONOMETRIC_TEMPLATE,
+        "ODE_system_example": ODE_SYSTEM_TEMPLATE,
+        "analytical_complex_ring": ANALYTICAL_COMPLEX_RING_TEMPLATE,
     }
 
     # Concise template overview for LLMs
