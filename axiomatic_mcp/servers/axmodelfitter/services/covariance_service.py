@@ -17,6 +17,7 @@ class CovarianceService(SingletonBase):
     Provides uncertainty estimates using robust Huber-White sandwich estimator and
     classical inverse Hessian approach.
     """
+
     def __init__(self):
         if getattr(self, "_client", None) is not None:
             return
@@ -102,7 +103,14 @@ class CovarianceService(SingletonBase):
         is_square = lambda mat: isinstance(mat, list) and all(isinstance(row, list) and len(row) == len(mat) for row in mat)
         is_symmetric = lambda mat: is_square(mat) and all(np.isclose(mat[i][j], mat[j][i]) for i in range(len(mat)) for j in range(len(mat)))
         is_positive_definite = lambda mat: is_square(mat) and np.all(np.linalg.eigvals(np.array(mat)) >= 0)
-        return ((isinstance(robust_cov, list) and len(robust_cov) > 0) or (isinstance(classical_cov, list) and len(classical_cov) > 0)) and ((is_symmetric(robust_cov) and is_positive_definite(robust_cov)) or (is_symmetric(classical_cov) and is_positive_definite(classical_cov))) and (is_square(robust_cov) or is_square(classical_cov))
+        return (
+            ((isinstance(robust_cov, list) and len(robust_cov) > 0) or (isinstance(classical_cov, list) and len(classical_cov) > 0))
+            and (
+                (is_symmetric(robust_cov) and is_positive_definite(robust_cov))
+                or (is_symmetric(classical_cov) and is_positive_definite(classical_cov))
+            )
+            and (is_square(robust_cov) or is_square(classical_cov))
+        )
 
     # TODO: move to "/digital-twin/compute-parameter-covariance" endpoint
     def _process_covariance_results(self, response: dict, parameters: list) -> dict:
@@ -330,7 +338,7 @@ Status: Success
             except Exception:
                 error_msg = e.response.text if hasattr(e.response, "text") else str(e)
 
-        error_details = f'''Parameter covariance computation failed: {error_msg}
+        error_details = f"""Parameter covariance computation failed: {error_msg}
 
 Troubleshooting:
 - Ensure parameters match those from fit_model call
@@ -340,5 +348,5 @@ Troubleshooting:
 - Check that all units are valid pint units (e.g., "1/volt" not "dimensionless" for inverse volts)
 
 Variance can be estimated from final_loss: variance ≈ final_loss (for MSE)
-'''
+"""
         return {"success": False, "error": error_details}
