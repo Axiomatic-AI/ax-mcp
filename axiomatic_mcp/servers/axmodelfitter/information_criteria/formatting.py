@@ -1,11 +1,6 @@
-from fastmcp.tools.tool import ToolResult
-from mcp.types import TextContent
 import numpy as np
 
-from axiomatic_mcp.servers.axmodelfitter.information_criteria.information_criteria import compute_aic_bic_from_loss_and_data
-
 def format_aic_bic_results(
-    n_scale_params: int,
     aic: float,
     bic: float,
     aicc_str: str,
@@ -25,11 +20,9 @@ def format_aic_bic_results(
     aicc_include_scale: bool,
     n_obs: int | None,
 ) -> str:
-# Format result
-    try:
 
         # Format result
-        result_text = f"""# Information Criteria for Model Selection
+    result_text = f"""# Information Criteria for Model Selection
 
 ## AIC and BIC Results
 - **AIC (Akaike Information Criterion):** {aic:.2f}
@@ -46,9 +39,9 @@ def format_aic_bic_results(
 - **Effective Parameters (k):** {k_effective}
 - **Sample Size (n):** {n_total}"""
 
-        # Add independence assumption warning if applicable
-        if assumes_independence:
-            result_text += f"""
+    # Add independence assumption warning if applicable
+    if assumes_independence:
+        result_text += f"""
 
 ⚠️  **Independence Assumption**: Sample size (n={n_total}) was inferred by counting all scalar values
 in output data. This assumes each scalar is an independent residual, which may be incorrect for:
@@ -59,30 +52,30 @@ in output data. This assumes each scalar is an independent residual, which may b
 
 If residuals are not independent, the effective sample size is smaller and AIC/BIC may be unreliable."""
 
-        # Add parameter settings summary
-        result_text += """
+    # Add parameter settings summary
+    result_text += """
 
 ## Parameter Settings
 """
 
-        # Document the key parameter choices
-        if df_effective is not None:
-            result_text += f"- **Degrees of Freedom:** Using df_effective = {df_effective} (penalized/constrained model)\n"
-        else:
-            result_text += f"- **Degrees of Freedom:** Using k_params = {n_parameters} (standard MLE)\n"
+    # Document the key parameter choices
+    if df_effective is not None:
+        result_text += f"- **Degrees of Freedom:** Using df_effective = {df_effective} (penalized/constrained model)\n"
+    else:
+        result_text += f"- **Degrees of Freedom:** Using k_params = {n_parameters} (standard MLE)\n"
 
-        scale_status = "included" if include_scale_param else "excluded"
-        result_text += f"- **Scale Parameter:** {scale_status} in AIC/BIC complexity penalty\n"
+    scale_status = "included" if include_scale_param else "excluded"
+    result_text += f"- **Scale Parameter:** {scale_status} in AIC/BIC complexity penalty\n"
 
-        aicc_scale_status = "included" if aicc_include_scale else "excluded"
-        result_text += f"- **AICc Scale Parameter:** {aicc_scale_status} in small-sample correction\n"
+    aicc_scale_status = "included" if aicc_include_scale else "excluded"
+    result_text += f"- **AICc Scale Parameter:** {aicc_scale_status} in small-sample correction\n"
 
-        if n_obs is not None:
-            result_text += f"- **Sample Size:** Explicit n_obs = {n_obs} provided\n"
-        else:
-            result_text += f"- **Sample Size:** Inferred n = {n_total} from output data (independence assumed)\n"
+    if n_obs is not None:
+        result_text += f"- **Sample Size:** Explicit n_obs = {n_obs} provided\n"
+    else:
+        result_text += f"- **Sample Size:** Inferred n = {n_total} from output data (independence assumed)\n"
 
-        result_text += """
+    result_text += """
 
 ## Interpretation Guidelines
 
@@ -101,34 +94,34 @@ Where ΔAICᵢ = AICᵢ - AIC_best
 ### Loss Function Considerations:
 """
 
-        if cost_function_type == "mse":
-            result_text += "- **MSE:** Uses exact Gaussian likelihood - AIC/BIC directly applicable"
-        elif cost_function_type == "mae":
-            result_text += "- **MAE:** Uses exact Laplace likelihood (no Gaussian conversion)"
+    if cost_function_type == "mse":
+        result_text += "- **MSE:** Uses exact Gaussian likelihood - AIC/BIC directly applicable"
+    elif cost_function_type == "mae":
+        result_text += "- **MAE:** Uses exact Laplace likelihood (no Gaussian conversion)"
 
-        result_text += f"""
+    result_text += f"""
 
 ### Sample Size Assessment:
 - **Current n = {n_total}:** """
 
-        if n_total < 40:
-            result_text += "Small sample - AICc strongly recommended over AIC"
-            preferred_criterion = "AICc"
-        elif n_total < 150:
-            result_text += "Moderate sample - Both AIC and BIC reliable, AICc still beneficial"
-            preferred_criterion = "AIC or BIC"
-        else:
-            result_text += "Large sample - BIC becomes more reliable for consistent model selection"
-            preferred_criterion = "BIC"
+    if n_total < 40:
+        result_text += "Small sample - AICc strongly recommended over AIC"
+        preferred_criterion = "AICc"
+    elif n_total < 150:
+        result_text += "Moderate sample - Both AIC and BIC reliable, AICc still beneficial"
+        preferred_criterion = "AIC or BIC"
+    else:
+        result_text += "Large sample - BIC becomes more reliable for consistent model selection"
+        preferred_criterion = "BIC"
 
-        # Add information about the penalty terms (use the returned k_effective)
-        aic_penalty = 2 * k_effective
-        bic_penalty = k_effective * np.log(max(n_total, 1))
+    # Add information about the penalty terms (use the returned k_effective)
+    aic_penalty = 2 * k_effective
+    bic_penalty = k_effective * np.log(max(n_total, 1))
 
-        # Format conditional values to avoid f-string errors
-        ratio_str = f"{bic_penalty / aic_penalty:.2f}" if aic_penalty > 0 else "N/A"
+    # Format conditional values to avoid f-string errors
+    ratio_str = f"{bic_penalty / aic_penalty:.2f}" if aic_penalty > 0 else "N/A"
 
-        result_text += f"""
+    result_text += f"""
 
 ### Complexity Penalties:
 - **AIC Penalty:** {aic_penalty:.2f} (2k)
@@ -150,10 +143,8 @@ Where ΔAICᵢ = AICᵢ - AIC_best
 3. **Evidence ratios**: ER = exp(ΔAIC/2) (how many times more likely is best model)
 """
 
-        return result_text
+    return result_text
 
-    except Exception as e:
-        return format_ic_error(e)
 
 
 def format_ic_error(e: Exception) -> str:

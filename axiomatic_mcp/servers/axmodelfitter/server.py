@@ -621,7 +621,6 @@ async def calculate_information_criteria(
             likelihood_method = "Laplace likelihood with estimated scale parameter"
 
         result_text = format_aic_bic_results(
-            n_scale_params=n_scale_params,
             aic=aic,
             bic=bic,
             aicc_str=aicc_str,
