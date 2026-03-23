@@ -1,7 +1,40 @@
 from dotenv import load_dotenv
+import pandas as pd
 import pytest
 load_dotenv()
 
+@pytest.fixture
+def simple_df():
+    return pd.DataFrame({"x": [1.0, 2.0, 3.0], "y": [4.0, 5.0, 6.0], "z": [7.0, 8.0, 9.0]})
+
+@pytest.fixture
+def simple_input_data():
+    return [{"column": "x", "name": "X", "unit": "m"}]
+
+@pytest.fixture
+def simple_output_data():
+    return {"name": "Y", "unit": "s", "columns": "y"}
+
+@pytest.fixture
+def csv_file(tmp_path, simple_df):
+    f = tmp_path / "data.csv"
+    simple_df.to_csv(f, index=False)
+    return str(f)
+
+@pytest.fixture
+def two_input_df():
+    return pd.DataFrame({"a": [1.0, 2.0, 3.0], "b": [10.0, 20.0, 30.0], "c": [100.0, 200.0, 300.0]})
+
+@pytest.fixture
+def two_input_data():
+    return [
+        {"column": "a", "name": "A", "unit": "m"},
+        {"column": "b", "name": "B", "unit": "kg"},
+    ]
+
+@pytest.fixture
+def one_output_data():
+    return {"name": "C", "unit": "N", "columns": "c"}
 
 @pytest.fixture
 def simple_request_body_parameter_covariance():
@@ -358,3 +391,4 @@ def nonlinear_response_parameter_covariance():
     ],
     "scale_params": "false"
     }
+

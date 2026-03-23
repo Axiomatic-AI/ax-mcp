@@ -14,55 +14,6 @@ from axiomatic_mcp.servers.axmodelfitter.data_file_utils import (
     validate_file_access,
 )
 
-
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
-@pytest.fixture
-def simple_df():
-    return pd.DataFrame({"x": [1.0, 2.0, 3.0], "y": [4.0, 5.0, 6.0], "z": [7.0, 8.0, 9.0]})
-
-
-@pytest.fixture
-def simple_input_data():
-    return [{"column": "x", "name": "X", "unit": "m"}]
-
-
-@pytest.fixture
-def simple_output_data():
-    return {"name": "Y", "unit": "s", "columns": "y"}
-
-
-@pytest.fixture
-def csv_file(tmp_path, simple_df):
-    f = tmp_path / "data.csv"
-    simple_df.to_csv(f, index=False)
-    return str(f)
-
-
-@pytest.fixture
-def two_input_df():
-    return pd.DataFrame({"a": [1.0, 2.0, 3.0], "b": [10.0, 20.0, 30.0], "c": [100.0, 200.0, 300.0]})
-
-
-@pytest.fixture
-def two_input_data():
-    return [
-        {"column": "a", "name": "A", "unit": "m"},
-        {"column": "b", "name": "B", "unit": "kg"},
-    ]
-
-
-@pytest.fixture
-def one_output_data():
-    return {"name": "C", "unit": "N", "columns": "c"}
-
-
-# ---------------------------------------------------------------------------
-# validate_file_access
-# ---------------------------------------------------------------------------
-
 def test_validate_file_access_empty_string_raises():
     with pytest.raises(ValueError, match="non-empty string"):
         validate_file_access("")
@@ -88,10 +39,6 @@ def test_validate_file_access_valid_file_passes(tmp_path):
     f.write_text("a,b\n1,2\n")
     validate_file_access(str(f))  # should not raise
 
-
-# ---------------------------------------------------------------------------
-# load_data_file
-# ---------------------------------------------------------------------------
 
 def test_load_data_file_csv_auto_detect(tmp_path):
     f = tmp_path / "data.csv"
@@ -140,10 +87,6 @@ def test_load_data_file_nonexistent_raises():
     with pytest.raises(FileNotFoundError):
         load_data_file("/no/such/file.csv")
 
-
-# ---------------------------------------------------------------------------
-# validate_column_mapping
-# ---------------------------------------------------------------------------
 
 def test_validate_column_mapping_input_not_list_raises(simple_df, simple_output_data):
     with pytest.raises(ValueError, match="input_data must be a list"):
@@ -278,10 +221,6 @@ def test_transform_non_numeric_output_raises(simple_input_data, simple_output_da
         transform_file_to_optimization_format(df, simple_input_data, simple_output_data)
 
 
-# ---------------------------------------------------------------------------
-# resolve_output_data_only
-# ---------------------------------------------------------------------------
-
 def test_resolve_output_string_column(csv_file, simple_output_data):
     result = resolve_output_data_only(csv_file, simple_output_data)
     assert result == [4.0, 5.0, 6.0]
@@ -318,11 +257,7 @@ def test_resolve_output_missing_columns_key_raises(csv_file):
 def test_resolve_output_empty_columns_list_raises(csv_file):
     with pytest.raises(ValueError, match="non-empty list"):
         resolve_output_data_only(csv_file, {"name": "Y", "unit": "s", "columns": []})
-
-
-# ---------------------------------------------------------------------------
-# resolve_data_input
-# ---------------------------------------------------------------------------
+        
 
 def test_resolve_data_input_basic_csv(csv_file, simple_input_data, simple_output_data):
     inputs, output = resolve_data_input(csv_file, simple_input_data, simple_output_data)

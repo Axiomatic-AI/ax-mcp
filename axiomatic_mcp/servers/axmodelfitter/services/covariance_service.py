@@ -1,6 +1,5 @@
 """Service for computing parameter covariance matrices."""
 
-import atexit
 import json
 
 import httpx
@@ -17,21 +16,6 @@ class CovarianceService(SingletonBase):
     Provides uncertainty estimates using robust Huber-White sandwich estimator and
     classical inverse Hessian approach.
     """
-
-    def __init__(self):
-        if getattr(self, "_client", None) is not None:
-            return
-        self._client = AxiomaticAPIClient()
-        atexit.register(self.close)
-
-    def close(self) -> None:
-        """Close underlying HTTP client used by this singleton."""
-        if getattr(self, "_client", None) is not None:
-            self._client.client.close()
-            self._client = None
-
-    def __del__(self):
-        self.close()
 
     async def compute_covariance(self, request_data: dict) -> dict:
         """
@@ -68,7 +52,8 @@ class CovarianceService(SingletonBase):
                 - markdown_report: str (formatted results)
         """
         try:
-            response = self._client.post("/digital-twin/compute-parameter-covariance", data=request_data)
+            with AxiomaticAPIClient() as client:
+                response = client.post("/digital-twin/compute-parameter-covariance", data=request_data)
 
             if not self._has_valid_covariance(response):
                 return self._format_error_response(response)
@@ -102,12 +87,12 @@ class CovarianceService(SingletonBase):
         classical_cov = response.get("inverse_hessian_covariance")
         is_square = lambda mat: isinstance(mat, list) and all(isinstance(row, list) and len(row) == len(mat) for row in mat)
         is_symmetric = lambda mat: is_square(mat) and all(np.isclose(mat[i][j], mat[j][i]) for i in range(len(mat)) for j in range(len(mat)))
-        is_positive_definite = lambda mat: is_square(mat) and np.all(np.linalg.eigvals(np.array(mat)) >= 0)
+        is_positive_semidefinite = lambda mat: is_square(mat) and np.all(np.linalg.eigvalsh(np.array(mat)) >= 0)
         return (
             ((isinstance(robust_cov, list) and len(robust_cov) > 0) or (isinstance(classical_cov, list) and len(classical_cov) > 0))
             and (
-                (is_symmetric(robust_cov) and is_positive_definite(robust_cov))
-                or (is_symmetric(classical_cov) and is_positive_definite(classical_cov))
+                (is_symmetric(robust_cov) and is_positive_semidefinite(robust_cov))
+                or (is_symmetric(classical_cov) and is_positive_semidefinite(classical_cov))
             )
             and (is_square(robust_cov) or is_square(classical_cov))
         )

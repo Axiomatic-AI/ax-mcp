@@ -1,5 +1,5 @@
 SOURCE = """def y(t, amplitude, frequency, phase, offset):
-return amplitude * jnp.sin(2 * jnp.pi * frequency * t + phase) + offset"""
+    return amplitude * jnp.sin(2 * jnp.pi * frequency * t + phase) + offset"""
 
 ANALYTICAL_TRIGONOMETRIC_TEMPLATE = {
     "category": "Analytical Function",

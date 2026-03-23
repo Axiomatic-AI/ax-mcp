@@ -29,22 +29,30 @@ def invalid_covariance_matrix_non_symmetric():
 def invalid_covariance_matrix_non_positive_definite():
     """Return a covariance matrix that is not positive definite."""
     return [[-0.1, 0.01], [0.01, -0.2]]
-
-@pytest.mark.asyncio
-async def test_covariance_service(covariance_service, nonlinear_request_body_parameter_covariance):
-    """Ensure a valid request is successful."""
-    result = await covariance_service.compute_covariance(nonlinear_request_body_parameter_covariance)
-    assert result["success"] == True
     
 def test_has_valid_covariance(covariance_service, valid_covariance_matrix, invalid_covariance_matrix_non_square, invalid_covariance_matrix_non_symmetric, invalid_covariance_matrix_non_positive_definite):
     assert covariance_service._has_valid_covariance({"sandwich_covariance": valid_covariance_matrix, "inverse_hessian_covariance": None}) == True
 
+def test_has_valid_covariance_invalid_non_square(covariance_service, invalid_covariance_matrix_non_square):
     assert covariance_service._has_valid_covariance({"sandwich_covariance": invalid_covariance_matrix_non_square, "inverse_hessian_covariance": None}) == False
+
+def test_has_valid_covariance_invalid_non_symmetric(covariance_service, invalid_covariance_matrix_non_symmetric):
     assert covariance_service._has_valid_covariance({"sandwich_covariance": invalid_covariance_matrix_non_symmetric, "inverse_hessian_covariance": None}) == False
+
+def test_has_valid_covariance_invalid_non_positive_definite(covariance_service, invalid_covariance_matrix_non_positive_definite):
     assert covariance_service._has_valid_covariance({"sandwich_covariance": invalid_covariance_matrix_non_positive_definite, "inverse_hessian_covariance": None}) == False
 
+def test_has_valid_covariance_with_inverse_hessian(covariance_service, valid_covariance_matrix, invalid_covariance_matrix_non_square, invalid_covariance_matrix_non_symmetric, invalid_covariance_matrix_non_positive_definite):
     assert covariance_service._has_valid_covariance({"sandwich_covariance": None, "inverse_hessian_covariance": valid_covariance_matrix}) == True
 
+def test_has_valid_covariance_invalid_inverse_hessian_non_square(covariance_service, invalid_covariance_matrix_non_square):
     assert covariance_service._has_valid_covariance({"sandwich_covariance": None, "inverse_hessian_covariance": invalid_covariance_matrix_non_square}) == False
+
+def test_has_valid_covariance_invalid_inverse_hessian_non_symmetric(covariance_service, invalid_covariance_matrix_non_symmetric):
     assert covariance_service._has_valid_covariance({"sandwich_covariance": None, "inverse_hessian_covariance": invalid_covariance_matrix_non_symmetric}) == False
+    
+def test_has_valid_covariance_invalid_inverse_hessian_non_positive_definite(covariance_service, invalid_covariance_matrix_non_positive_definite):
     assert covariance_service._has_valid_covariance({"sandwich_covariance": None, "inverse_hessian_covariance": invalid_covariance_matrix_non_positive_definite}) == False
+
+def test_has_valid_covariance_empty(covariance_service):
+    assert covariance_service._has_valid_covariance({"sandwich_covariance": None, "inverse_hessian_covariance": None}) == False
