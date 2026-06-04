@@ -17,3 +17,5 @@ class ApiRoutes:
     MCP_MODEL_FEEDBACK = "/mcp/model-feedback"
     ARGMIN_WRITE_CODE = "/numerics/argmin/write-code"
     ARGMIN_EXECUTE = "/numerics/argmin/execute"
+    MODEL_FITTER_WRITE_CODE = "/numerics/model-fitter/write-code"
+    MODEL_FITTER_EXECUTE = "/numerics/model-fitter/execute"
