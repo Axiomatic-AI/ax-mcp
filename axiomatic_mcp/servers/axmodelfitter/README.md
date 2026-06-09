@@ -1,3 +1,7 @@
+# AxModelFitter (Legacy)
+
+> **Legacy:** This server is superseded by `axiomatic-modelfitter`. It will be removed in a future release.
+
 # AxModelFitter
 
 An MCP server for fitting mathematical models to experimental data using the Axiomatic AI platform's optimization algorithms.
