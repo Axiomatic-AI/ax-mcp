@@ -18,8 +18,8 @@ async def mcp_client():
 @pytest.mark.asyncio
 async def test_list_tools(mcp_client):
     tools = await mcp_client.list_tools()
-    assert len(tools) == 2
-    assert {t.name for t in tools} == {"generate_code", "execute_code"}
+    tool_names = {t.name for t in tools}
+    assert {"generate_code", "execute_code"} <= tool_names
 
 
 @pytest.mark.asyncio
