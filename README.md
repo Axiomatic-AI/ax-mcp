@@ -253,6 +253,8 @@ Extract numerical data from plot images for analysis and reproduction.
 
 Fit parametric models or digital twins to observational data using advanced statistical analysis and optimization algorithms.
 
+### ⚙️ [AxModelFitterv2](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/modelfitter/)
+
 ## Requesting Features
 
 Have an idea for a new feature? We'd love to hear it! [Submit a feature request](https://github.com/Axiomatic-AI/ax-mcp/issues/new?template=feature_request.md) and:
