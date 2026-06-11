@@ -10,6 +10,8 @@ Describe your model and data in plain language — the server generates executab
 
 [![Static Badge](https://img.shields.io/badge/Get%20your%20API%20key-6EB700?style=flat)](https://docs.google.com/forms/d/e/1FAIpQLSfScbqRpgx3ZzkCmfVjKs8YogWDshOZW9p-LVXrWzIXjcHKrQ/viewform)
 
+Alternatively, get your API key via Lemma in Profile > Settings. 
+
 ### Installation (via PyPI)
 
 Add to your MCP client configuration:
