@@ -9,6 +9,7 @@ from mcp.types import TextContent
 from ...providers.middleware_provider import get_mcp_middleware
 from ...providers.toolset_provider import get_mcp_tools
 from ...shared.api_client import AxiomaticAPIClient
+from ...shared.constants.api_constants import ApiRoutes
 from ...shared.documents.pdf_to_markdown import pdf_to_markdown
 from ...shared.utils.prompt_utils import get_feedback_prompt
 
@@ -71,7 +72,7 @@ async def find_expression(
         doc_content = await _get_document_content(document)
 
         input_body = {"markdown": doc_content, "task": task}
-        response = AxiomaticAPIClient().post("/equations/derive/markdown", data=input_body)
+        response = AxiomaticAPIClient().post(ApiRoutes.EQUATIONS_DERIVE, data=input_body)
 
         if isinstance(document, Path) or (isinstance(document, str) and Path(document).exists()):
             doc_path = Path(document)
@@ -111,8 +112,7 @@ async def check_equation(
     try:
         doc_content = await _get_document_content(document)
         input_body = {"markdown": doc_content, "task": task}
-        # Note: Using the same endpoint for now, but this could be changed to a dedicated checking endpoint
-        response = AxiomaticAPIClient().post("/equations/check/markdown", data=input_body)
+        response = AxiomaticAPIClient().post(ApiRoutes.EQUATIONS_CHECK, data=input_body)
 
         if isinstance(document, Path) or (isinstance(document, str) and Path(document).exists()):
             doc_path = Path(document)

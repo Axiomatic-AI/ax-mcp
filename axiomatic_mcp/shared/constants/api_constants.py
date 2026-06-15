@@ -19,3 +19,5 @@ class ApiRoutes:
     ARGMIN_EXECUTE = "/numerics/argmin/execute"
     MODEL_FITTER_WRITE_CODE = "/numerics/model-fitter/write-code"
     MODEL_FITTER_EXECUTE = "/numerics/model-fitter/execute"
+    EQUATIONS_DERIVE = "/equations/derive"
+    EQUATIONS_CHECK = "/equations/check"
