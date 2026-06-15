@@ -10,7 +10,6 @@ from mcp.types import TextContent
 
 from ...providers.middleware_provider import get_mcp_middleware
 from ...providers.toolset_provider import get_mcp_tools
-from ...shared.constants.api_constants import ApiRoutes
 from ...shared.utils.prompt_utils import get_feedback_prompt
 from .services.equations_service import EquationsService
 
