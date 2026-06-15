@@ -1,5 +1,7 @@
+import asyncio
+from collections.abc import Callable
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -8,38 +10,84 @@ from mcp.types import TextContent
 
 from ...providers.middleware_provider import get_mcp_middleware
 from ...providers.toolset_provider import get_mcp_tools
-from ...shared.api_client import AxiomaticAPIClient
 from ...shared.constants.api_constants import ApiRoutes
-from ...shared.documents.pdf_to_markdown import pdf_to_markdown
 from ...shared.utils.prompt_utils import get_feedback_prompt
+from .services.equations_service import EquationsService
+
+DocumentFields = tuple[str | None, tuple[str, bytes, str] | None]
 
 
-async def _get_document_content(document: Path | str) -> str:
-    """Helper function to extract document content from either a file path or direct content."""
+def _resolve_path(document: Path | str) -> Path | None:
+    """Return a Path if the document refers to an existing file, otherwise None."""
     if isinstance(document, Path):
         if not document.exists():
             raise ValueError(f"File not found: {document}")
-
-        if document.suffix.lower() == ".pdf":
-            response = await pdf_to_markdown(document)
-            return response.markdown
-        elif document.suffix.lower() in [".md", ".txt"]:
-            with Path.open(document, encoding="utf-8") as f:
-                return f.read()
-        else:
-            raise ValueError(f"Unsupported file type: {document.suffix}. Supported types: .pdf, .md, .txt")
+        return document
 
     if len(document) < 500 and "\n" not in document:
         potential_path = Path(document)
         if potential_path.exists():
-            if potential_path.suffix.lower() == ".pdf":
-                response = await pdf_to_markdown(potential_path)
-                return response.markdown
-            elif potential_path.suffix.lower() in [".md", ".txt"]:
-                with Path.open(potential_path, encoding="utf-8") as f:
-                    return f.read()
+            return potential_path
 
-    return document
+    return None
+
+
+async def _resolve_document(document: Path | str) -> DocumentFields:
+    """Resolve a document into either markdown content or a PDF upload.
+
+    Returns a (markdown, pdf_file) tuple where exactly one element is set.
+    PDFs are uploaded directly so the API performs the parsing.
+    """
+    path = _resolve_path(document)
+
+    if path is None:
+        return str(document), None
+
+    suffix = path.suffix.lower()
+    if suffix == ".pdf":
+        content = await asyncio.to_thread(path.read_bytes)
+        return None, (path.name, content, "application/pdf")
+    elif suffix in [".md", ".txt"]:
+        markdown = await asyncio.to_thread(path.read_text, encoding="utf-8")
+        return markdown, None
+    else:
+        raise ValueError(f"Unsupported file type: {path.suffix}. Supported types: .pdf, .md, .txt")
+
+
+def _write_code_file(document: Path | str, code: str) -> None:
+    """Persist the returned code next to the source document, or in the CWD."""
+    if isinstance(document, Path) or (isinstance(document, str) and Path(document).exists()):
+        doc_path = Path(document)
+        file_path = doc_path.parent / f"{doc_path.stem}_code.py"
+    else:
+        file_path = Path.cwd() / "expression_code.py"
+
+    with Path.open(file_path, "w", encoding="utf-8") as f:
+        f.write(code)
+
+
+async def _run_equation_tool(
+    api_call: Callable[..., dict[str, Any]],
+    document: Path | str,
+    task: str,
+    error_msg: str,
+) -> ToolResult:
+    """Shared flow for the equation tools: resolve input, call the API, persist and return."""
+    try:
+        markdown, pdf_file = await _resolve_document(document)
+        response = api_call(task=task, markdown=markdown, pdf_file=pdf_file)
+
+        _write_code_file(document, response.get("code", ""))
+
+        return ToolResult(
+            content=[
+                TextContent(type="text", text=f"Explanation: {response.get('explanation', '')}"),
+                TextContent(type="text", text=f"Code: {response.get('code', '')}"),
+            ]
+        )
+
+    except Exception as e:
+        raise ToolError(f"{error_msg}: {e!s}") from e
 
 
 mcp = FastMCP(
@@ -68,30 +116,12 @@ async def find_expression(
     interested in then use this tool and simply say: 'Express the energy in terms of
     velocity and position', or something like that. The tool will return the desired expression
     together with sympy code that explains how it was derived."""
-    try:
-        doc_content = await _get_document_content(document)
-
-        input_body = {"markdown": doc_content, "task": task}
-        response = AxiomaticAPIClient().post(ApiRoutes.EQUATIONS_DERIVE, data=input_body)
-
-        if isinstance(document, Path) or (isinstance(document, str) and Path(document).exists()):
-            doc_path = Path(document)
-            file_path = doc_path.parent / f"{doc_path.stem}_code.py"
-        else:
-            file_path = Path.cwd() / "expression_code.py"
-
-        with Path.open(file_path, "w", encoding="utf-8") as f:
-            f.write(response.get("code", ""))
-
-        return ToolResult(
-            content=[
-                TextContent(type="text", text=f"Explanation: {response.get('explanation', '')}"),
-                TextContent(type="text", text=f"Code: {response.get('code', '')}"),
-            ]
-        )
-
-    except Exception as e:
-        raise ToolError(f"Failed to derive the equation in the document: {e!s}") from e
+    return await _run_equation_tool(
+        EquationsService().derive,
+        document,
+        task,
+        "Failed to derive the equation in the document",
+    )
 
 
 @mcp.tool(
@@ -109,26 +139,9 @@ async def check_equation(
     """Use this tool to validate equations or check for errors in mathematical expressions.
     For example: 'Check if the equation F = ma is dimensionally consistent' or
     'Verify the correctness of the Maxwell equations in the document'."""
-    try:
-        doc_content = await _get_document_content(document)
-        input_body = {"markdown": doc_content, "task": task}
-        response = AxiomaticAPIClient().post(ApiRoutes.EQUATIONS_CHECK, data=input_body)
-
-        if isinstance(document, Path) or (isinstance(document, str) and Path(document).exists()):
-            doc_path = Path(document)
-            file_path = doc_path.parent / f"{doc_path.stem}_code.py"
-        else:
-            file_path = Path.cwd() / "expression_code.py"
-
-        with Path.open(file_path, "w", encoding="utf-8") as f:
-            f.write(response.get("code", ""))
-
-        return ToolResult(
-            content=[
-                TextContent(type="text", text=f"Explanation: {response.get('explanation', '')}"),
-                TextContent(type="text", text=f"Code: {response.get('code', '')}"),
-            ]
-        )
-
-    except Exception as e:
-        raise ToolError(f"Failed to check equations in document: {e!s}") from e
+    return await _run_equation_tool(
+        EquationsService().check,
+        document,
+        task,
+        "Failed to check equations in document",
+    )
