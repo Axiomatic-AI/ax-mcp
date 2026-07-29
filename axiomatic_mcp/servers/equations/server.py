@@ -13,7 +13,7 @@ from ...providers.toolset_provider import get_mcp_tools
 from ...shared.utils.prompt_utils import get_feedback_prompt
 from .services.equations_service import EquationsService
 
-DocumentFields = tuple[str | None, tuple[str, bytes, str] | None]
+DocumentFields = tuple[str | None, bytes | None]
 
 
 def _resolve_path(document: Path | str) -> Path | None:
@@ -32,10 +32,10 @@ def _resolve_path(document: Path | str) -> Path | None:
 
 
 async def _resolve_document(document: Path | str) -> DocumentFields:
-    """Resolve a document into either markdown content or a PDF upload.
+    """Resolve a document into either markdown content or raw PDF bytes.
 
-    Returns a (markdown, pdf_file) tuple where exactly one element is set.
-    PDFs are uploaded directly so the API performs the parsing.
+    Returns a (markdown, pdf_bytes) tuple where exactly one element is set.
+    PDFs are sent to the API (base64-encoded by the service) so it performs the parsing.
     """
     path = _resolve_path(document)
 
@@ -45,7 +45,7 @@ async def _resolve_document(document: Path | str) -> DocumentFields:
     suffix = path.suffix.lower()
     if suffix == ".pdf":
         content = await asyncio.to_thread(path.read_bytes)
-        return None, (path.name, content, "application/pdf")
+        return None, content
     elif suffix in [".md", ".txt"]:
         markdown = await asyncio.to_thread(path.read_text, encoding="utf-8")
         return markdown, None
@@ -73,8 +73,8 @@ async def _run_equation_tool(
 ) -> ToolResult:
     """Shared flow for the equation tools: resolve input, call the API, persist and return."""
     try:
-        markdown, pdf_file = await _resolve_document(document)
-        response = api_call(task=task, markdown=markdown, pdf_file=pdf_file)
+        markdown, pdf_bytes = await _resolve_document(document)
+        response = api_call(task=task, markdown=markdown, pdf_bytes=pdf_bytes)
 
         _write_code_file(document, response.get("code", ""))
 
@@ -92,7 +92,8 @@ async def _run_equation_tool(
 mcp = FastMCP(
     name="AxEquationExplorer Server",
     instructions="""This server provides tools to compose and analyze equations.
-    """ + get_feedback_prompt("find_functional_form, check_equation"),
+    """
+    + get_feedback_prompt("find_functional_form, check_equation"),
     version="0.0.1",
     middleware=get_mcp_middleware(),
     tools=get_mcp_tools(),
