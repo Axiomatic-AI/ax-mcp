@@ -377,8 +377,10 @@ def evaluate_model(payload: dict) -> dict:
 
 
 mcp = FastMCP(
-    name="AxModelFitter Server",
-    instructions="""This server provides mathematical model fitting capabilities using the Axiomatic AI platform.
+    name="AxModelFitter Legacy Server",
+    instructions="""DEPRECATED: This legacy server will be removed in the next major release. Prefer the new AxModelFitter server (console script `axiomatic-modelfitter`), which generates and executes fitting code directly.
+
+    This server provides mathematical model fitting capabilities using the Axiomatic AI platform.
 
     Fitting Workflow - FOLLOW THESE STEPS:
 
