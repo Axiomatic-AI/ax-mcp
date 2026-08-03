@@ -249,13 +249,13 @@ Design photonic integrated circuits using natural language descriptions. Additio
 
 Extract numerical data from plot images for analysis and reproduction.
 
-### ⚙️ [AxModelFitter](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/axmodelfitter/) (LEGACY)
+### ⚙️ [AxModelFitter](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/modelfitter/)
 
-Fit parametric models or digital twins to observational data using advanced statistical analysis and optimization algorithms.
+Fit parametric models or digital twins to observational data. Describe the model and data in plain language — the server generates executable JAX fitting code and runs it in a sandboxed environment.
 
-### ⚙️ [AxModelFitterv2](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/modelfitter/)
+### ⚙️ [AxModelFitter (Legacy)](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/axmodelfitter/)
 
-Fit parametric models or digital twins to observational data using advanced statistical analysis and optimization algorithms.
+Deprecated — superseded by AxModelFitter above; will be removed in the next major release.
 
 ## Requesting Features
 

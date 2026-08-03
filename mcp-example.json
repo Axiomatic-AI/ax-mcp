@@ -21,6 +21,13 @@
         "AXIOMATIC_API_KEY": ""
       }
     },
+    "axiomatic-modelfitter": {
+      "command": "uvx",
+      "args": ["--from", "axiomatic-mcp", "axiomatic-modelfitter"],
+      "env": {
+        "AXIOMATIC_API_KEY": ""
+      }
+    },
     "axiomatic-axmodelfitter": {
       "command": "uvx",
       "args": ["--from", "axiomatic-mcp", "axiomatic-axmodelfitter"],

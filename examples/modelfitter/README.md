@@ -1,6 +1,6 @@
 # Model Fitter Examples
 
-Examples for the `AxModelFitterV2` MCP server.
+Examples for the `AxModelFitter` MCP server.
 
 Each folder contains:
 - `prompt.md` — what to ask the agent
