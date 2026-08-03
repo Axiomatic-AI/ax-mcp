@@ -13,7 +13,7 @@ from ...shared.utils.prompt_utils import get_feedback_prompt
 from .services.model_fitter_service import ModelFitterService
 
 mcp = FastMCP(
-    name="AxModelFitterV2 Server",
+    name="AxModelFitter Server",
     instructions=(
         "This server provides tools for fitting parametric models to data using the "
         "ax_core.model_fitter JAX library. Use generate_code to produce executable "

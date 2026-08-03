@@ -23,10 +23,10 @@ servers: list[ServerConfig] = [
     ServerConfig(domain="equations", name="AxEquationExplorer", server=equations_mcp),
     ServerConfig(domain="documents", name="AxDocumentParser", server=documents_mcp),
     ServerConfig(domain="annotations", name="AxDocumentAnnotator", server=annotations_mcp),
-    ServerConfig(domain="axmodelfitter", name="AxModelFitter", server=axmodelfitter_mcp),
+    ServerConfig(domain="axmodelfitter", name="AxModelFitterLegacy", server=axmodelfitter_mcp),
     ServerConfig(domain="plots", name="AxPlotToData", server=plots_mcp),
     ServerConfig(domain="argmin", name="AxArgmin", server=argmin_mcp),
-    ServerConfig(domain="modelfitter", name="AxModelFitterV2", server=modelfitter_mcp),
+    ServerConfig(domain="modelfitter", name="AxModelFitter", server=modelfitter_mcp),
 ]
 
 
