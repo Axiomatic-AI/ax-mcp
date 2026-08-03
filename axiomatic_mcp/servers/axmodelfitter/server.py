@@ -461,8 +461,7 @@ mcp = FastMCP(
 
 @mcp.tool(
     name="fit_model",
-    description=LEGACY_TOOL_NOTE
-    + """Fit a custom JAX mathematical model against experimental data.
+    description=LEGACY_TOOL_NOTE + """Fit a custom JAX mathematical model against experimental data.
 
     This tool fits user-defined mathematical models to data using numerical optimization.
     All data MUST be provided via files (CSV, Excel, JSON, Parquet) - no direct data input.
@@ -694,8 +693,7 @@ Ready to optimize? Get templates with `get_fitting_examples`!"""
 
 @mcp.tool(
     name="get_fitting_examples",
-    description=LEGACY_TOOL_NOTE
-    + """Get complete working examples for model fitting with this legacy model fitter.
+    description=LEGACY_TOOL_NOTE + """Get complete working examples for model fitting with this legacy model fitter.
 
     Returns ready-to-use templates with:
     - Proper JAX function syntax
@@ -1033,8 +1031,7 @@ All templates are generic - adapt the function, parameters, and data to your spe
 
 @mcp.tool(
     name="calculate_information_criteria",
-    description=LEGACY_TOOL_NOTE
-    + """Calculate AIC and BIC information criteria for model selection.
+    description=LEGACY_TOOL_NOTE + """Calculate AIC and BIC information criteria for model selection.
 
     REQUIRED INPUTS:
     - loss_value: MSE or MAE value from your optimization
@@ -1307,8 +1304,7 @@ Where ΔAICᵢ = AICᵢ - AIC_best
 
 @mcp.tool(
     name="calculate_r_squared",
-    description=LEGACY_TOOL_NOTE
-    + """Calculate R-squared to measure how well your model fits the data.
+    description=LEGACY_TOOL_NOTE + """Calculate R-squared to measure how well your model fits the data.
 
     SIMPLE USAGE:
     - mse: The MSE value from your optimization result
@@ -1407,8 +1403,7 @@ async def calculate_r_squared(
 
 @mcp.tool(
     name="cross_validate_model",
-    description=LEGACY_TOOL_NOTE
-    + """Test how well your model generalizes to new data using cross-validation.
+    description=LEGACY_TOOL_NOTE + """Test how well your model generalizes to new data using cross-validation.
 
     REQUIRED INPUTS (same as fit_model):
     - All model parameters: function_source, parameters, bounds, etc.
@@ -1782,8 +1777,7 @@ async def cross_validate_model(
 
 @mcp.tool(
     name="compare_models",
-    description=LEGACY_TOOL_NOTE
-    + """Compare multiple models to find the best one using statistical criteria.
+    description=LEGACY_TOOL_NOTE + """Compare multiple models to find the best one using statistical criteria.
 
     USE CASE: You have several competing models (linear, exponential, polynomial) fitted to the same data.
     This tool tells you which model is statistically best.
@@ -2136,8 +2130,7 @@ output_data = {{"columns": ["y"], "name": "y", "unit": "dimensionless"}}
 
 @mcp.tool(
     name="compute_parameter_covariance",
-    description=LEGACY_TOOL_NOTE
-    + """Compute parameter covariance matrices for fitted model parameters.
+    description=LEGACY_TOOL_NOTE + """Compute parameter covariance matrices for fitted model parameters.
 
     Provides uncertainty estimates using robust Huber-White sandwich estimator and
     classical inverse Hessian approach. Use after fit_model to quantify parameter
