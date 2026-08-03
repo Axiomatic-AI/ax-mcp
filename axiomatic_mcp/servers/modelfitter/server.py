@@ -18,7 +18,9 @@ mcp = FastMCP(
         "This server provides tools for fitting parametric models to data using the "
         "ax_core.model_fitter JAX library. Use generate_code to produce executable "
         "fitting code from a problem description, then execute_code to run it in a "
-        "sandboxed environment. Prefer this server over the legacy axmodelfitter server."
+        "sandboxed environment. Prefer this server for new workflows. Existing workflows "
+        "built on the legacy fit_model toolset remain available on the AxModelFitterLegacy "
+        "server (console script `axiomatic-axmodelfitter`) for this release."
     )
     + get_feedback_prompt(["generate_code", "execute_code"]),
     version="0.0.1",
