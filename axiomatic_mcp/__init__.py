@@ -1,6 +1,6 @@
 """Axiomatic MCP Servers - Modular MCP servers built with FastMCP."""
 
-__version__ = "0.1.3"
+__version__ = "0.1.17"
 
 import asyncio
 
