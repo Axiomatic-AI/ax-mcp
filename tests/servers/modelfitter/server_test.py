@@ -1,8 +1,9 @@
-"""Tests for the AxModelFitterV2 MCP server."""
+"""Tests for the AxModelFitter MCP server."""
+
+from unittest.mock import patch
 
 import pytest
 import pytest_asyncio
-from unittest.mock import patch
 from fastmcp.client import Client
 
 from axiomatic_mcp.servers.modelfitter.server import mcp

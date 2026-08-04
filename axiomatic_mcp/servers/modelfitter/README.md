@@ -1,4 +1,4 @@
-# AxModelFitterV2
+# AxModelFitter
 
 An MCP server for fitting parametric models to data using the `ax_core.model_fitter` JAX library.
 
@@ -18,7 +18,7 @@ Add to your MCP client configuration:
 
 ```json
 {
-  "axiomatic-modelfitterv2": {
+  "axiomatic-modelfitter": {
     "command": "uvx",
     "args": ["--from", "axiomatic-mcp", "axiomatic-modelfitter"],
     "env": {
@@ -32,7 +32,7 @@ Add to your MCP client configuration:
 
 ```json
 {
-  "axiomatic-modelfitterv2": {
+  "axiomatic-modelfitter": {
     "command": "python",
     "args": ["-m", "axiomatic_mcp.servers.modelfitter"],
     "env": {

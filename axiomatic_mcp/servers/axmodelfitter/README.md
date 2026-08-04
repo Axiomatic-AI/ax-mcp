@@ -1,8 +1,7 @@
 # AxModelFitter (Legacy)
 
-> **Legacy:** This server is superseded by `axiomatic-modelfitter`. It will be removed in a future release.
-
-# AxModelFitter
+> **DEPRECATED:** This server is deprecated and will be removed in the next major release.
+> Use the new [AxModelFitter](../modelfitter/README.md) server instead — console script `axiomatic-modelfitter`, config key `"axiomatic-modelfitter"`.
 
 An MCP server for fitting mathematical models to experimental data using the Axiomatic AI platform's optimization algorithms.
 

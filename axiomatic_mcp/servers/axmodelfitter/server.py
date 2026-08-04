@@ -376,9 +376,18 @@ def evaluate_model(payload: dict) -> dict:
     return response
 
 
+LEGACY_TOOL_NOTE = (
+    "LEGACY TOOL (AxModelFitterLegacy, formerly AxModelFitter): existing workflows built on this toolset "
+    "should continue to use it — it is the unchanged continuation of the original AxModelFitter tools. "
+    "For NEW workflows, prefer the new AxModelFitter server's generate_code/execute_code tools "
+    "(console script `axiomatic-modelfitter`). This legacy toolset will be removed in the next major release.\n\n    "
+)
+
 mcp = FastMCP(
-    name="AxModelFitter Server",
-    instructions="""This server provides mathematical model fitting capabilities using the Axiomatic AI platform.
+    name="AxModelFitter Legacy Server",
+    instructions="""DEPRECATED: This legacy server will be removed in the next major release. Prefer the new AxModelFitter server (console script `axiomatic-modelfitter`), which generates and executes fitting code directly, for new workflows. Existing workflows built on these tools can keep using this server — the toolset is unchanged; only its registry name changed (AxModelFitter -> AxModelFitterLegacy).
+
+    This server provides mathematical model fitting capabilities using the Axiomatic AI platform.
 
     Fitting Workflow - FOLLOW THESE STEPS:
 
@@ -452,7 +461,7 @@ mcp = FastMCP(
 
 @mcp.tool(
     name="fit_model",
-    description="""Fit a custom JAX mathematical model against experimental data.
+    description=LEGACY_TOOL_NOTE + """Fit a custom JAX mathematical model against experimental data.
 
     This tool fits user-defined mathematical models to data using numerical optimization.
     All data MUST be provided via files (CSV, Excel, JSON, Parquet) - no direct data input.
@@ -627,7 +636,7 @@ Use `get_fitting_examples` to see working examples.
 
 @mcp.prompt(
     name="get_workflow_prompt",
-    description="Step-by-step guide for model fitting with the AxModelFitter. Shows complete workflow from model definition to optimization execution.",
+    description="Step-by-step guide for model fitting with this legacy model fitter (AxModelFitterLegacy). Shows complete workflow from model definition to optimization execution.",
 )
 def get_workflow_prompt() -> str:
     """Generate a generic optimization workflow guide."""
@@ -684,7 +693,7 @@ Ready to optimize? Get templates with `get_fitting_examples`!"""
 
 @mcp.tool(
     name="get_fitting_examples",
-    description="""Get complete working examples for model fitting with the AxModelFitter.
+    description=LEGACY_TOOL_NOTE + """Get complete working examples for model fitting with this legacy model fitter.
 
     Returns ready-to-use templates with:
     - Proper JAX function syntax
@@ -1022,7 +1031,7 @@ All templates are generic - adapt the function, parameters, and data to your spe
 
 @mcp.tool(
     name="calculate_information_criteria",
-    description="""Calculate AIC and BIC information criteria for model selection.
+    description=LEGACY_TOOL_NOTE + """Calculate AIC and BIC information criteria for model selection.
 
     REQUIRED INPUTS:
     - loss_value: MSE or MAE value from your optimization
@@ -1295,7 +1304,7 @@ Where ΔAICᵢ = AICᵢ - AIC_best
 
 @mcp.tool(
     name="calculate_r_squared",
-    description="""Calculate R-squared to measure how well your model fits the data.
+    description=LEGACY_TOOL_NOTE + """Calculate R-squared to measure how well your model fits the data.
 
     SIMPLE USAGE:
     - mse: The MSE value from your optimization result
@@ -1394,7 +1403,7 @@ async def calculate_r_squared(
 
 @mcp.tool(
     name="cross_validate_model",
-    description="""Test how well your model generalizes to new data using cross-validation.
+    description=LEGACY_TOOL_NOTE + """Test how well your model generalizes to new data using cross-validation.
 
     REQUIRED INPUTS (same as fit_model):
     - All model parameters: function_source, parameters, bounds, etc.
@@ -1768,7 +1777,7 @@ async def cross_validate_model(
 
 @mcp.tool(
     name="compare_models",
-    description="""Compare multiple models to find the best one using statistical criteria.
+    description=LEGACY_TOOL_NOTE + """Compare multiple models to find the best one using statistical criteria.
 
     USE CASE: You have several competing models (linear, exponential, polynomial) fitted to the same data.
     This tool tells you which model is statistically best.
@@ -2121,7 +2130,7 @@ output_data = {{"columns": ["y"], "name": "y", "unit": "dimensionless"}}
 
 @mcp.tool(
     name="compute_parameter_covariance",
-    description="""Compute parameter covariance matrices for fitted model parameters.
+    description=LEGACY_TOOL_NOTE + """Compute parameter covariance matrices for fitted model parameters.
 
     Provides uncertainty estimates using robust Huber-White sandwich estimator and
     classical inverse Hessian approach. Use after fit_model to quantify parameter
