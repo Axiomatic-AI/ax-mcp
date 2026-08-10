@@ -10,6 +10,7 @@ from .axmodelfitter.server import mcp as axmodelfitter_mcp
 from .documents.server import mcp as documents_mcp
 from .equations.server import mcp as equations_mcp
 from .modelfitter.server import mcp as modelfitter_mcp
+from .pde.server import mcp as pde_mcp
 from .plots.server import plots as plots_mcp
 
 
@@ -27,6 +28,7 @@ servers: list[ServerConfig] = [
     ServerConfig(domain="plots", name="AxPlotToData", server=plots_mcp),
     ServerConfig(domain="argmin", name="AxArgmin", server=argmin_mcp),
     ServerConfig(domain="modelfitter", name="AxModelFitter", server=modelfitter_mcp),
+    ServerConfig(domain="pde", name="AxPde", server=pde_mcp),
 ]
 
 

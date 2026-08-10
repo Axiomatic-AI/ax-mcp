@@ -87,6 +87,7 @@ axiomatic-axmodelfitter = "axiomatic_mcp.servers.axmodelfitter:main"
 axiomatic-annotations = "axiomatic_mcp.servers.annotations:main"
 axiomatic-argmin = "axiomatic_mcp.servers.argmin:main"
 axiomatic-modelfitter = "axiomatic_mcp.servers.modelfitter:main"
+axiomatic-pde = "axiomatic_mcp.servers.pde:main"
 all = "axiomatic_mcp:main"
 
 [tool.setuptools.packages.find]
