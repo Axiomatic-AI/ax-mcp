@@ -92,6 +92,49 @@ async def test_list_tools(mcp_client):
 
 
 @pytest.mark.asyncio
+async def test_tools_publish_output_schemas(mcp_client):
+    """Test if schemas are passed correctly."""
+    tools = {t.name: t for t in await mcp_client.list_tools()}
+
+    parse_props = tools["parse_pde"].outputSchema["properties"]
+    assert "equations" in parse_props["spec"]["properties"]
+
+    derive_props = tools["derive_source"].outputSchema["properties"]
+    assert "source_exprs" in derive_props
+
+    verify_schema = tools["verify_solution"].outputSchema
+    assert "passed" in verify_schema["required"]
+    assert {"equation_diagnostics", "bc_diagnostics"} <= set(verify_schema["properties"])
+
+
+@pytest.mark.asyncio
+async def test_structured_content_survives_output_schema(mcp_client):
+    """The declared schema must not strip fields it doesn't name — chaining relies on the full dict."""
+    mock_response = {
+        "passed": False,
+        "pde_residual_zero": False,
+        "bcs_satisfied": True,
+        "equation_diagnostics": {"pde": {"passed": False, "residual": "nonzero"}},
+        "bc_diagnostics": {},
+        "message": "FAILED",
+        "undeclared_future_field": "kept",
+    }
+
+    with patch.object(PdeService, "verify", return_value=mock_response):
+        response = await mcp_client.call_tool(
+            "verify_solution",
+            {
+                "equations": HEAT_EQUATIONS,
+                "solution_exprs": HEAT_SOLUTION,
+                "source_exprs": {"pde": "0"},
+                "variables": ["x", "t"],
+            },
+        )
+
+    assert response.structured_content == mock_response
+
+
+@pytest.mark.asyncio
 async def test_parse_backend_error(mcp_client):
     mock_response = {"success": False, "spec": None, "error": "PDE parse produced no equations / operators."}
 

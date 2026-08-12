@@ -16,9 +16,11 @@ This server verifies PDE solvers using the Method of Manufactured Solutions (MMS
 WORKFLOW:
 1. parse_pde — turn a prose/LaTeX PDE description into a structured spec (operators,
    domain, boundary conditions, variables, unknowns). Skip this if you already have
-   the operator code.
+   the operator code. See the expected spec format below.
 2. Choose a manufactured solution u — a smooth closed-form expression satisfying the
-   boundary conditions. This is YOUR choice; no tool picks it for you.
+   boundary conditions. This is YOUR choice; no tool picks it for you. The manufactured
+   solution should capture the challenging features the solver may encounter; for example,
+   shock formation, boundary layers, conservation law, symmetries, etc.
 3. derive_source — apply the operator to u to get the forcing term f = L[u] that makes
    u an exact solution.
 4. verify_solution — confirm symbolically that L[u] - f == 0 and that every boundary
@@ -72,7 +74,7 @@ equation_diagnostics / bc_diagnostics and fix the solution, source, or BCs.
 """
 
 mcp = FastMCP(
-    name="AxPde Server",
+    name="AxPDE Server",
     instructions=INSTRUCTIONS + get_feedback_prompt(["parse_pde", "derive_source", "verify_solution"]),
     version="0.0.1",
     middleware=get_mcp_middleware(),
@@ -100,6 +102,101 @@ VARIABLES_ARG = Annotated[
     'Coordinate names, e.g. ["x", "t"] or ["x", "y", "t"]. Supported: x, y, t, r, theta, phi.',
 ]
 
+# Output schemas describe the structured_content each tool returns, so a client can
+# chain results programmatically instead of re-typing values out of the text blocks.
+# They are deliberately loose: only the fields that matter downstream are named, and
+# extra fields the API may add pass through untouched.
+
+_EQUATIONS_SCHEMA = {
+    "type": "array",
+    "description": "PDE operator(s); pass straight into derive_source / verify_solution.",
+    "items": {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string", "description": 'Equation name, e.g. "pde", "continuity".'},
+            "operator_code": {"type": "string", "description": "Python source defining one SymPy operator function."},
+        },
+    },
+}
+
+_DIAGNOSTICS_SCHEMA = {
+    "type": "object",
+    "description": (
+        "Per-item check results keyed by equation name or BC label. Each value has "
+        '"passed" and "residual"; a nonzero residual string is the actionable detail.'
+    ),
+    "additionalProperties": {
+        "type": "object",
+        "properties": {"passed": {"type": "boolean"}, "residual": {"type": "string"}},
+    },
+}
+
+PARSE_OUTPUT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "success": {"type": "boolean", "description": "Whether parsing produced a usable spec."},
+        "spec": {
+            # Null on a parse failure, and partially populated when the spec was
+            # extracted but rejected (e.g. an operator that failed to compile).
+            "type": ["object", "null"],
+            "description": "The structured artifact. Feed spec.equations / variables / domain / boundary_conditions onward.",
+            "properties": {
+                "name": {"type": "string"},
+                "description": {"type": "string"},
+                "pde_latex": {"type": "string"},
+                "spatial_dim": {"type": ["integer", "null"]},
+                "time_dependent": {"type": ["boolean", "null"]},
+                "t_final": {"type": ["number", "null"]},
+                "domain": {"type": "object", "description": 'e.g. {"type": "interval", "x_min": 0, "x_max": 1}'},
+                "variables": {"type": "array", "items": {"type": "string"}},
+                "unknowns": {"type": "array", "items": {"type": "string"}},
+                "equations": _EQUATIONS_SCHEMA,
+                "boundary_conditions": {"type": "array", "items": {"type": "object"}},
+            },
+        },
+        "compile_results": {
+            "type": "object",
+            "description": 'Per-equation compile check, e.g. {"pde": {"compiled": true}}.',
+        },
+        "error": {"type": ["string", "null"]},
+    },
+    "required": ["success"],
+}
+
+DERIVE_SOURCE_OUTPUT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "success": {"type": "boolean"},
+        "source_exprs": {
+            "type": ["object", "null"],
+            "description": (
+                'Derived source term per equation name, e.g. {"pde": "(-1 + pi**2)*exp(-t)*sin(pi*x)"}. '
+                "Pass this straight to verify_solution as source_exprs."
+            ),
+            "additionalProperties": {"type": "string"},
+        },
+        "error": {"type": ["string", "null"]},
+    },
+    "required": ["success"],
+}
+
+VERIFY_OUTPUT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "passed": {
+            "type": "boolean",
+            "description": "True only if every equation residual is zero AND every boundary condition is satisfied.",
+        },
+        "pde_residual_zero": {"type": "boolean"},
+        "bcs_satisfied": {"type": "boolean"},
+        "equation_diagnostics": _DIAGNOSTICS_SCHEMA,
+        "bc_diagnostics": _DIAGNOSTICS_SCHEMA,
+        "message": {"type": "string"},
+        "error": {"type": ["string", "null"]},
+    },
+    "required": ["passed"],
+}
+
 
 @mcp.tool(
     name="parse_pde",
@@ -111,6 +208,7 @@ VARIABLES_ARG = Annotated[
         "This does NOT choose a manufactured solution or write a solver."
     ),
     tags=["pde", "mms", "parsing"],
+    output_schema=PARSE_OUTPUT_SCHEMA,
 )
 async def parse_pde(
     description: Annotated[
@@ -177,6 +275,7 @@ async def parse_pde(
         "Manufactured Solutions; pair it with verify_solution to confirm correctness."
     ),
     tags=["pde", "mms", "symbolic"],
+    output_schema=DERIVE_SOURCE_OUTPUT_SCHEMA,
 )
 async def derive_source(
     equations: EQUATIONS_ARG,
@@ -222,6 +321,7 @@ async def derive_source(
         "not passing rather than silently accepted."
     ),
     tags=["pde", "mms", "verification"],
+    output_schema=VERIFY_OUTPUT_SCHEMA,
 )
 async def verify_solution(
     equations: EQUATIONS_ARG,
