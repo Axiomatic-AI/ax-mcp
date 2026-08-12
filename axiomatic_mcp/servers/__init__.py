@@ -28,7 +28,7 @@ servers: list[ServerConfig] = [
     ServerConfig(domain="plots", name="AxPlotToData", server=plots_mcp),
     ServerConfig(domain="argmin", name="AxArgmin", server=argmin_mcp),
     ServerConfig(domain="modelfitter", name="AxModelFitter", server=modelfitter_mcp),
-    ServerConfig(domain="pde", name="AxPde", server=pde_mcp),
+    ServerConfig(domain="pde", name="AxPDE", server=pde_mcp),
 ]
 
 

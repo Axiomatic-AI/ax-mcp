@@ -1,4 +1,4 @@
-"""Tests for the AxPde MCP server."""
+"""Tests for the AxPDE MCP server."""
 
 from unittest.mock import patch
 
