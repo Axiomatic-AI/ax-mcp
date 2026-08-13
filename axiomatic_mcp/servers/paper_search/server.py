@@ -19,8 +19,7 @@ mcp = FastMCP(
     downloading tex/PDF sources as context). Use search_openalex for broader scholarly coverage
     (published venues, DOIs, citation counts). Prefer these over relying on memorized/unsourced
     claims about "standard results from the literature".
-    """
-    + get_feedback_prompt(["search_arxiv", "search_openalex"]),
+    """ + get_feedback_prompt(["search_arxiv", "search_openalex"]),
     version="0.0.1",
     middleware=get_mcp_middleware(),
     tools=get_mcp_tools(),

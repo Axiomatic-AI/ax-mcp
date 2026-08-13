@@ -23,8 +23,7 @@ mcp = FastMCP(
     explicit confirmation before calling start_simulation with that task_id — this is the
     only step that spends real Flex credits; (4) get_simulation_status to poll until done.
     Requires a Tidy3D API key linked to the caller's Axiomatic account before any cloud step.
-    """
-    + get_feedback_prompt(["generate_code", "execute_code", "start_simulation", "get_simulation_status"]),
+    """ + get_feedback_prompt(["generate_code", "execute_code", "start_simulation", "get_simulation_status"]),
     version="0.0.1",
     middleware=get_mcp_middleware(),
     tools=get_mcp_tools(),
