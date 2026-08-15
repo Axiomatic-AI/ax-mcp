@@ -48,7 +48,7 @@ def _format_search_results(response: dict[str, Any]) -> str:
     for i, result in enumerate(results, start=1):
         metadata = result.get("metadata") or {}
         source = metadata.get("paper_title") or metadata.get("paper_id") or "unknown source"
-        lines.append(f"{i}. [source: {source}, score={result.get('score', 0):.3f}]\n{result.get('text', '')}\n")
+        lines.append(f"{i}. [source: {source}, score={result.get('score') or 0:.3f}]\n{result.get('text', '')}\n")
     return "\n".join(lines)
 
 

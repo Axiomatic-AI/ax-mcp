@@ -96,7 +96,7 @@ async def execute_code(
         return ToolResult(content=[TextContent(type="text", text=text)])
 
     parts = []
-    if response.get("result"):
+    if response.get("result") is not None:
         parts.append(TextContent(type="text", text=f"Result: {response['result']}"))
     if response.get("task_id"):
         cost = response.get("estimated_cost_flex_credits")

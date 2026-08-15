@@ -57,9 +57,9 @@ def _format_openalex_results(response: dict[str, Any]) -> str:
         authors = ", ".join(a.get("name", "") for a in work.get("authors") or []) or "unknown authors"
         oa = "open access" if work.get("open_access") else "closed access"
         lines.append(
-            f"{i}. {work.get('title', 'untitled')} (doi: {work.get('doi', 'n/a')})\n"
+            f"{i}. {work.get('title', 'untitled')} (doi: {work.get('doi') or 'n/a'})\n"
             f"   Authors: {authors}\n"
-            f"   {work.get('publication_date', 'n/a')}, cited {work.get('cited_by_count', 0)} times, {oa}\n"
+            f"   {work.get('publication_date') or 'n/a'}, cited {work.get('cited_by_count') or 0} times, {oa}\n"
         )
     return "\n".join(lines)
 
