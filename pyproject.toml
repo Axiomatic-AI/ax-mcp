@@ -88,6 +88,9 @@ axiomatic-annotations = "axiomatic_mcp.servers.annotations:main"
 axiomatic-argmin = "axiomatic_mcp.servers.argmin:main"
 axiomatic-modelfitter = "axiomatic_mcp.servers.modelfitter:main"
 axiomatic-pde = "axiomatic_mcp.servers.pde:main"
+axiomatic-kb = "axiomatic_mcp.servers.kb:main"
+axiomatic-paper-search = "axiomatic_mcp.servers.paper_search:main"
+axiomatic-tidy3d = "axiomatic_mcp.servers.tidy3d:main"
 all = "axiomatic_mcp:main"
 
 [tool.setuptools.packages.find]

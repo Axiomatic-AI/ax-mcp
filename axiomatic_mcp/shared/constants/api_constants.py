@@ -24,3 +24,15 @@ class ApiRoutes:
     PDE_VERIFY = "/numerics/pde/verify"
     EQUATIONS_DERIVE = "/expressions/derive"
     EQUATIONS_CHECK = "/expressions/check"
+    # NOTE: these paths are set by the backend and shared publicly via this repo — do not
+    # introduce new path segments here that name a specific vendor/technology (e.g. a DB engine).
+    KNOWLEDGE_BASE_SEARCH = "/neo4j/search"
+    KNOWLEDGE_BASE_GET_SCHEMA = "/neo4j/get-schema"
+    KNOWLEDGE_BASE_OVERVIEW = "/neo4j/overview"
+    KNOWLEDGE_BASE_LIST_PAPERS = "/neo4j/papers"
+    ARXIV_SEARCH_WORKS = "/search/arxiv/works"
+    OPENALEX_SEARCH_WORKS = "/search/openalex/works"
+    TIDY3D_GENERATE_CODE = "/tidy3d/generate-code"
+    TIDY3D_EXECUTE_CODE = "/tidy3d/execute-code"
+    TIDY3D_START_TASK = "/tidy3d/start-task"
+    TIDY3D_TASK_STATUS = "/tidy3d/task-status"

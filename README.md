@@ -257,6 +257,22 @@ Fit parametric models or digital twins to observational data. Describe the model
 
 Deprecated — superseded by AxModelFitter above; will be removed in the next major release.
 
+### 🧮 [AxArgmin](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/argmin/)
+
+Numerical optimization, rootfinding, ODE simulation, and optimal control. Describe the problem in plain language — the server generates and runs the corresponding code in a sandboxed environment.
+
+### 📚 [AxKnowledgeBase](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/kb/)
+
+Semantic search over Axiomatic's curated Knowledge Base — scientific papers, entities, and passages, always returned with their source for citation.
+
+### 🔎 [AxPaperSearch](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/paper_search/)
+
+Search arXiv and OpenAlex for scientific papers — abstracts, authors, DOIs, citation counts, and direct PDF links.
+
+### 🌊 [AxTidy3D](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/tidy3d/)
+
+Generate and run Tidy3D electromagnetic simulations (FDTD, mode solving) from natural language, with a cost-safe estimate-then-confirm flow for cloud runs.
+
 ## Requesting Features
 
 Have an idea for a new feature? We'd love to hear it! [Submit a feature request](https://github.com/Axiomatic-AI/ax-mcp/issues/new?template=feature_request.md) and:
