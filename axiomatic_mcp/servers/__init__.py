@@ -11,8 +11,8 @@ from .documents.server import mcp as documents_mcp
 from .equations.server import mcp as equations_mcp
 from .kb.server import mcp as kb_mcp
 from .modelfitter.server import mcp as modelfitter_mcp
-from .pde.server import mcp as pde_mcp
 from .paper_search.server import mcp as paper_search_mcp
+from .pde.server import mcp as pde_mcp
 from .plots.server import plots as plots_mcp
 from .tidy3d.server import mcp as tidy3d_mcp
 
