@@ -411,6 +411,17 @@ async def test_get_status_task_not_found_returns_immediately(mcp_client, fast_po
 
 
 @pytest.mark.asyncio
+async def test_get_status_forbidden_returns_immediately(mcp_client, fast_poll):
+    body = {"success": False, "error": "Not authorized", "error_type": "http_error", "status_code": 403}
+
+    with patch.object(MeepService, "get_status", return_value=body) as mock_status:
+        response = await mcp_client.call_tool("get_simulation_status", {"task_id": "job-1", "wait_seconds": 120})
+
+    mock_status.assert_called_once_with("job-1")
+    assert "PLAYGROUND" in _blob(response)
+
+
+@pytest.mark.asyncio
 async def test_get_status_scheduler_error_is_retried_then_reported(mcp_client, fast_poll):
     body = {"success": False, "error": "scheduler unreachable", "error_type": "scheduler_error", "status_code": 502}
 

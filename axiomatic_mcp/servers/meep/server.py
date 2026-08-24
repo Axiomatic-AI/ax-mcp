@@ -333,9 +333,10 @@ async def _poll_until_terminal(task_id: str, wait_seconds: int) -> tuple[dict[st
         now = time.monotonic()
         expired = now >= deadline
         if _is_failure(response):
-            # A missing task will never appear; a scheduler blip usually passes, and the pod
-            # generally keeps running through it, so only a persistent one is surfaced.
-            if response.get("error_type") == "task_not_found" or expired:
+            # A missing task will never appear and a 403 will never stop being one, so both
+            # are surfaced immediately; a scheduler blip usually passes and the pod generally
+            # keeps running through it, so only a persistent one is surfaced.
+            if response.get("error_type") == "task_not_found" or response.get("status_code") == 403 or expired:
                 return response, now - started
         elif response.get("status") in _TERMINAL_STATUSES or expired:
             return response, now - started
