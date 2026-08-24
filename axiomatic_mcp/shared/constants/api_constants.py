@@ -33,3 +33,10 @@ class ApiRoutes:
     TIDY3D_EXECUTE_CODE = "/tidy3d/execute-code"
     TIDY3D_START_TASK = "/tidy3d/start-task"
     TIDY3D_TASK_STATUS = "/tidy3d/task-status"
+    # The three meep execute routes are gated by is_playground_user_guard
+    # (ADMIN/INTERNAL/PLAYGROUND), not is_external_user_guard: every submission spins up a
+    # Kubernetes pod with conda + MPI. Same gating as ARGMIN_EXECUTE and TIDY3D_EXECUTE_CODE.
+    MEEP_WRITE_CODE = "/numerics/meep/write-code"
+    MEEP_EXECUTE = "/numerics/meep/execute"
+    MEEP_EXECUTE_STATUS = "/numerics/meep/execute/status/{task_id}"
+    MEEP_EXECUTE_RESULTS = "/numerics/meep/execute/results/{task_id}"
