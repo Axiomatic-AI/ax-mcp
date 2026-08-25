@@ -200,7 +200,8 @@ def format_annotations(annotations: list[Annotation]) -> str:
             annotation_lines.append(f"**Annotation {i}**:")
         annotation_lines.append(f"Type: {annotation.annotation_type}")
 
-        annotation_lines.append(f"Description: {annotation.description}")
+        if annotation.description:
+            annotation_lines.append(f"Description: {annotation.description}")
 
         if annotation.equation:
             annotation_lines.append(f"Equation: {annotation.equation}")
