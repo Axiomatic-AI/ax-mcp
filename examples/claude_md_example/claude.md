@@ -20,7 +20,6 @@ This project is configured with the following MCP servers for enhanced functiona
 
 - **axiomatic-plots**: AI-powered plot data extraction from images
 - **axiomatic-documents**: Document analysis and processing
-- **axiomatic-pic**: Photonic integrated circuit design
 - **axiomatic-equations**: Mathematical equation composer and solver
 - **axiomatic-model-fitting**: Digital twin optimization tools
 - **axiomatic-annotations**: Document annotation and analysis tools

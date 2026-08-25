@@ -54,7 +54,7 @@ uv pip install -e .
 export AXIOMATIC_API_KEY="your-api-key"
 
 # Test locally
-uvx --from . equations  # or documents, annotations, pic, plots, all
+uvx --from . equations  # or documents, annotations, plots, all
 ```
 
 ## Questions?
