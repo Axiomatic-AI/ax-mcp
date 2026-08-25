@@ -27,6 +27,7 @@ class AnnotationType(str, Enum):
     EQUATION = "equation"
     FIGURE_DESCRIPTION = "figure_description"
     PARAMETER = "parameter"
+    TABLE = "table"
 
 
 class Annotation(BaseModel):
@@ -40,7 +41,7 @@ class Annotation(BaseModel):
         description="Unique identifier for the annotation",
     )
     annotation_type: AnnotationType = Field(..., description="Type of annotation")
-    description: str = Field(..., description="Broader contextual description of the citation")
+    description: str | None = Field(None, description="Broader contextual description of the citation")
     tags: list[str] = Field(default_factory=list, description="Tags for categorization")
     created_at: datetime = Field(default_factory=datetime.now, description="When annotation was created")
     equation: str | None = Field(
@@ -51,7 +52,7 @@ class Annotation(BaseModel):
         None,
         description="The name of the parameter that is relevant to the annotation",
     )
-    parameter_value: float | None = Field(
+    parameter_value: float | str | None = Field(
         None,
         description="The value of the parameter that is relevant to the annotation",
     )
@@ -59,8 +60,8 @@ class Annotation(BaseModel):
         None,
         description="The unit of the parameter that is relevant to the annotation",
     )
-    reference: str = Field(
-        ...,
+    reference: str | None = Field(
+        None,
         description="The reference to the source that is relevant to the annotation. In APA format.",
     )
 
@@ -70,7 +71,7 @@ class PDFAnnotation(Annotation):
     PDF-specific annotation that includes page location.
     """
 
-    page_number: int = Field(..., description="The page number of the source")
+    page_number: int | str | None = Field(None, description="The page number of the source")
 
 
 class AnnotationsResponse(BaseModel):
@@ -82,14 +83,11 @@ class AnnotationsResponse(BaseModel):
         if not v:
             return v
 
-        # Check format
-        first_item = v[0] if v else {}
-        has_page_number = "page_number" in first_item
+        def _as_annotation(item):
+            has_page = "page_number" in item if isinstance(item, dict) else hasattr(item, "page_number")
+            return PDFAnnotation.model_validate(item) if has_page else Annotation.model_validate(item)
 
-        if has_page_number:
-            return [PDFAnnotation.model_validate(item) for item in v]
-        else:
-            return [Annotation.model_validate(item) for item in v]
+        return [_as_annotation(item) for item in v]
 
 
 mcp = FastMCP(
@@ -196,13 +194,14 @@ def format_annotations(annotations: list[Annotation]) -> str:
     annotation_lines = []
 
     for i, annotation in enumerate(annotations, start=1):
-        if hasattr(annotation, "page_number"):
+        if getattr(annotation, "page_number", None) is not None:
             annotation_lines.append(f"**Annotation {i}** (Page {annotation.page_number}):")
         else:
             annotation_lines.append(f"**Annotation {i}**:")
         annotation_lines.append(f"Type: {annotation.annotation_type}")
 
-        annotation_lines.append(f"Description: {annotation.description}")
+        if annotation.description:
+            annotation_lines.append(f"Description: {annotation.description}")
 
         if annotation.equation:
             annotation_lines.append(f"Equation: {annotation.equation}")
