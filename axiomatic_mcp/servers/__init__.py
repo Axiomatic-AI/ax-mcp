@@ -10,6 +10,7 @@ from .axmodelfitter.server import mcp as axmodelfitter_mcp
 from .documents.server import mcp as documents_mcp
 from .equations.server import mcp as equations_mcp
 from .kb.server import mcp as kb_mcp
+from .meep.server import mcp as meep_mcp
 from .modelfitter.server import mcp as modelfitter_mcp
 from .paper_search.server import mcp as paper_search_mcp
 from .pde.server import mcp as pde_mcp
@@ -35,6 +36,7 @@ servers: list[ServerConfig] = [
     ServerConfig(domain="kb", name="AxKnowledgeBase", server=kb_mcp),
     ServerConfig(domain="paper_search", name="AxPaperSearch", server=paper_search_mcp),
     ServerConfig(domain="tidy3d", name="AxTidy3D", server=tidy3d_mcp),
+    ServerConfig(domain="meep", name="AxMeep", server=meep_mcp),
 ]
 
 

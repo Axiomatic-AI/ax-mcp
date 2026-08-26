@@ -48,6 +48,13 @@
       "env": {
         "AXIOMATIC_API_KEY": ""
       }
+    },
+    "axiomatic-meep": {
+      "command": "uvx",
+      "args": ["--from", "axiomatic-mcp", "axiomatic-meep"],
+      "env": {
+        "AXIOMATIC_API_KEY": ""
+      }
     }
   }
 }

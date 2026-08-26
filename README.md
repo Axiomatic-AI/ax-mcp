@@ -273,6 +273,10 @@ Search arXiv and OpenAlex for scientific papers — abstracts, authors, DOIs, ci
 
 Generate and run Tidy3D electromagnetic simulations (FDTD, mode solving) from natural language, with a cost-safe estimate-then-confirm flow for cloud runs.
 
+### 💡 [AxMeep](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/meep/)
+
+Generate and run Meep FDTD simulations from natural language. Simulations run as remote jobs; figures come back as inline images and arrays are summarized and saved locally. Requires an API key with playground access.
+
 ## Requesting Features
 
 Have an idea for a new feature? We'd love to hear it! [Submit a feature request](https://github.com/Axiomatic-AI/ax-mcp/issues/new?template=feature_request.md) and:
