@@ -3,9 +3,7 @@
 import base64
 import json
 import math
-import mimetypes
 import random
-import re
 from pathlib import Path
 from typing import Annotated
 
@@ -73,10 +71,10 @@ def determine_sig_figs(response: dict) -> tuple[int, int]:
     uses the maximum sigfigs found in tick values
     clamped between MIN_SIG_FIGS and MAX_SIG_FIGS
     """
-    plot_info = response.get("plot_info", {})
+    plot_info = response.get("plot_info") or {}
 
-    x_tick_values = plot_info.get("x_axis_tick_values", [])
-    y_tick_values = plot_info.get("y_axis_tick_values", [])
+    x_tick_values = plot_info.get("x_axis_tick_values") or []
+    y_tick_values = plot_info.get("y_axis_tick_values") or []
 
     x_max_sig_figs = 0
     for value in x_tick_values:
@@ -145,6 +143,19 @@ def process_plot_parser_output(response_json, max_points: int = 100) -> SeriesPo
     return SeriesPointsData(series_points=extracted_series_list)
 
 
+def read_plot_image_base64(plot_path: Path) -> str:
+    """Validates a plot image path and returns its base64-encoded content"""
+    if not plot_path.is_file():
+        raise FileNotFoundError(f"Image not found or is not a regular file: {plot_path}")
+
+    supported_extensions = {".png"}
+    file_extension = plot_path.suffix.lower()
+    if file_extension not in supported_extensions:
+        raise ValueError(f"Unsupported image format: {file_extension}. Supported formats: {', '.join(supported_extensions)}")
+
+    return base64.b64encode(plot_path.read_bytes()).decode("ascii")
+
+
 PLOTS_SERVER_INSTRUCTIONS = """This server hosts tools for extracting numerical data from plot images. 
 It can analyze line plots and scatter plots and convert visual data points into a structured numerical format."""
 
@@ -170,32 +181,18 @@ async def extract_data_from_plot_image(
         "Maximum points returned per series. Uses random sampling if plot contains more points than limit",
     ] = 100,
 ) -> Annotated[ToolResult, "Extracted plot data containing series and points from the plot image"]:
-    if not plot_path.is_file():
-        raise FileNotFoundError(f"Image not found or is not a regular file: {plot_path}")
+    image_base64 = read_plot_image_base64(plot_path)
 
-    supported_extensions = {".png"}
-    file_extension = plot_path.suffix.lower()
-    if file_extension not in supported_extensions:
-        raise ValueError(f"Unsupported image format: {file_extension}. Supported formats: {', '.join(supported_extensions)}")
+    try:
+        response = AxiomaticAPIClient().post("/plot/parse", data={"image_base64": image_base64})
+    except Exception as e:
+        raise ToolError(f"Failed to analyze plot image: {e!s}") from e
 
-    mime_type, _ = mimetypes.guess_type(str(plot_path))
-    if not mime_type or not mime_type.startswith("image/"):
-        mime_type = "application/octet-stream"
+    if not isinstance(response, dict):
+        raise ToolError("Upstream service returned non-JSON response")
 
-    with Path.open(plot_path, "rb") as f:
-        files = {"plot_img": (plot_path.name, f, mime_type)}
-        params = {"get_img_coords": True, "v2": True}
-
-        try:
-            response = AxiomaticAPIClient().post("/document/plot/points", files=files, params=params)
-        except Exception as e:
-            raise ToolError(f"Failed to analyze plot image: {e!s}") from e
-
-        if not isinstance(response, dict):
-            raise ToolError("Upstream service returned non-JSON response")
-
-        if "extracted_series" not in response:
-            raise ToolError("Upstream service returned unexpected response format")
+    if "extracted_series" not in response:
+        raise ToolError("Upstream service returned unexpected response format")
 
     series_data = process_plot_parser_output(response, max_points=max_number_points_per_series)
 
@@ -222,42 +219,26 @@ async def extract_data_from_plot_image(
 async def split_multi_plot(
     plot_path: Annotated[Path, "The absolute path to the image file of the plot to split. Supports only PNG for now"],
 ) -> Annotated[ToolResult, "Paths to the saved split images"]:
-    if not plot_path.is_file():
-        raise FileNotFoundError(f"Image not found or is not a regular file: {plot_path}")
+    image_base64 = read_plot_image_base64(plot_path)
 
-    supported_extensions = {".png"}
-    file_extension = plot_path.suffix.lower()
-    if file_extension not in supported_extensions:
-        raise ValueError(f"Unsupported image format: {file_extension}. Supported formats: {', '.join(supported_extensions)}")
+    try:
+        response = AxiomaticAPIClient().post("/plot/split", data={"image_base64": image_base64})
+    except Exception as e:
+        raise ToolError(f"Failed to split plot image: {e!s}") from e
 
-    mime_type, _ = mimetypes.guess_type(str(plot_path))
-    if not mime_type or not mime_type.startswith("image/"):
-        mime_type = "application/octet-stream"
-
-    with Path.open(plot_path, "rb") as f:
-        files = {"plot_img": (plot_path.name, f, mime_type)}
-        params = {"get_img_coords": True, "v2": True}
-
-        try:
-            response = AxiomaticAPIClient().post("/document/plot/split", files=files, params=params)
-        except Exception as e:
-            raise ToolError(f"Failed to split plot image: {e!s}") from e
-
-        if not isinstance(response, (list, tuple)) or not all(isinstance(x, str) for x in response):
-            raise ToolError("Upstream service returned unexpected response format; expected a list of base64-encoded image strings")
-        if not response:
-            raise ToolError("Upstream service returned no split images")
+    split_images = response.get("images_base64") if isinstance(response, dict) else None
+    if not isinstance(split_images, list) or not all(isinstance(x, str) for x in split_images):
+        raise ToolError("Upstream service returned unexpected response format; expected a list of base64-encoded image strings")
+    if not split_images:
+        raise ToolError("Upstream service returned no split images")
 
     split_image_paths = []
 
-    for idx, b64_split_img in enumerate(response):
+    for idx, b64_split_img in enumerate(split_images):
         split_image_path = plot_path.parent / (plot_path.stem + f"_split_{idx}.png")
 
-        match = re.match(r"data:image/[^;]+;base64,(.*)", b64_split_img)
-        image_data = match.group(1) if match else b64_split_img
-
         try:
-            binary = base64.b64decode(image_data, validate=True)
+            binary = base64.b64decode(b64_split_img, validate=True)
         except Exception as e:
             raise ToolError(f"Invalid base64 image payload at index {idx}: {e!s}") from e
 
