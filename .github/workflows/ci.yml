@@ -54,4 +54,4 @@ jobs:
       - name: Test imports
         run: |
           python -c "import axiomatic_mcp"
-          python -c "from axiomatic_mcp.servers.pic import main"
+          python -c "from axiomatic_mcp.servers.pde import main"
