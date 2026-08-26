@@ -141,12 +141,11 @@ axiomatic-mydomain = "axiomatic_mcp.servers.my_domain:main"
 
 #### Publishing a Release
 
-1. Create a new release branch
-1. Update version in `pyproject.toml`
-1. Commit and push changes
-1. Create a pull request titled "Release: YOUR FEATURE(s)". Include detailed description of what's included in the release.
-1. Create a GitHub release with tag `vX.Y.Z`
-1. GitHub Actions automatically publishes to PyPI
+1. On a new release branch, bump the version in `pyproject.toml` and `axiomatic_mcp/__init__.py`, then run `uv lock` to keep `uv.lock` in sync.
+2. Commit the change with a title of `Release X.Y.Z: <summary of what's included>` and a body describing the notable changes since the last release.
+3. Push the branch and open the pull request — you may reuse the commit's title and body.
+4. Once merged, create a GitHub release with tag `vX.Y.Z`.
+5. GitHub Actions automatically publishes the new version to PyPI.
 
 The package is available at: https://pypi.org/project/axiomatic-mcp/
 
