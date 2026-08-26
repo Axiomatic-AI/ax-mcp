@@ -13,6 +13,7 @@ from .kb.server import mcp as kb_mcp
 from .meep.server import mcp as meep_mcp
 from .modelfitter.server import mcp as modelfitter_mcp
 from .paper_search.server import mcp as paper_search_mcp
+from .pde.server import mcp as pde_mcp
 from .plots.server import plots as plots_mcp
 from .tidy3d.server import mcp as tidy3d_mcp
 
@@ -31,6 +32,7 @@ servers: list[ServerConfig] = [
     ServerConfig(domain="plots", name="AxPlotToData", server=plots_mcp),
     ServerConfig(domain="argmin", name="AxArgmin", server=argmin_mcp),
     ServerConfig(domain="modelfitter", name="AxModelFitter", server=modelfitter_mcp),
+    ServerConfig(domain="pde", name="AxPDE", server=pde_mcp),
     ServerConfig(domain="kb", name="AxKnowledgeBase", server=kb_mcp),
     ServerConfig(domain="paper_search", name="AxPaperSearch", server=paper_search_mcp),
     ServerConfig(domain="tidy3d", name="AxTidy3D", server=tidy3d_mcp),

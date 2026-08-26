@@ -19,6 +19,9 @@ class ApiRoutes:
     ARGMIN_EXECUTE = "/numerics/argmin/execute"
     MODEL_FITTER_WRITE_CODE = "/numerics/model-fitter/write-code"
     MODEL_FITTER_EXECUTE = "/numerics/model-fitter/execute"
+    PDE_PARSE = "/numerics/pde/parse"
+    PDE_DERIVE_SOURCE = "/numerics/pde/derive-source"
+    PDE_VERIFY = "/numerics/pde/verify"
     EQUATIONS_DERIVE = "/expressions/derive"
     EQUATIONS_CHECK = "/expressions/check"
     # NOTE: these paths are set by the backend and shared publicly via this repo — do not
