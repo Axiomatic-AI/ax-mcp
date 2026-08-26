@@ -2,7 +2,7 @@
 
 [![Static Badge](https://img.shields.io/badge/Join%20Discord-5865f2?style=flat)](https://discord.gg/KKU97ZR5)
 
-MCP (Model Context Protocol) servers that provide AI assistants with access to the Axiomatic_AI Platform - a suite of advanced tools for scientific computing, document processing, and photonic circuit design.
+MCP (Model Context Protocol) servers that provide AI assistants with access to the Axiomatic_AI Platform - a suite of advanced tools for scientific computing and document processing.
 
 ## 🚀 Quickstart
 
@@ -13,8 +13,6 @@ MCP (Model Context Protocol) servers that provide AI assistants with access to t
 - uv
   - Install [here](https://docs.astral.sh/uv/getting-started/installation/)
   - Recommended not to install in conda (see [Troubleshooting](#troubleshooting))
-- install extra packages (optional)
-  - If you wish to use the AxPhotonicsPreview, you will need to install extra dependencies before continuing. After installing uv, run `uv tool install "axiomatic-mcp[pic]"`.
 
 #### 2. Install your favourite client
 
@@ -26,7 +24,7 @@ MCP (Model Context Protocol) servers that provide AI assistants with access to t
 
 > You will receive an API key by email shortly after filling the form. Check your spam folder if it doesn't arrive.
 
-#### 4. Install Axiomatic Operators (all except AxPhotonicsPreview)
+#### 4. Install Axiomatic Operators
 
 <details>
 <summary><strong>⚡ Claude Code</strong></summary>
@@ -157,7 +155,7 @@ Use this server configuration:
 
 </details>
 
-> **Note:** This installs all tools except for AxPhotonicsPreview under one server. If you experience other issues, try [individual servers](#individual-servers) instead.
+> **Note:** This installs all tools under one server. If you experience other issues, try [individual servers](#individual-servers) instead.
 
 ## Reporting Bugs
 
@@ -240,10 +238,6 @@ Convert PDF documents to markdown with advanced OCR and layout understanding.
 ### 📝 [AxDocumentAnnotator](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/annotations/)
 
 Create intelligent annotations for PDF documents with contextual analysis, equation extraction, and parameter identification.
-
-### 🔬 [AxPhotonicsPreview](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/pic/)
-
-Design photonic integrated circuits using natural language descriptions. Additional requirements are needed, please refer to [Check system requirements](#1-check-system-requirements)
 
 ### 📊 [AxPlotToData](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/plots/)
 
