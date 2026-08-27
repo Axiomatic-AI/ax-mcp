@@ -203,3 +203,46 @@ async def test_knowledge_graph_read_passes_params_through(mcp_client):
         )
 
     spy.assert_called_once_with("MATCH (d {name: $n}) RETURN d.name AS name", {"n": "SiN GC"})
+
+
+@pytest.mark.asyncio
+async def test_knowledge_graph_read_flags_missing_provenance(mcp_client):
+    """Cypher rows only carry what the query returned, so an uncited result set has to say so —
+    otherwise the model presents graph numbers as sourced literature values."""
+    uncited = {"schema_kind": "table", "columns": ["name", "ce_dB"], "rows": [{"name": "SiN GC", "ce_dB": -1.2}], "count": 1}
+    cited = {
+        "schema_kind": "table",
+        "columns": ["name", "paper_id"],
+        "rows": [{"name": "SiN GC", "paper_id": "2301.07041"}],
+        "count": 1,
+    }
+
+    with patch.object(KnowledgeBaseService, "execute_read", return_value=uncited):
+        response = await mcp_client.call_tool("knowledge_graph_read", {"query": "MATCH (n) RETURN n.name AS name"})
+    assert "uncited" in "\n".join(c.text for c in response.content if hasattr(c, "text"))
+
+    with patch.object(KnowledgeBaseService, "execute_read", return_value=cited):
+        response = await mcp_client.call_tool("knowledge_graph_read", {"query": "MATCH (n) RETURN n.name AS name"})
+    assert "uncited" not in "\n".join(c.text for c in response.content if hasattr(c, "text"))
+
+
+@pytest.mark.asyncio
+async def test_knowledge_graph_read_bounds_response_size(mcp_client):
+    """The endpoint's row cap is not a size cap — 500 rows of passage text is megabytes. The
+    table elides long cells and stops at a character budget; the structured result keeps all of it."""
+    long_text = "x" * 5000
+    mock_response = {
+        "schema_kind": "table",
+        "columns": ["paper_id", "text"],
+        "rows": [{"paper_id": f"p{i}", "text": long_text} for i in range(50)],
+        "count": 50,
+    }
+
+    with patch.object(KnowledgeBaseService, "execute_read", return_value=mock_response):
+        response = await mcp_client.call_tool("knowledge_graph_read", {"query": "MATCH (p:Passage) RETURN p.text AS text"})
+
+    text = "\n".join(c.text for c in response.content if hasattr(c, "text"))
+    assert long_text not in text
+    assert "Table stopped after" in text
+    assert len(text) < 15_000
+    assert response.structured_content["rows"][0]["text"] == long_text

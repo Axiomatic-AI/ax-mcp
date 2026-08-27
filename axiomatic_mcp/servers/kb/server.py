@@ -16,16 +16,18 @@ mcp = FastMCP(
     name="AxKnowledgeBase Server",
     instructions="""This server provides access to Axiomatic's curated knowledge base:
     scientific papers, extracted entities (devices, materials, performance metrics), and
-    passages retrieved via semantic search. Every result carries its source (paper id/title),
-    so it should always be used and cited instead of relying on unsourced recollection of "standard
+    passages retrieved via semantic search. Search results carry their source (paper id/title),
+    so they should always be used and cited instead of relying on unsourced recollection of "standard
     results from the literature". Use search_knowledge_base for semantic/citation lookups,
     get_knowledge_base_schema to discover what entity and relationship types are available,
     get_knowledge_base_overview for corpus-level stats, and list_knowledge_base_papers to
     browse the paper corpus directly. Those four answer in prose; knowledge_graph_read is the
     tabular one — a read-only Cypher query returning entity nodes and their properties as rows,
     for when a passage will not do because the answer has to be a table (comparing entities
-    across metrics, plotting, feeding a dataframe). Call get_knowledge_base_schema first to
-    learn the labels and property names to query.
+    across metrics, plotting, feeding a dataframe). Its rows carry only what the query asks
+    for, so every query must also return the source paper it came from; never present graph
+    values as sourced unless their provenance columns are in the result.
+    Call get_knowledge_base_schema first to learn the labels and property names to query.
     """
     + get_feedback_prompt(
         [
@@ -57,22 +59,52 @@ def _format_search_results(response: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+_MAX_CELL_CHARS = 200
+_MAX_TABLE_CHARS = 10_000
+
+
+def _cell(value: Any) -> str:
+    text = str(value)
+    return text if len(text) <= _MAX_CELL_CHARS else text[:_MAX_CELL_CHARS] + "…"
+
+
 def _format_rows(response: dict[str, Any]) -> str:
-    """Render the row envelope as a table. Rows are shown in full — the endpoint already
-    caps them server-side and says so through `truncated`, and a second cap here would
-    drop data silently."""
+    """Render the row envelope as a table, bounded by a character budget.
+
+    The endpoint caps rows server-side and reports that through `truncated`, but a row cap does
+    not bound response size — a query selecting long text properties blows it up well inside the
+    cap. So cells are elided and the table stops at the budget, both of them visibly. Neither
+    touches the structured result, which still carries every row in full."""
     rows = response.get("rows") or []
     if not rows:
         return "Query returned no rows."
 
     columns = response.get("columns") or list(rows[0].keys())
-    widths = [max(len(str(col)), *(len(str(row.get(col, ""))) for row in rows)) for col in columns]
+    cells = [[_cell(row.get(col, "")) for col in columns] for row in rows]
+    widths = [max(len(str(col)), *(len(cell_row[i]) for cell_row in cells)) for i, col in enumerate(columns)]
     lines = [
         " | ".join(str(col).ljust(w) for col, w in zip(columns, widths, strict=False)),
         "-+-".join("-" * w for w in widths),
     ]
-    lines.extend(" | ".join(str(row.get(col, "")).ljust(w) for col, w in zip(columns, widths, strict=False)) for row in rows)
+    budget = _MAX_TABLE_CHARS
+    for cell_row in cells:
+        line = " | ".join(cell.ljust(w) for cell, w in zip(cell_row, widths, strict=False))
+        budget -= len(line) + 1
+        if budget < 0:
+            break
+        lines.append(line)
+    shown = len(lines) - 2
     lines.append(f"\n{response.get('count', len(rows))} row(s).")
+    if shown < len(rows):
+        lines.append(
+            f"Table stopped after {shown} row(s) at the response size budget; the rest are in the "
+            "structured result only. Narrow the query or drop long text properties from the RETURN."
+        )
+    if not any("paper" in str(col).lower() or "doc" in str(col).lower() for col in columns):
+        lines.append(
+            "No provenance column in these rows — they are uncited. Re-run the query joining each "
+            "entity to its source Paper and returning paper_id/title before presenting the values."
+        )
     if response.get("truncated"):
         lines.append("Truncated at the server row limit — narrow the query to see the rest.")
     return "\n".join(lines)
@@ -224,7 +256,19 @@ async def list_knowledge_base_papers(
         "Always alias individual properties in the RETURN clause; never return raw node or "
         "relationship objects (avoid `RETURN n`, write `RETURN n.name AS name`). For "
         "relationship queries, alias the source and target as `from` and `to` so the result "
-        "renders as a graph."
+        "renders as a graph.\n\n"
+        "Rows carry no provenance of their own, so every query must also return the paper each "
+        "row came from. Entity, Statement and Passage nodes all carry `doc_id`, so the source is "
+        "one index seek away — no need to walk the HAS_PASSAGE/HAS_STATEMENT/HAS_ENTITY chain:\n"
+        "  MATCH (e:Entity) WHERE e.name CONTAINS $term\n"
+        "  MATCH (p:Document {id: e.doc_id})\n"
+        "  RETURN e.name AS name, p.id AS paper_id, p.title AS title\n"
+        "Values returned without a paper_id (or doc_id) column are uncited and must not be "
+        "presented as sourced results.\n\n"
+        "The whole result comes back in one response, so keep it small: return only the "
+        "properties you need, add an explicit LIMIT (100 rows is usually plenty), and never "
+        "select an `embedding_*` property or bulk `Passage.text` — long values are elided from "
+        "the table, and the query is cheaper written narrowly than trimmed afterwards."
     ),
     tags=["knowledge-base", "graph", "cypher"],
 )
