@@ -6,6 +6,7 @@ dist/
 .DS_Store
 *.tsbuildinfo
 config.json
+.idea
 
 # Python
 __pycache__/

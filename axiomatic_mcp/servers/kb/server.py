@@ -21,7 +21,11 @@ mcp = FastMCP(
     results from the literature". Use search_knowledge_base for semantic/citation lookups,
     get_knowledge_base_schema to discover what entity and relationship types are available,
     get_knowledge_base_overview for corpus-level stats, and list_knowledge_base_papers to
-    browse the paper corpus directly.
+    browse the paper corpus directly. Those four answer in prose; knowledge_graph_read is the
+    tabular one — a read-only Cypher query returning entity nodes and their properties as rows,
+    for when a passage will not do because the answer has to be a table (comparing entities
+    across metrics, plotting, feeding a dataframe). Call get_knowledge_base_schema first to
+    learn the labels and property names to query.
     """
     + get_feedback_prompt(
         [
@@ -29,6 +33,7 @@ mcp = FastMCP(
             "get_knowledge_base_schema",
             "get_knowledge_base_overview",
             "list_knowledge_base_papers",
+            "knowledge_graph_read",
         ]
     ),
     version="0.0.1",
@@ -49,6 +54,27 @@ def _format_search_results(response: dict[str, Any]) -> str:
         metadata = result.get("metadata") or {}
         source = metadata.get("paper_title") or metadata.get("paper_id") or "unknown source"
         lines.append(f"{i}. [source: {source}, score={result.get('score') or 0:.3f}]\n{result.get('text', '')}\n")
+    return "\n".join(lines)
+
+
+def _format_rows(response: dict[str, Any]) -> str:
+    """Render the row envelope as a table. Rows are shown in full — the endpoint already
+    caps them server-side and says so through `truncated`, and a second cap here would
+    drop data silently."""
+    rows = response.get("rows") or []
+    if not rows:
+        return "Query returned no rows."
+
+    columns = response.get("columns") or list(rows[0].keys())
+    widths = [max(len(str(col)), *(len(str(row.get(col, ""))) for row in rows)) for col in columns]
+    lines = [
+        " | ".join(str(col).ljust(w) for col, w in zip(columns, widths, strict=False)),
+        "-+-".join("-" * w for w in widths),
+    ]
+    lines.extend(" | ".join(str(row.get(col, "")).ljust(w) for col, w in zip(columns, widths, strict=False)) for row in rows)
+    lines.append(f"\n{response.get('count', len(rows))} row(s).")
+    if response.get("truncated"):
+        lines.append("Truncated at the server row limit — narrow the query to see the rest.")
     return "\n".join(lines)
 
 
@@ -183,5 +209,36 @@ async def list_knowledge_base_papers(
 
     return ToolResult(
         content=[TextContent(type="text", text="\n".join(lines))],
+        structured_content=response,
+    )
+
+
+@mcp.tool(
+    name="knowledge_graph_read",
+    description=(
+        "Execute a read-only Cypher query against the knowledge graph and return the rows. "
+        "Use this when the answer has to be a table of entities and their properties — "
+        "comparing devices across metrics, building a dataframe, plotting — rather than the "
+        "prose passages search_knowledge_base returns. Only MATCH/RETURN is permitted. Call "
+        "get_knowledge_base_schema first to learn the available labels and property names.\n\n"
+        "Always alias individual properties in the RETURN clause; never return raw node or "
+        "relationship objects (avoid `RETURN n`, write `RETURN n.name AS name`). For "
+        "relationship queries, alias the source and target as `from` and `to` so the result "
+        "renders as a graph."
+    ),
+    tags=["knowledge-base", "graph", "cypher"],
+)
+async def knowledge_graph_read(
+    query: Annotated[str, "A read-only Cypher MATCH/RETURN query, aliasing specific properties"],
+    params: Annotated[dict[str, Any] | None, "Optional query parameters, for safe value injection"] = None,
+) -> ToolResult:
+    """Read entity nodes and their properties out of the knowledge graph."""
+    try:
+        response = knowledge_base_service.execute_read(query, params)
+    except Exception as e:
+        raise ToolError(f"Failed to read the knowledge graph: {e!s}") from e
+
+    return ToolResult(
+        content=[TextContent(type="text", text=_format_rows(response))],
         structured_content=response,
     )

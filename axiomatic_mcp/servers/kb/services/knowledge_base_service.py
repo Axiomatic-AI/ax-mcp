@@ -46,6 +46,22 @@ class KnowledgeBaseService(SingletonBase):
         with AxiomaticAPIClient() as client:
             return client.get(ApiRoutes.KNOWLEDGE_BASE_OVERVIEW)
 
+    def execute_read(self, query: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+        """
+        Run one read-only Cypher query against the knowledge graph.
+
+        The endpoint enforces read-only, a server-side query timeout and a row cap, and
+        reports the cap through `truncated` rather than by failing.
+
+        Returns:
+            dict with keys: schema_kind, columns, rows, count, truncated
+        """
+        with AxiomaticAPIClient() as client:
+            return client.post(
+                ApiRoutes.KNOWLEDGE_BASE_EXECUTE_READ,
+                data={"query": query, "params": params},
+            )
+
     def list_papers(self, page: int = 1, page_size: int = 20) -> dict[str, Any]:
         """
         List papers ingested into the knowledge base, paginated.
