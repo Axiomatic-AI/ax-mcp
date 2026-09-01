@@ -17,6 +17,7 @@ class ApiRoutes:
     KNOWLEDGE_BASE_GET_SCHEMA = "/neo4j/get-schema"
     KNOWLEDGE_BASE_OVERVIEW = "/neo4j/overview"
     KNOWLEDGE_BASE_LIST_PAPERS = "/neo4j/papers"
+    KNOWLEDGE_BASE_EXECUTE_READ = "/neo4j/execute-read"
     ARXIV_SEARCH_WORKS = "/search/arxiv/works"
     OPENALEX_SEARCH_WORKS = "/search/openalex/works"
     TIDY3D_GENERATE_CODE = "/tidy3d/generate-code"
