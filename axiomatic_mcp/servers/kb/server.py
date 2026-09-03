@@ -1,7 +1,10 @@
-"""AxKnowledgeBase MCP server — semantic search over Axiomatic's curated knowledge base."""
+"""AxKnowledgeBase MCP server — Axiomatic's curated knowledge base, and the caller's private one."""
 
+import asyncio
+from pathlib import Path
 from typing import Annotated, Any
 
+import filetype
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.tools.tool import ToolResult
@@ -14,28 +17,47 @@ from .services.knowledge_base_service import KnowledgeBaseService
 
 mcp = FastMCP(
     name="AxKnowledgeBase Server",
-    instructions="""This server provides access to Axiomatic's curated knowledge base:
-    scientific papers, extracted entities (devices, materials, performance metrics), and
-    passages retrieved via semantic search. Search results carry their source (paper id/title),
-    so they should always be used and cited instead of relying on unsourced recollection of "standard
-    results from the literature". Use search_knowledge_base for semantic/citation lookups,
-    get_knowledge_base_schema to discover what entity and relationship types are available,
-    get_knowledge_base_overview for corpus-level stats, and list_knowledge_base_papers to
-    browse the paper corpus directly. Those four answer in prose; knowledge_graph_read is the
-    tabular one — a read-only Cypher query returning entity nodes and their properties as rows,
-    for when a passage will not do because the answer has to be a table (comparing entities
-    across metrics, plotting, feeding a dataframe). Its rows carry only what the query asks
-    for, so every query must also return the source paper it came from; never present graph
-    values as sourced unless their provenance columns are in the result.
-    Call get_knowledge_base_schema first to learn the labels and property names to query.
+    instructions="""This server provides access to two separate knowledge graphs, and the first
+    thing to get right is which one a question is about.
+
+    The CURATED knowledge base is Axiomatic's own: scientific papers, extracted entities (devices,
+    materials, performance metrics), and passages retrieved via semantic search. It is read-only.
+    Reach it with search_knowledge_base for semantic/citation lookups, get_knowledge_base_overview
+    for what the corpus holds, and knowledge_graph_read when the answer has to be a table.
+
+    The PRIVATE knowledge graph is the caller's organization's own — only the papers it ingested
+    itself. It is the only writable graph. Reach it with search_private_knowledge_base,
+    get_private_knowledge_base_overview and private_knowledge_graph_read, and write to it with
+    ingest_pdf_to_private_knowledge_base. Ingestion takes minutes and returns only when finished;
+    re-sending the same PDF is safe and is reported as already present, so retrying after a timeout
+    is correct. Because it holds the call open that long, it is a good candidate for delegating to a
+    background or sub-agent if you have one, so the wait does not block other work. A paper ingested
+    this way lands ONLY in the private graph — it will never turn up in
+    search_knowledge_base, so do not read its absence there as a failed ingestion. If the account
+    has no private graph these four refuse with a message saying so, and no retry will help.
+
+    get_knowledge_base_schema describes BOTH graphs, since every graph shares one schema. Call it
+    first to learn the labels and property names before writing any Cypher.
+
+    Search results carry their source (paper id/title), so they should always be used and cited
+    instead of relying on unsourced recollection of "standard results from the literature". The two
+    Cypher tools are the tabular ones — use them when a passage will not do because the answer has
+    to be a table (comparing entities across metrics, plotting, feeding a dataframe). Their rows
+    carry only what the query asks for, so every query must also return the source paper it came
+    from; never present graph values as sourced unless their provenance columns are in the result.
+    Cypher is also how you browse a corpus paper by paper, e.g.
+    MATCH (p:Document) RETURN p.id AS paper_id, p.title AS title ORDER BY p.title LIMIT 50.
     """
     + get_feedback_prompt(
         [
             "search_knowledge_base",
             "get_knowledge_base_schema",
             "get_knowledge_base_overview",
-            "list_knowledge_base_papers",
             "knowledge_graph_read",
+            "ingest_pdf_to_private_knowledge_base",
+            "search_private_knowledge_base",
+            "get_private_knowledge_base_overview",
+            "private_knowledge_graph_read",
         ]
     ),
     version="0.0.1",
@@ -169,12 +191,27 @@ async def get_knowledge_base_schema() -> ToolResult:
     )
 
 
+def _format_overview(response: dict[str, Any]) -> str:
+    """Render node counts per label."""
+    items = response.get("items") or []
+    total = response.get("total", 0)
+    if not items:
+        return f"The graph holds no labelled nodes ({total} node(s) total)."
+
+    width = max(len(str(item.get("label", ""))) for item in items)
+    lines = [f"{total} node(s) total, by label ({len(items)} label(s), largest first):"]
+    lines += [f"  {str(item.get('label', '')).ljust(width)}  {item.get('count', 0)}" for item in items]
+    lines.append("A node with several labels is counted once per label, so these counts do not sum to the total.")
+    return "\n".join(lines)
+
+
 @mcp.tool(
     name="get_knowledge_base_overview",
     description=(
-        "Retrieve corpus-level statistics for the knowledge base: total papers, total "
-        "extracted key metrics, and the most common devices and materials. Useful for "
-        "answering 'what's in the knowledge base' or getting oriented before searching."
+        "Retrieve corpus-level statistics for Axiomatic's curated knowledge base: the total node "
+        "count and the breakdown by entity label, largest first. Useful for answering \"what's in "
+        'the knowledge base" or getting oriented before searching. This describes the curated '
+        "corpus only — for the organization's private graph use get_private_knowledge_base_overview."
     ),
     tags=["knowledge-base", "overview"],
 )
@@ -185,62 +222,8 @@ async def get_knowledge_base_overview() -> ToolResult:
     except Exception as e:
         raise ToolError(f"Failed to retrieve knowledge base overview: {e!s}") from e
 
-    devices = response.get("devices") or []
-    materials = response.get("materials") or []
-    lines = [
-        f"Total papers: {response.get('total_papers', 0)}",
-        f"Total extracted key metrics: {response.get('total_key_metrics', 0)}",
-        "",
-        f"Top devices ({len(devices)}):",
-        *(f"  - {d.get('name')}: {d.get('count')}" for d in devices[:10]),
-        "",
-        f"Top materials ({len(materials)}):",
-        *(f"  - {m.get('name')}: {m.get('count')}" for m in materials[:10]),
-    ]
-
     return ToolResult(
-        content=[TextContent(type="text", text="\n".join(lines))],
-        structured_content=response,
-    )
-
-
-@mcp.tool(
-    name="list_knowledge_base_papers",
-    description=(
-        "Browse papers ingested into the knowledge base, paginated. Returns each paper's "
-        "id, title, authors, and how many extracted key metrics reference it. Use this to "
-        "enumerate the corpus directly instead of semantic search, e.g. when the user asks "
-        "'what papers do you have' or wants to page through the full list."
-    ),
-    tags=["knowledge-base", "papers", "browse"],
-)
-async def list_knowledge_base_papers(
-    page: Annotated[int, "Page number, starting at 1"] = 1,
-    page_size: Annotated[int, "Number of papers per page (1-100)"] = 20,
-) -> ToolResult:
-    """List papers in the knowledge base."""
-    try:
-        response = knowledge_base_service.list_papers(page, page_size)
-    except Exception as e:
-        raise ToolError(f"Failed to list knowledge base papers: {e!s}") from e
-
-    items = response.get("items") or []
-    if not items:
-        return ToolResult(
-            content=[TextContent(type="text", text=f"No papers found on page {page}.")],
-            structured_content=response,
-        )
-
-    lines = [f"Page {response.get('page', page)} of {response.get('total_pages', 1)} ({response.get('total', 0)} papers total):\n"]
-    for item in items:
-        authors = ", ".join(item.get("authors") or []) or "unknown authors"
-        lines.append(
-            f"- {item.get('title', 'untitled')} ({item.get('paper_id', 'unknown id')}) "
-            f"— {authors} — {item.get('keyMetricCount', 0)} key metric(s)"
-        )
-
-    return ToolResult(
-        content=[TextContent(type="text", text="\n".join(lines))],
+        content=[TextContent(type="text", text=_format_overview(response))],
         structured_content=response,
     )
 
@@ -281,6 +264,159 @@ async def knowledge_graph_read(
         response = knowledge_base_service.execute_read(query, params)
     except Exception as e:
         raise ToolError(f"Failed to read the knowledge graph: {e!s}") from e
+
+    return ToolResult(
+        content=[TextContent(type="text", text=_format_rows(response))],
+        structured_content=response,
+    )
+
+
+# --- Private graph ----------------------------------------------------------------------------
+
+_PDF_CONTENT_TYPE = "application/pdf"
+
+
+def _format_ingest(response: dict[str, Any]) -> str:
+    paper_id = response.get("paper_id") or "unknown id"
+    title = response.get("title") or "untitled"
+
+    if response.get("already_present"):
+        return (
+            f"{title!r} ({paper_id}) was already in the private knowledge graph. Nothing was ingested and "
+            "nothing was extracted, so the zero counts are the expected result here rather than a failed "
+            "extraction — the paper is already queryable."
+        )
+
+    lines = [
+        f"Ingested {title!r} into the private knowledge graph as {paper_id}.",
+        f"  passages:   {response.get('passages', 0)}",
+        f"  entities:   {response.get('entities', 0)}",
+        f"  statements: {response.get('statements', 0)}",
+    ]
+    if not response.get("pdf_stored"):
+        lines.append(
+            "The source PDF did not finish uploading, so it cannot be downloaded again. The paper itself is "
+            "queryable; sending the same file again completes the upload."
+        )
+    lines.append("Verify with search_private_knowledge_base — an ingested paper never appears in search_knowledge_base.")
+    return "\n".join(lines)
+
+
+@mcp.tool(
+    name="ingest_pdf_to_private_knowledge_base",
+    description=(
+        "Ingest one local PDF into the organization's private knowledge graph. The PDF is converted to "
+        "markdown, its statements and entities are extracted, and the source PDF is stored. This is the only "
+        "tool that writes to a knowledge graph, and the private graph is the only graph it writes to — an "
+        "ingested paper is reachable through search_private_knowledge_base and private_knowledge_graph_read, "
+        "and never through search_knowledge_base.\n\n"
+        "Synchronous and slow: it returns when ingestion has finished, which takes minutes for a full paper. "
+        "Re-sending the same PDF is safe — it is reported as already present rather than ingested twice — so "
+        "on a timeout or an unclear failure, retrying is the correct move."
+    ),
+    tags=["knowledge-base", "private", "ingest", "write"],
+)
+async def ingest_pdf_to_private_knowledge_base(
+    file_path: Annotated[Path, "The absolute path to the PDF file to ingest"],
+    title: Annotated[str, "Leave empty to use the PDF's first heading."] = "",
+    paper_id: Annotated[str, "Leave empty to derive it from a hash of the converted markdown."] = "",
+) -> ToolResult:
+    """Ingest one PDF into the organization's private knowledge graph."""
+    path = Path(file_path)
+    if not path.is_file():
+        raise ToolError(f"No such PDF file: {path}")
+
+    pdf_bytes = await asyncio.to_thread(path.read_bytes)
+    if not pdf_bytes:
+        raise ToolError(f"The file is empty: {path}")
+    guessed = filetype.guess(pdf_bytes)
+    if guessed is None or guessed.mime != _PDF_CONTENT_TYPE:
+        found = guessed.mime if guessed else "an unrecognized type"
+        raise ToolError(f"Only PDFs can be ingested, but {path.name} is {found}.")
+
+    try:
+        # Choose to pass by `asyncio.to_thread` just for the ingest
+        response = await asyncio.to_thread(knowledge_base_service.private_ingest, path.name, pdf_bytes, title, paper_id)
+    except Exception as e:
+        raise ToolError(f"Failed to ingest the PDF: {e!s}") from e
+
+    return ToolResult(
+        content=[TextContent(type="text", text=_format_ingest(response))],
+        structured_content=response,
+    )
+
+
+@mcp.tool(
+    name="search_private_knowledge_base",
+    description=(
+        "Semantic search over the organization's private knowledge base — the papers it has ingested "
+        "itself, not Axiomatic's curated corpus. Returns the most similar passages, each with its source "
+        "paper, so results can be cited. Use this to find anything ingested with "
+        "ingest_pdf_to_private_knowledge_base; use search_knowledge_base for the curated corpus."
+    ),
+    tags=["knowledge-base", "private", "search", "citations"],
+)
+async def search_private_knowledge_base(
+    query: Annotated[str, "Natural language question or topic to search for"],
+    limit: Annotated[int, "Maximum number of passages to return (1-50)"] = 5,
+) -> ToolResult:
+    """Semantic search over the private knowledge base."""
+    try:
+        response = knowledge_base_service.private_search(query, limit)
+    except Exception as e:
+        raise ToolError(f"Failed to search the private knowledge base: {e!s}") from e
+
+    return ToolResult(
+        content=[TextContent(type="text", text=_format_search_results(response))],
+        structured_content=response,
+    )
+
+
+@mcp.tool(
+    name="get_private_knowledge_base_overview",
+    description=(
+        "Node counts per entity label in the organization's private knowledge graph, largest first, "
+        "with the graph's total node count. Use it to see what the private graph holds — including "
+        "whether it holds anything at all — before searching or querying it."
+    ),
+    tags=["knowledge-base", "private", "overview"],
+)
+async def get_private_knowledge_base_overview() -> ToolResult:
+    """Node counts per label in the private knowledge graph."""
+    try:
+        response = knowledge_base_service.private_overview()
+    except Exception as e:
+        raise ToolError(f"Failed to retrieve the private knowledge base overview: {e!s}") from e
+
+    return ToolResult(
+        content=[TextContent(type="text", text=_format_overview(response))],
+        structured_content=response,
+    )
+
+
+@mcp.tool(
+    name="private_knowledge_graph_read",
+    description=(
+        "Execute a read-only Cypher query against the organization's private knowledge graph and return "
+        "the rows. The private counterpart of knowledge_graph_read: same query rules, same result shape, "
+        "different graph. Only MATCH/RETURN is permitted.\n\n"
+        "get_knowledge_base_schema describes this graph too — every graph shares one schema — so call it "
+        "first for the labels and property names, and follow the same rules knowledge_graph_read states: "
+        "alias individual properties (`RETURN e.name AS name`, never a bare `RETURN e`), return the source "
+        "paper on every query so the rows are citable, keep an explicit LIMIT on it, and never select an "
+        "`embedding_*` property or bulk `Passage.text`."
+    ),
+    tags=["knowledge-base", "private", "graph", "cypher"],
+)
+async def private_knowledge_graph_read(
+    query: Annotated[str, "A read-only Cypher MATCH/RETURN query, aliasing specific properties"],
+    params: Annotated[dict[str, Any] | None, "Optional query parameters, for safe value injection"] = None,
+) -> ToolResult:
+    """Read entity nodes and their properties out of the private knowledge graph."""
+    try:
+        response = knowledge_base_service.private_execute_read(query, params)
+    except Exception as e:
+        raise ToolError(f"Failed to read the private knowledge graph: {e!s}") from e
 
     return ToolResult(
         content=[TextContent(type="text", text=_format_rows(response))],

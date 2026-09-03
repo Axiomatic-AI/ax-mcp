@@ -62,16 +62,57 @@ class KnowledgeBaseService(SingletonBase):
                 data={"query": query, "params": params},
             )
 
-    def list_papers(self, page: int = 1, page_size: int = 20) -> dict[str, Any]:
+    def private_search(self, query: str, limit: int = 5) -> dict[str, Any]:
         """
-        List papers ingested into the knowledge base, paginated.
+        Semantic search over the organization's private knowledge base.
+
+        Same response shape as `search`, so the same formatter renders it.
 
         Returns:
-            dict with keys: items (list of {paper_id, title, authors, keyMetricCount}),
-            total, page, page_size, total_pages
+            dict with keys: query, results (list of {text, score, metadata}), count
         """
         with AxiomaticAPIClient() as client:
-            return client.get(
-                ApiRoutes.KNOWLEDGE_BASE_LIST_PAPERS,
-                params={"page": page, "page_size": page_size},
+            return client.post(
+                ApiRoutes.KNOWLEDGE_BASE_PRIVATE_SEARCH,
+                data={"query": query, "limit": limit},
+            )
+
+    def private_overview(self) -> dict[str, Any]:
+        """
+        Node counts per label in the organization's private knowledge graph.
+
+        Returns:
+            dict with keys: items (list of {label, count}, largest first), total
+        """
+        with AxiomaticAPIClient() as client:
+            return client.get(ApiRoutes.KNOWLEDGE_BASE_PRIVATE_OVERVIEW)
+
+    def private_execute_read(self, query: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+        """
+        Run one read-only Cypher query against the organization's private knowledge graph.
+
+        Same guarantees and response shape as `execute_read`.
+
+        Returns:
+            dict with keys: schema_kind, columns, rows, count, truncated
+        """
+        with AxiomaticAPIClient() as client:
+            return client.post(
+                ApiRoutes.KNOWLEDGE_BASE_PRIVATE_EXECUTE_READ,
+                data={"query": query, "params": params},
+            )
+
+    def private_ingest(self, file_name: str, pdf_bytes: bytes, title: str = "", paper_id: str = "") -> dict[str, Any]:
+        """
+        Ingest one PDF into the organization's private knowledge graph.
+
+        Returns:
+            dict with keys: paper_id, title, already_present, pdf_stored, passages, entities,
+            statements
+        """
+        with AxiomaticAPIClient() as client:
+            return client.post(
+                ApiRoutes.KNOWLEDGE_BASE_PRIVATE_INGEST,
+                files={"file": (file_name, pdf_bytes, "application/pdf")},
+                data={"title": title, "paper_id": paper_id},
             )
