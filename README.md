@@ -257,7 +257,7 @@ Numerical optimization, rootfinding, ODE simulation, and optimal control. Descri
 
 ### 📚 [AxKnowledgeBase](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/kb/)
 
-Semantic search over Axiomatic's curated Knowledge Base — scientific papers, entities, and passages, always returned with their source for citation.
+Semantic search over Axiomatic's curated Knowledge Base — scientific papers, entities, and passages, always returned with their source for citation. Also exposes your organization's own private knowledge graph: ingest a PDF into it, then search and query it with the same tools. Both graphs answer read-only Cypher for when the answer has to be a table.
 
 ### 🔎 [AxPaperSearch](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/paper_search/)
 
