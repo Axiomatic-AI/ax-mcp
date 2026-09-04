@@ -38,7 +38,12 @@ class ArgminService(SingletonBase):
             code: Python code to execute. Must call export(name, value).
 
         Returns:
-            dict with keys: success, result, error, stdout, execution_time
+            dict with keys: success, result, error, stdout, execution_time, verification.
+
+            `success` reports only that the code ran. `verification` carries the certificate and
+            diagnosis of every exported solver result, and is None when no export carried one --
+            the shape is documented in the execute_code tool description and in INSTRUCTIONS
+            in ../server.py.
         """
         with AxiomaticAPIClient() as client:
             return client.post(
