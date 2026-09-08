@@ -282,21 +282,15 @@ def _format_ingest(response: dict[str, Any]) -> str:
 
     if response.get("already_present"):
         return (
-            f"{title!r} ({paper_id}) was already in the private knowledge graph. Nothing was ingested and "
-            "nothing was extracted, so the zero counts are the expected result here rather than a failed "
-            "extraction — the paper is already queryable."
+            f"{title!r} ({paper_id}) was already in the private knowledge graph. Nothing was re-ingested — "
+            "the paper is already queryable."
         )
 
-    lines = [
-        f"Ingested {title!r} into the private knowledge graph as {paper_id}.",
-        f"  passages:   {response.get('passages', 0)}",
-        f"  entities:   {response.get('entities', 0)}",
-        f"  statements: {response.get('statements', 0)}",
-    ]
-    if not response.get("pdf_stored"):
+    lines = [f"Ingested {title!r} into the private knowledge graph as {paper_id}."]
+    if not response.get("pdf_and_figures_stored"):
         lines.append(
-            "The source PDF did not finish uploading, so it cannot be downloaded again. The paper itself is "
-            "queryable; sending the same file again completes the upload."
+            "The source PDF and/or its figures did not finish uploading, so they cannot be downloaded again. "
+            "The paper itself is queryable; sending the same file again completes the upload."
         )
     lines.append("Verify with search_private_knowledge_base — an ingested paper never appears in search_knowledge_base.")
     return "\n".join(lines)
@@ -305,9 +299,9 @@ def _format_ingest(response: dict[str, Any]) -> str:
 @mcp.tool(
     name="ingest_pdf_to_private_knowledge_base",
     description=(
-        "Ingest one local PDF into the organization's private knowledge graph. The PDF is converted to "
-        "markdown, its statements and entities are extracted, and the source PDF is stored. This is the only "
-        "tool that writes to a knowledge graph, and the private graph is the only graph it writes to — an "
+        "Ingest one local PDF into the organization's private knowledge graph. The PDF is parsed into "
+        "passages, figures, tables and references, and the source PDF is stored. This is the only tool "
+        "that writes to a knowledge graph, and the private graph is the only graph it writes to — an "
         "ingested paper is reachable through search_private_knowledge_base and private_knowledge_graph_read, "
         "and never through search_knowledge_base.\n\n"
         "Synchronous and slow: it returns when ingestion has finished, which takes minutes for a full paper. "
@@ -318,8 +312,7 @@ def _format_ingest(response: dict[str, Any]) -> str:
 )
 async def ingest_pdf_to_private_knowledge_base(
     file_path: Annotated[Path, "The absolute path to the PDF file to ingest"],
-    title: Annotated[str, "Leave empty to use the PDF's first heading."] = "",
-    paper_id: Annotated[str, "Leave empty to derive it from a hash of the converted markdown."] = "",
+    doi: Annotated[str, "The paper's DOI, if known. Leave empty if unknown."] = "",
 ) -> ToolResult:
     """Ingest one PDF into the organization's private knowledge graph."""
     path = Path(file_path)
@@ -336,7 +329,7 @@ async def ingest_pdf_to_private_knowledge_base(
 
     try:
         # Choose to pass by `asyncio.to_thread` just for the ingest
-        response = await asyncio.to_thread(knowledge_base_service.private_ingest, path.name, pdf_bytes, title, paper_id)
+        response = await asyncio.to_thread(knowledge_base_service.private_ingest, path.name, pdf_bytes, doi)
     except Exception as e:
         raise ToolError(f"Failed to ingest the PDF: {e!s}") from e
 
@@ -352,17 +345,21 @@ async def ingest_pdf_to_private_knowledge_base(
         "Semantic search over the organization's private knowledge base — the papers it has ingested "
         "itself, not Axiomatic's curated corpus. Returns the most similar passages, each with its source "
         "paper, so results can be cited. Use this to find anything ingested with "
-        "ingest_pdf_to_private_knowledge_base; use search_knowledge_base for the curated corpus."
+        "ingest_pdf_to_private_knowledge_base; use search_knowledge_base for the curated corpus.\n\n"
+        "By default this searches every paper in the organization's private graph, regardless of who "
+        "ingested it. Set self_only=True to restrict results to only the papers the caller personally "
+        "ingested."
     ),
     tags=["knowledge-base", "private", "search", "citations"],
 )
 async def search_private_knowledge_base(
     query: Annotated[str, "Natural language question or topic to search for"],
     limit: Annotated[int, "Maximum number of passages to return (1-50)"] = 5,
+    self_only: Annotated[bool, "Restrict results to only papers the caller personally ingested"] = False,
 ) -> ToolResult:
     """Semantic search over the private knowledge base."""
     try:
-        response = knowledge_base_service.private_search(query, limit)
+        response = knowledge_base_service.private_search(query, limit, self_only)
     except Exception as e:
         raise ToolError(f"Failed to search the private knowledge base: {e!s}") from e
 
@@ -377,14 +374,19 @@ async def search_private_knowledge_base(
     description=(
         "Node counts per entity label in the organization's private knowledge graph, largest first, "
         "with the graph's total node count. Use it to see what the private graph holds — including "
-        "whether it holds anything at all — before searching or querying it."
+        "whether it holds anything at all — before searching or querying it.\n\n"
+        "By default this counts every paper in the organization's private graph, regardless of who "
+        "ingested it. Set self_only=True to restrict the counts to only the papers the caller "
+        "personally ingested."
     ),
     tags=["knowledge-base", "private", "overview"],
 )
-async def get_private_knowledge_base_overview() -> ToolResult:
+async def get_private_knowledge_base_overview(
+    self_only: Annotated[bool, "Restrict counts to only papers the caller personally ingested"] = False,
+) -> ToolResult:
     """Node counts per label in the private knowledge graph."""
     try:
-        response = knowledge_base_service.private_overview()
+        response = knowledge_base_service.private_overview(self_only)
     except Exception as e:
         raise ToolError(f"Failed to retrieve the private knowledge base overview: {e!s}") from e
 
