@@ -27,14 +27,19 @@ mcp = FastMCP(
 
     The PRIVATE knowledge graph is the caller's organization's own — only the papers it ingested
     itself. It is the only writable graph. Reach it with search_private_knowledge_base,
-    get_private_knowledge_base_overview and private_knowledge_graph_read, and write to it with
-    ingest_pdf_to_private_knowledge_base. Ingestion takes minutes and returns only when finished;
-    re-sending the same PDF is safe and is reported as already present, so retrying after a timeout
-    is correct. Because it holds the call open that long, it is a good candidate for delegating to a
-    background or sub-agent if you have one, so the wait does not block other work. A paper ingested
-    this way lands ONLY in the private graph — it will never turn up in
-    search_knowledge_base, so do not read its absence there as a failed ingestion. If the account
-    has no private graph these four refuse with a message saying so, and no retry will help.
+    get_private_knowledge_base_overview, list_private_knowledge_base_papers and
+    private_knowledge_graph_read, and write to it with ingest_pdf_to_private_knowledge_base.
+    Ingestion takes minutes and returns only when finished; re-sending the same PDF is safe and is
+    reported as already present, so retrying after a timeout is correct. Because it holds the call
+    open that long, it is a good candidate for delegating to a background or sub-agent if you have
+    one, so the wait does not block other work. A paper ingested this way lands ONLY in the
+    private graph — it will never turn up in search_knowledge_base, so do not read its absence
+    there as a failed ingestion. If the account has no private graph these five refuse with a
+    message saying so, and no retry will help.
+
+    search_private_knowledge_base, get_private_knowledge_base_overview and
+    list_private_knowledge_base_papers each take an optional self_only flag: off by default
+    (everyone's papers), set it to restrict to only the papers the caller personally ingested.
 
     get_knowledge_base_schema describes BOTH graphs, since every graph shares one schema. Call it
     first to learn the labels and property names before writing any Cypher.
@@ -57,6 +62,7 @@ mcp = FastMCP(
             "ingest_pdf_to_private_knowledge_base",
             "search_private_knowledge_base",
             "get_private_knowledge_base_overview",
+            "list_private_knowledge_base_papers",
             "private_knowledge_graph_read",
         ]
     ),
@@ -392,6 +398,56 @@ async def get_private_knowledge_base_overview(
 
     return ToolResult(
         content=[TextContent(type="text", text=_format_overview(response))],
+        structured_content=response,
+    )
+
+
+def _format_papers(response: dict[str, Any]) -> str:
+    items = response.get("items") or []
+    total = response.get("total", len(items))
+    if not items:
+        return "The private knowledge graph holds no papers."
+
+    lines = [
+        f"{total} paper(s) total, page {response.get('page', 1)} of "
+        f"{response.get('total_pages', 1)} (page size {response.get('page_size', len(items))}), "
+        "most recently ingested first:"
+    ]
+    for item in items:
+        lines.append(
+            f"  - {item.get('title') or 'untitled'}, ingested {item.get('ingestion_date') or 'unknown date'}"
+        )
+    if response.get("page", 1) < response.get("total_pages", 1):
+        lines.append("More papers exist — call again with a higher page to see the rest.")
+    return "\n".join(lines)
+
+
+@mcp.tool(
+    name="list_private_knowledge_base_papers",
+    description=(
+        "List the papers in the organization's private knowledge graph: title and ingestion "
+        "date, most recent first. Use it to see what has been ingested without running a search "
+        "or a Cypher query.\n\n"
+        "By default this lists every paper in the organization's private graph, regardless of "
+        "who ingested it. Set self_only=True to restrict the list to only the papers the caller "
+        "personally ingested. Results are paginated; check total_pages in the structured result "
+        "and increase page to see more."
+    ),
+    tags=["knowledge-base", "private", "papers"],
+)
+async def list_private_knowledge_base_papers(
+    self_only: Annotated[bool, "Restrict to papers the caller personally ingested"] = False,
+    page: Annotated[int, "Page number, starting at 1"] = 1,
+    page_size: Annotated[int, "Papers per page (1-100)"] = 20,
+) -> ToolResult:
+    """List the papers in the private knowledge graph."""
+    try:
+        response = knowledge_base_service.private_papers(self_only, page, page_size)
+    except Exception as e:
+        raise ToolError(f"Failed to list the private knowledge base papers: {e!s}") from e
+
+    return ToolResult(
+        content=[TextContent(type="text", text=_format_papers(response))],
         structured_content=response,
     )
 

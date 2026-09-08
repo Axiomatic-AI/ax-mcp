@@ -19,6 +19,7 @@ class ApiRoutes:
     KNOWLEDGE_BASE_EXECUTE_READ = "/neo4j/execute-read"
     KNOWLEDGE_BASE_PRIVATE_SEARCH = "/neo4j/private/search"
     KNOWLEDGE_BASE_PRIVATE_OVERVIEW = "/neo4j/private/overview"
+    KNOWLEDGE_BASE_PRIVATE_PAPERS = "/neo4j/private/papers"
     KNOWLEDGE_BASE_PRIVATE_EXECUTE_READ = "/neo4j/private/execute-read"
     KNOWLEDGE_BASE_PRIVATE_INGEST = "/neo4j/private/ingest"
     ARXIV_SEARCH_WORKS = "/search/arxiv/works"

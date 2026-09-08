@@ -48,6 +48,7 @@ async def test_list_tools(mcp_client):
         "ingest_pdf_to_private_knowledge_base",
         "search_private_knowledge_base",
         "get_private_knowledge_base_overview",
+        "list_private_knowledge_base_papers",
         "private_knowledge_graph_read",
     } <= tool_names
 
@@ -242,65 +243,55 @@ async def test_knowledge_graph_read_bounds_response_size(mcp_client):
 
 
 @pytest.mark.asyncio
-async def test_ingest_reports_what_was_extracted(mcp_client, tmp_path):
+async def test_ingest_reports_the_outcome(mcp_client, tmp_path):
     path = _pdf(tmp_path)
     mock_response = {
         "paper_id": "hash-abc",
         "title": "Low-loss ring resonators",
         "already_present": False,
-        "pdf_stored": True,
-        "passages": 42,
-        "entities": 17,
-        "statements": 23,
+        "pdf_and_figures_stored": True,
     }
 
     with patch.object(KnowledgeBaseService, "private_ingest", return_value=mock_response) as spy:
         response = await mcp_client.call_tool("ingest_pdf_to_private_knowledge_base", {"file_path": str(path)})
 
-    spy.assert_called_once_with("paper.pdf", PDF_BYTES, "", "")
+    spy.assert_called_once_with("paper.pdf", PDF_BYTES, "")
     text = _texts(response)
     assert "hash-abc" in text and "Low-loss ring resonators" in text
-    assert "42" in text and "17" in text and "23" in text
     # The paper is only in the private graph, so the model must be pointed at the right search tool.
     assert "search_private_knowledge_base" in text
     assert response.structured_content == mock_response
 
 
 @pytest.mark.asyncio
-async def test_ingest_passes_title_and_paper_id_through(mcp_client, tmp_path):
+async def test_ingest_passes_doi_through(mcp_client, tmp_path):
     path = _pdf(tmp_path)
     mock_response = {
         "paper_id": "mine-1",
         "title": "Mine",
         "already_present": False,
-        "pdf_stored": True,
-        "passages": 1,
-        "entities": 1,
-        "statements": 1,
+        "pdf_and_figures_stored": True,
     }
 
     with patch.object(KnowledgeBaseService, "private_ingest", return_value=mock_response) as spy:
         await mcp_client.call_tool(
             "ingest_pdf_to_private_knowledge_base",
-            {"file_path": str(path), "title": "Mine", "paper_id": "mine-1"},
+            {"file_path": str(path), "doi": "10.1234/example"},
         )
 
-    spy.assert_called_once_with("paper.pdf", PDF_BYTES, "Mine", "mine-1")
+    spy.assert_called_once_with("paper.pdf", PDF_BYTES, "10.1234/example")
 
 
 @pytest.mark.asyncio
 async def test_ingest_explains_an_already_present_paper(mcp_client, tmp_path):
-    """Every count is zero when the paper was already there. Rendered bare, that reads as an
-    extraction that found nothing, and the model retries or reports failure."""
+    """Rendered bare, 'already present' could read as an extraction that found nothing, so the
+    formatter has to say explicitly that nothing was re-ingested."""
     path = _pdf(tmp_path)
     mock_response = {
         "paper_id": "hash-abc",
         "title": "Low-loss ring resonators",
         "already_present": True,
-        "pdf_stored": True,
-        "passages": 0,
-        "entities": 0,
-        "statements": 0,
+        "pdf_and_figures_stored": True,
     }
 
     with patch.object(KnowledgeBaseService, "private_ingest", return_value=mock_response):
@@ -308,22 +299,19 @@ async def test_ingest_explains_an_already_present_paper(mcp_client, tmp_path):
 
     text = _texts(response)
     assert "already" in text.lower()
-    assert "expected" in text.lower()
+    assert "nothing was re-ingested" in text.lower()
 
 
 @pytest.mark.asyncio
 async def test_ingest_warns_when_the_source_pdf_was_not_stored(mcp_client, tmp_path):
-    """pdf_stored false is silently lossy: the paper is queryable but the PDF cannot be fetched
-    again, and re-sending is what completes it."""
+    """pdf_and_figures_stored false is silently lossy: the paper is queryable but the PDF cannot
+    be fetched again, and re-sending is what completes it."""
     path = _pdf(tmp_path)
     mock_response = {
         "paper_id": "hash-abc",
         "title": "Partly there",
         "already_present": False,
-        "pdf_stored": False,
-        "passages": 10,
-        "entities": 2,
-        "statements": 3,
+        "pdf_and_figures_stored": False,
     }
 
     with patch.object(KnowledgeBaseService, "private_ingest", return_value=mock_response):
@@ -424,10 +412,30 @@ async def test_private_search_reuses_the_citation_formatter(mcp_client):
     with patch.object(KnowledgeBaseService, "private_search", return_value=mock_response) as spy:
         response = await mcp_client.call_tool("search_private_knowledge_base", {"query": "our ring resonator", "limit": 3})
 
-    spy.assert_called_once_with("our ring resonator", 3)
+    spy.assert_called_once_with("our ring resonator", 3, False)
     text = _texts(response)
     assert "Internal report" in text and "0.910" in text
     assert response.structured_content == mock_response
+
+
+@pytest.mark.asyncio
+async def test_private_search_self_only_is_off_by_default(mcp_client):
+    mock_response = {"query": "q", "results": [], "count": 0}
+
+    with patch.object(KnowledgeBaseService, "private_search", return_value=mock_response) as spy:
+        await mcp_client.call_tool("search_private_knowledge_base", {"query": "q"})
+
+    spy.assert_called_once_with("q", 5, False)
+
+
+@pytest.mark.asyncio
+async def test_private_search_passes_self_only_through(mcp_client):
+    mock_response = {"query": "q", "results": [], "count": 0}
+
+    with patch.object(KnowledgeBaseService, "private_search", return_value=mock_response) as spy:
+        await mcp_client.call_tool("search_private_knowledge_base", {"query": "q", "self_only": True})
+
+    spy.assert_called_once_with("q", 5, True)
 
 
 @pytest.mark.asyncio
@@ -461,9 +469,17 @@ async def test_private_overview_renders_label_counts(mcp_client):
     with patch.object(KnowledgeBaseService, "private_overview", return_value=mock_response) as spy:
         response = await mcp_client.call_tool("get_private_knowledge_base_overview", {})
 
-    spy.assert_called_once_with()
+    spy.assert_called_once_with(False)
     text = _texts(response)
     assert "Document" in text and "3" in text and "812" in text
+
+
+@pytest.mark.asyncio
+async def test_private_overview_passes_self_only_through(mcp_client):
+    with patch.object(KnowledgeBaseService, "private_overview", return_value={"items": [], "total": 0}) as spy:
+        await mcp_client.call_tool("get_private_knowledge_base_overview", {"self_only": True})
+
+    spy.assert_called_once_with(True)
 
 
 @pytest.mark.asyncio
@@ -475,10 +491,87 @@ async def test_private_overview_on_an_empty_graph(mcp_client):
     assert "no labelled nodes" in _texts(response)
 
 
+# ── private graph: papers ────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_list_papers_renders_title_and_ingestion_date(mcp_client):
+    mock_response = {
+        "items": [
+            {"title": "Low-loss ring resonators", "ingestion_date": "2026-01-02T00:00:00Z"},
+            {"title": "Another paper", "ingestion_date": "2026-01-01T00:00:00Z"},
+        ],
+        "total": 2,
+        "page": 1,
+        "page_size": 20,
+        "total_pages": 1,
+    }
+
+    with patch.object(KnowledgeBaseService, "private_papers", return_value=mock_response) as spy:
+        response = await mcp_client.call_tool("list_private_knowledge_base_papers", {})
+
+    spy.assert_called_once_with(False, 1, 20)
+    text = _texts(response)
+    assert "Low-loss ring resonators" in text and "2026-01-02T00:00:00Z" in text
+    assert "Another paper" in text
+    # `paper_id` was dropped from the response on purpose -- must not leak back in via the id.
+    assert "paper_id" not in text
+    assert response.structured_content == mock_response
+
+
+@pytest.mark.asyncio
+async def test_list_papers_passes_self_only_and_pagination_through(mcp_client):
+    mock_response = {"items": [], "total": 0, "page": 2, "page_size": 5, "total_pages": 0}
+
+    with patch.object(KnowledgeBaseService, "private_papers", return_value=mock_response) as spy:
+        await mcp_client.call_tool(
+            "list_private_knowledge_base_papers",
+            {"self_only": True, "page": 2, "page_size": 5},
+        )
+
+    spy.assert_called_once_with(True, 2, 5)
+
+
+@pytest.mark.asyncio
+async def test_list_papers_on_an_empty_graph(mcp_client):
+    mock_response = {"items": [], "total": 0, "page": 1, "page_size": 20, "total_pages": 0}
+
+    with patch.object(KnowledgeBaseService, "private_papers", return_value=mock_response):
+        response = await mcp_client.call_tool("list_private_knowledge_base_papers", {})
+
+    assert "holds no papers" in _texts(response)
+
+
+@pytest.mark.asyncio
+async def test_list_papers_points_to_the_next_page_when_more_exist(mcp_client):
+    mock_response = {
+        "items": [{"title": "P1", "ingestion_date": "2026-01-01T00:00:00Z"}],
+        "total": 21,
+        "page": 1,
+        "page_size": 20,
+        "total_pages": 2,
+    }
+
+    with patch.object(KnowledgeBaseService, "private_papers", return_value=mock_response):
+        response = await mcp_client.call_tool("list_private_knowledge_base_papers", {})
+
+    text = _texts(response)
+    assert "higher page" in text
+
+
+@pytest.mark.asyncio
+async def test_list_papers_surfaces_api_errors_as_a_tool_error(mcp_client):
+    with patch.object(KnowledgeBaseService, "private_papers", side_effect=_status_error(403, "no private graph")):
+        response = await mcp_client.call_tool("list_private_knowledge_base_papers", {}, raise_on_error=False)
+
+    assert response.is_error is True
+    assert "Failed to list the private knowledge base papers" in _texts(response)
+
+
 def test_private_route_constants():
     """The contract is hand-maintained, so the paths are pinned here rather than trusted."""
     assert ApiRoutes.KNOWLEDGE_BASE_PRIVATE_SEARCH == "/neo4j/private/search"
     assert ApiRoutes.KNOWLEDGE_BASE_PRIVATE_OVERVIEW == "/neo4j/private/overview"
     assert ApiRoutes.KNOWLEDGE_BASE_PRIVATE_EXECUTE_READ == "/neo4j/private/execute-read"
     assert ApiRoutes.KNOWLEDGE_BASE_PRIVATE_INGEST == "/neo4j/private/ingest"
-    assert not hasattr(ApiRoutes, "KNOWLEDGE_BASE_LIST_PAPERS")
+    assert ApiRoutes.KNOWLEDGE_BASE_PRIVATE_PAPERS == "/neo4j/private/papers"

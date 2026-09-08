@@ -96,6 +96,26 @@ class KnowledgeBaseService(SingletonBase):
                 params={"self_only": self_only},
             )
 
+    def private_papers(
+        self, self_only: bool = False, page: int = 1, page_size: int = 20
+    ) -> dict[str, Any]:
+        """
+        List the papers in the organization's private knowledge graph: title and ingestion date,
+        most recent first.
+
+        `self_only` restricts the list to only the papers the caller personally ingested, rather
+        than every paper in the organization's private graph.
+
+        Returns:
+            dict with keys: items (list of {title, ingestion_date}), total, page,
+            page_size, total_pages
+        """
+        with AxiomaticAPIClient() as client:
+            return client.get(
+                ApiRoutes.KNOWLEDGE_BASE_PRIVATE_PAPERS,
+                params={"self_only": self_only, "page": page, "page_size": page_size},
+            )
+
     def private_execute_read(self, query: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         """
         Run one read-only Cypher query against the organization's private knowledge graph.
