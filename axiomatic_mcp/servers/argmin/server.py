@@ -81,6 +81,22 @@ def _text(message: str) -> TextContent:
     return TextContent(type="text", text=message)
 
 
+def _json_text(response: dict[str, Any]) -> str:
+    """The whole response as JSON.
+
+    Dumped whole rather than field-picked, so it cannot drift from `structured_content`,
+    and unindented: an optimal-control run exports a few thousand trajectory floats, and
+    `indent=2` would put each on its own line. `default=str` is only so that a value which
+    somehow will not serialize costs this text rather than the whole response — the verdict
+    and the exports are already out by then.
+
+    Shared by both exits, because `_verification_text` tells the reader the payload is in
+    this response and that has to hold on the raising path too, where there is no
+    `structured_content` to fall back on.
+    """
+    return json.dumps(response, default=str)
+
+
 def _json_block(response: dict[str, Any]) -> TextContent:
     """The whole response as JSON, in a text block beside `structured_content`.
 
@@ -89,14 +105,8 @@ def _json_block(response: dict[str, Any]) -> TextContent:
     that do show a model only the content blocks. For this tool that field is the payload:
     the per-export certificates and diagnoses reach the caller nowhere else, and the
     readable blocks around this one carry the verdict but not the numbers behind it.
-
-    Dumped whole rather than field-picked, so it cannot drift from `structured_content`,
-    and unindented: an optimal-control run exports a few thousand trajectory floats, and
-    `indent=2` would put each on its own line. `default=str` is only so that a value which
-    somehow will not serialize costs this block rather than the whole response — the
-    verdict and the exports are already out by then.
     """
-    return _text(json.dumps(response, default=str))
+    return _text(_json_text(response))
 
 
 def _count(value: Any) -> int:
@@ -312,10 +322,15 @@ async def execute_code(
             failed.append(f"Stdout:\n{response['stdout']}")
         # Today the executor only attaches a payload to a run that completed, so there is
         # nothing to report here. Conditional rather than absent so that if a partial
-        # failure ever carries one, its certificates reach the model instead of being
-        # dropped on the floor by this branch.
+        # failure ever carries one, its verdict reaches the model instead of being dropped
+        # on the floor by this branch.
         if isinstance(response.get("verification"), dict) and response["verification"]:
             failed.append(_verification_text(response["verification"], response.get("result")))
+        # The message is the only channel left: raising drops `structured_content`, and there
+        # are no content blocks to put a JSON one beside. Without this the verdict text above
+        # would point at per-export certificates and a `diagnosis.suggestion` that never
+        # arrived, having named them as the thing to act on.
+        failed.append(_json_text(response))
         raise ToolError("\n\n".join(failed))
 
     # The verdict leads, so it frames the numbers that follow rather than trailing them:

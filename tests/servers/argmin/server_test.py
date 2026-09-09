@@ -717,12 +717,25 @@ async def test_a_failing_certificate_on_a_run_that_completed_is_still_not_an_err
 
 @pytest.mark.asyncio
 async def test_a_verification_payload_on_a_failed_run_still_reaches_the_caller(mcp_client):
-    """Raising drops `structured_content`, so anything diagnostic has to be in the message."""
+    """Raising drops `structured_content`, so anything diagnostic has to be in the message.
+
+    The verdict text names per-export certificates and `diagnosis.suggestion` as the thing
+    to act on, so the payload holding them has to arrive on this path too — the verdict line
+    and `_warnings` alone would point at evidence that never came.
+    """
     body = {
         "success": False,
         "result": {"result": {"success": False, "status": "Infeasible"}},
         "error": "TimeoutError: exceeded",
-        "verification": {"_summary": {"all_passed": False, "n_verifiable": 1, "n_failed": 1}, "_warnings": ["result: diverged"]},
+        "verification": {
+            "_summary": {"all_passed": False, "n_verifiable": 1, "n_failed": 1},
+            "_warnings": ["result: diverged"],
+            "result": {
+                "passed": False,
+                "certificate": _certificate(False),
+                "diagnosis": {"kind": "diverged", "suggestion": "Tighten the initial guess."},
+            },
+        },
     }
 
     with patch.object(ArgminService, "execute_code", return_value=body):
@@ -733,3 +746,34 @@ async def test_a_verification_payload_on_a_failed_run_still_reaches_the_caller(m
     assert "Execution failed: TimeoutError: exceeded" in blob
     assert "Verification: NOT passed" in blob
     assert "result: diverged" in blob
+    # The evidence the verdict line sends the reader after, recoverable from the message.
+    recovered = json.loads(next(line for line in blob.splitlines() if line.lstrip().startswith("{")))
+    assert recovered == body
+    entry = recovered["verification"]["result"]
+    assert entry["certificate"]["kkt_stationarity_inf"] == 3.0
+    assert entry["diagnosis"]["suggestion"] == "Tighten the initial guess."
+
+
+@pytest.mark.asyncio
+async def test_the_verdict_text_never_promises_a_payload_that_did_not_travel(mcp_client):
+    """The claim `_verification_text` makes has to hold on both exits, not just the happy one.
+
+    It tells the reader to read `verification` "in this response"; on the raising path there
+    is no `structured_content` and no separate JSON block, so the dump has to ride the
+    message or the instruction is false.
+    """
+    body = {
+        "success": False,
+        "error": "boom",
+        "verification": {"_summary": {"all_passed": False, "n_verifiable": 1, "n_failed": 1}, "_warnings": []},
+    }
+
+    with patch.object(ArgminService, "execute_code", return_value=body):
+        failing = await mcp_client.call_tool("execute_code", {"code": "..."}, raise_on_error=False)
+    with patch.object(ArgminService, "execute_code", return_value=_unverified_response()):
+        completed = await mcp_client.call_tool("execute_code", {"code": "..."}, raise_on_error=False)
+
+    for response in (failing, completed):
+        blob = _blob(response)
+        assert "Read the `verification` payload in this response" in blob
+        assert json.loads(next(line for line in blob.splitlines() if line.lstrip().startswith("{")))["verification"]
