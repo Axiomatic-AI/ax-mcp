@@ -1,5 +1,6 @@
 """AxArgmin MCP server — generate and run argmin numerical solves."""
 
+import json
 from typing import Annotated, Any
 
 from fastmcp import FastMCP
@@ -12,35 +13,27 @@ from ...providers.toolset_provider import get_mcp_tools
 from ...shared.utils.prompt_utils import get_feedback_prompt
 from .services.argmin_service import ArgminService
 
+# Kept to the one thing a caller has to know on every turn: read the verdict line, and what to do
+# when it is not a pass. The shape of the `verification` payload behind that line is detail for the
+# call itself, so it lives on the execute_code description rather than in the system prompt.
 INSTRUCTIONS = """\
 This server provides tools for numerical optimization, rootfinding, ODE simulation, and optimal control
 using the argmin library. Use generate_code to produce executable code from a problem description,
 then execute_code to run it in a sandboxed environment.
 
-READING A RESULT: `success` says only that the code RAN. Whether the *answers* are solved is reported
-separately, in the `verification` payload execute_code returns alongside the exports. A diverged or
-infeasible solve runs perfectly cleanly and comes back with `success: true`.
-
-- `verification._summary.all_passed` is the flag to read. It is true only when every exported solve both
-  converged and produced a certificate that passed at the requested tolerances.
-- Where the two disagree, the `Verification:` line in the tool's text output wins over the raw flag in the
-  structured result. That line is not a copy of `all_passed`: it reports a pass only when the payload also
-  counted at least one solve AND counted none as failed or unverified. So a payload claiming a pass over
-  nothing checked, or claiming one beside a non-zero `n_failed`/`n_unknown`, is reported as unverified
-  rather than certified. Nothing is hidden — the full payload is in the structured result either way.
-- `verification._warnings` names findings: what did not check out, and by how much, per export. It may also
-  carry an advisory that does not bear on the verdict — an export name colliding with a reserved key, say —
-  so a warning is not by itself a failure. The `Verification:` line is what says whether it mattered.
-- Each entry also carries the `certificate` (the KKT / residual / integration-accuracy check re-evaluated
-  at the point actually returned) and, on failure, a `diagnosis` whose `kind` names the failure class and
-  whose `suggestion` says what to change. Pass those on to the user rather than only that it failed.
+READING A RESULT: `success` says only that the code RAN — a diverged or infeasible solve runs perfectly
+cleanly and comes back with `success: true`. Whether the *answers* are solved is the `Verification:` line
+that leads execute_code's output. Read that line and treat it as the verdict. It certifies the result only
+when every exported solve converged and satisfied its certificate; anything else — NOT passed,
+inconclusive, none, unavailable — means the answer has not been checked.
 
 When a solve does not verify, do NOT report its numbers as the answer, and do not quietly simplify the
 problem until something converges — dropping constraints or coarsening the discretisation yields a
 confident answer to a different question. Fix the formulation or the solver settings, or report the failure.
 
-To get a certificate back, the generated code only has to export the result object itself
-(`export('result', result)`); the certificate and diagnosis travel with it.
+The evidence behind the verdict — per exported solve, a certificate, a diagnosis and a suggested fix —
+comes back in the `verification` payload, whose shape the execute_code tool describes. Pass that detail on
+to the user rather than only the fact that something failed.
 """
 
 mcp = FastMCP(
@@ -61,8 +54,8 @@ argmin_service = ArgminService()
 # reserved key of any other type fail validation outright, taking the whole call with it.
 # The backend types this field `dict[str, Any]` precisely so new certificate fields reach
 # callers without an SDK or MCP release; a JSON Schema here fights that. The shape is
-# documented in the tool description and the server instructions instead, which is where
-# a model reads it anyway.
+# documented on the execute_code tool instead, which is where a model reads it anyway, and
+# the payload also goes out as a JSON text block so a client that ignores `.data` keeps it.
 _NOTHING_EXPORTED_TEXT = (
     "Verification: none. No export carried a solver result, so no certificate came back and nothing about "
     "this answer has been checked. Export the result object itself — export('result', result) — and the "
@@ -86,6 +79,24 @@ _EXPORT_SCAN_DEPTH = 3
 
 def _text(message: str) -> TextContent:
     return TextContent(type="text", text=message)
+
+
+def _json_block(response: dict[str, Any]) -> TextContent:
+    """The whole response as JSON, in a text block beside `structured_content`.
+
+    MCP asks a tool that returns structured content to also return the serialized JSON in
+    a text block, because a client is free to ignore `structuredContent` — and the ones
+    that do show a model only the content blocks. For this tool that field is the payload:
+    the per-export certificates and diagnoses reach the caller nowhere else, and the
+    readable blocks around this one carry the verdict but not the numbers behind it.
+
+    Dumped whole rather than field-picked, so it cannot drift from `structured_content`,
+    and unindented: an optimal-control run exports a few thousand trajectory floats, and
+    `indent=2` would put each on its own line. `default=str` is only so that a value which
+    somehow will not serialize costs this block rather than the whole response — the
+    verdict and the exports are already out by then.
+    """
+    return _text(json.dumps(response, default=str))
 
 
 def _count(value: Any) -> int:
@@ -197,7 +208,7 @@ def _verification_text(verification: Any, exports: Any = None) -> str:
     lines.extend(f"  - {warning}" for warning in warnings)
     lines.append(
         "Do not report these numbers as the answer, and do not simplify the problem until it converges. "
-        "Read `verification` in the structured result for each certificate and diagnosis — `diagnosis.suggestion` "
+        "Read the `verification` payload in this response for each certificate and diagnosis — `diagnosis.suggestion` "
         "says what to change — then fix the formulation or the solver settings and re-run."
     )
     return "\n".join(lines)
@@ -253,10 +264,24 @@ async def generate_code(
     description=(
         "Execute Python code in a sandboxed environment with numpy, math, and the ax_core.argmin "
         "numerical library available. Code must call export(name, value) at least once to return results. "
-        "Typically used to run code produced by the generate_code tool, but also accepts hand-written or modified code. "
-        "Returns the exports plus a `verification` payload holding the certificate and diagnosis of every exported "
-        "solver result: `success` reports only that the code ran, so read the `Verification:` line in the response "
-        "to learn whether the answers are solved."
+        "Typically used to run code produced by the generate_code tool, but also accepts hand-written or modified code.\n\n"
+        "`success` reports only that the code ran. The `Verification:` line leading the response is the verdict on "
+        "whether the answers are solved; read it first. The response also carries the exports and, from a backend that "
+        "supports it, a `verification` payload holding the certificate and diagnosis of every exported solver result — "
+        "both as structured content and as a JSON text block.\n\n"
+        "Reading `verification` for the detail behind the verdict line:\n"
+        "- `_summary.all_passed` is an input to that line, not a substitute for it. The line reports a pass only when "
+        "the payload also counted at least one solve AND counted none as failed or unverified, so a payload claiming a "
+        "pass over nothing checked, or claiming one beside a non-zero `n_failed`/`n_unknown`, is reported as unverified. "
+        "Where the two disagree, the line wins.\n"
+        "- `_warnings` names what did not check out, and by how much, per export. It may also carry an advisory that "
+        "does not bear on the verdict — an export name colliding with a reserved key, say — so a warning is not by "
+        "itself a failure.\n"
+        "- each per-export entry carries the `certificate` (the KKT / residual / integration-accuracy check "
+        "re-evaluated at the point actually returned) and, on failure, a `diagnosis` whose `kind` names the failure "
+        "class and whose `suggestion` says what to change. Pass those on rather than only that it failed.\n"
+        "- to get a certificate back at all, the code only has to export the result object itself "
+        "(`export('result', result)`); the certificate and diagnosis travel with it."
     ),
     tags=["argmin", "execution", "sandbox"],
 )
@@ -270,26 +295,39 @@ async def execute_code(
         raise ToolError(f"Failed to execute code: {e!s}") from e
 
     if not response.get("success"):
-        error_msg = response.get("error", "Unknown execution error")
-        stdout = response.get("stdout", "")
-        text = f"Execution failed: {error_msg}"
-        if stdout:
-            text += f"\n\nStdout:\n{stdout}"
-        failed: list[ContentBlock] = [_text(text)]
+        # The code did not run, so this is a failed call and not an unverified answer: a host
+        # that reads `isError` must not file a crash next to a solved result. A failing
+        # *certificate* on a run that completed is the opposite case and stays a normal result
+        # further down — the exports and the diagnosis are the whole point there.
+        #
+        # Raising is the only way to set `isError` under fastmcp: `ToolResult` carries no such
+        # field, and the manager sets the flag from the exception. That drops
+        # `structured_content`, so everything the caller needs goes into the message; a
+        # `ToolError` reaches the client verbatim and is never masked.
+        #
+        # In practice the api answers a crash with a 4xx and the `except` above already
+        # reports it, so this branch only fires on a 200 that says the code did not run.
+        failed = [f"Execution failed: {response.get('error') or 'Unknown execution error'}"]
+        if response.get("stdout"):
+            failed.append(f"Stdout:\n{response['stdout']}")
         # Today the executor only attaches a payload to a run that completed, so there is
         # nothing to report here. Conditional rather than absent so that if a partial
         # failure ever carries one, its certificates reach the model instead of being
         # dropped on the floor by this branch.
         if isinstance(response.get("verification"), dict) and response["verification"]:
-            failed.append(_text(_verification_text(response["verification"], response.get("result"))))
-        return ToolResult(content=failed, structured_content=response)
+            failed.append(_verification_text(response["verification"], response.get("result")))
+        raise ToolError("\n\n".join(failed))
 
     # The verdict leads, so it frames the numbers that follow rather than trailing them:
     # a diverged solve returns `success: true` with empty trajectories, and read in the
     # other order the exports look like an answer.
     parts: list[ContentBlock] = [_text(_verification_text(response.get("verification"), response.get("result")))]
-    if response.get("result"):
-        parts.append(_text(f"Result: {response['result']}"))
+    # Replaces a `Result: {dict}` line that printed the exports as a Python repr — unquoted
+    # `None`/`True`, single-quoted keys — which no client could parse and which left
+    # `verification` out of the content blocks altogether.
+    parts.append(_json_block(response))
+    # Kept as its own readable block even though the dump above repeats it: solver logs are
+    # multi-line, and `\n`-escaped inside a JSON string they stop being readable.
     if response.get("stdout"):
         parts.append(_text(f"Stdout:\n{response['stdout']}"))
     execution_time = response.get("execution_time")

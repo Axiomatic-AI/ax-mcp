@@ -7,6 +7,7 @@ A payload that arrived but went unmentioned in the tool's text would be a silent
 asserted here alongside the pass-through.
 """
 
+import json
 from unittest.mock import patch
 
 import pytest
@@ -21,10 +22,27 @@ SERVICE_CLIENT = "axiomatic_mcp.servers.argmin.services.argmin_service.Axiomatic
 
 
 def _certificate(passed: bool) -> dict:
+    """Shaped after a real staging payload, tolerances map included.
+
+    The backend sends a per-criterion `tolerances` map, not the single `tol` this fixture
+    used to carry; a certificate here that is simpler than the real one stops being
+    evidence that the real one is handled.
+    """
     return {
         "kkt_stationarity_inf": 3.5e-10 if passed else 3.0,
+        "constraint_violation_lower": 0.0,
         "constraint_violation_upper": 0.0,
-        "tolerances": {"tol": 1e-08},
+        "bound_violation": 0.0,
+        "complementarity_inf": 2.5e-09,
+        "tolerances": {
+            "tol": 1e-08,
+            "constr_viol_tol": 1e-08,
+            "bound_relaxation": 1e-08,
+            "variable_bound_relaxation": 1e-08,
+            "complementarity_target": 0.0,
+            "stationarity": 1e-08,
+            "complementarity": 1e-08,
+        },
         "passed": passed,
         "primal_finite": True,
     }
@@ -91,6 +109,25 @@ def _blob(response) -> str:
     return "\n".join(_texts(response))
 
 
+def _json_payload(response) -> dict:
+    """The response recovered from the content blocks alone, the way a client that ignores
+    `structuredContent` has to recover it. Exactly one block parses as a JSON object."""
+    decoded = []
+    for text in _texts(response):
+        try:
+            value = json.loads(text)
+        except ValueError:
+            continue
+        if isinstance(value, dict):
+            decoded.append(value)
+    assert len(decoded) == 1, f"expected exactly one JSON object block, got {len(decoded)}"
+    return decoded[0]
+
+
+async def _execute_tool(mcp_client):
+    return {t.name: t for t in await mcp_client.list_tools()}["execute_code"]
+
+
 @pytest_asyncio.fixture
 async def mcp_client():
     async with Client(transport=mcp) as client:
@@ -136,12 +173,26 @@ async def test_the_certificate_survives_all_the_way_into_client_data(mcp_client)
     assert response.data["result"]["result"]["objective_value"] == 0.5
 
 
-def test_instructions_tell_the_client_where_the_verdict_lives():
-    assert "all_passed" in mcp.instructions
-    assert "says only that the code RAN" in mcp.instructions
+def test_instructions_lead_with_the_verdict_line_and_stay_short():
+    """The instructions ship on every turn, so they carry the verdict and nothing else.
+
+    `all_passed` used to be named here as "the flag to read" one bullet before another bullet
+    said the `Verification:` line overrides it — a contradiction in the block a model sees
+    most often. The payload's shape belongs on the tool, which is asserted separately below.
+    """
+    instructions = mcp.instructions
+    assert "says only that the code RAN" in instructions
+    assert "`Verification:` line" in instructions
+    assert "treat it as the verdict" in instructions
+    # The detail moved to the tool description; it must not creep back in here.
+    assert "all_passed" not in instructions
+    assert "n_failed" not in instructions
+    assert "KKT" not in instructions
+    assert "reserved key" not in instructions
 
 
-def test_instructions_describe_the_verdict_the_code_actually_produces():
+@pytest.mark.asyncio
+async def test_the_tool_description_describes_the_verdict_the_code_actually_produces(mcp_client):
     """The model-facing contract has to match `_verification_text`, not trail it.
 
     These two claims drifted behind the code twice: the precedence rule listed only one of
@@ -149,16 +200,19 @@ def test_instructions_describe_the_verdict_the_code_actually_produces():
     finding after the advisory case was established. Both are asserted against the behaviour
     rather than the wording alone, so the next change to one has to update the other.
     """
-    instructions = mcp.instructions
+    description = (await _execute_tool(mcp_client)).description
     advisory = ["export '_summary' collides with a reserved verification key"]
 
     # Claim: a pass is refused when nothing was counted, AND when a count contradicts the flag.
-    assert "n_failed" in instructions and "n_unknown" in instructions
+    assert "n_failed" in description and "n_unknown" in description
     assert _verification_text({"_summary": {"all_passed": True, "n_verifiable": 0}}).startswith("Verification: inconclusive")
     assert _verification_text({"_summary": {"all_passed": True, "n_verifiable": 3, "n_failed": 1}}).startswith("Verification: NOT passed")
 
+    # Claim: `all_passed` feeds the line rather than standing in for it.
+    assert "not a substitute for it" in description
+
     # Claim: a warning is not by itself a failure, and the verdict line says whether it mattered.
-    assert "not by itself a failure" in instructions
+    assert "not by itself a failure" in description
     clean_with_advisory = _verification_text(
         {"_summary": {"all_passed": True, "n_verifiable": 1, "n_failed": 0, "n_unknown": 0}, "_warnings": advisory}
     )
@@ -246,7 +300,57 @@ async def test_the_verdict_is_read_before_the_numbers(mcp_client):
 
     texts = _texts(response)
     assert texts[0].startswith("Verification:")
-    assert any(text.startswith("Result:") for text in texts[1:])
+    assert json.loads(texts[1])["result"]["result"]["status"] == "Infeasible_Problem_Detected"
+
+
+# ── execute_code: the JSON text block ────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_the_payload_is_recoverable_from_the_text_blocks_alone(mcp_client):
+    """MCP asks for the serialized structured content beside it, because clients ignore `.data`.
+
+    A client that shows a model only the content blocks previously got the exports as a
+    Python repr (`{'success': False, ...}` — unparseable) and no `verification` at all, which
+    is the one field that reaches the caller nowhere else.
+    """
+    body = _unverified_response()
+
+    with patch.object(ArgminService, "execute_code", return_value=body):
+        response = await mcp_client.call_tool("execute_code", {"code": "export('result', result)"})
+
+    recovered = _json_payload(response)
+    assert recovered == body
+    assert recovered == response.structured_content
+    # The evidence a text-only client used to lose entirely.
+    assert recovered["verification"]["result"]["certificate"]["kkt_stationarity_inf"] == 3.0
+    assert recovered["verification"]["result"]["diagnosis"]["suggestion"].startswith("Check constraints")
+
+
+@pytest.mark.asyncio
+async def test_the_json_block_is_json_not_a_python_repr(mcp_client):
+    """The regression this replaces: `str(dict)` gives `None`/`True` and single quotes."""
+    body = {"success": True, "result": {"x": None, "ok": True}, "verification": None, "execution_time": 0.1}
+
+    with patch.object(ArgminService, "execute_code", return_value=body):
+        response = await mcp_client.call_tool("execute_code", {"code": "export('x', None)"})
+
+    dumped = _texts(response)[1]
+    assert '"x": null' in dumped and '"ok": true' in dumped
+    assert "'x'" not in dumped
+
+
+@pytest.mark.asyncio
+async def test_the_json_block_survives_a_value_that_will_not_serialize(mcp_client):
+    """`default=str` is there so a bad value costs this block, not the verdict and the exports."""
+    body = {"success": True, "result": {"x": {1, 2}}, "verification": None, "execution_time": 0.1}
+
+    with patch.object(ArgminService, "execute_code", return_value=body):
+        response = await mcp_client.call_tool("execute_code", {"code": "export('x', x)"}, raise_on_error=False)
+
+    assert not response.is_error
+    assert _texts(response)[0].startswith("Verification:")
+    assert _json_payload(response)["success"] is True
 
 
 @pytest.mark.asyncio
@@ -450,7 +554,7 @@ async def test_a_non_dict_payload_on_a_failed_run_is_not_called_a_stale_backend(
     body = {"success": False, "result": None, "error": "boom", "verification": "not a dict"}
 
     with patch.object(ArgminService, "execute_code", return_value=body):
-        response = await mcp_client.call_tool("execute_code", {"code": "export("})
+        response = await mcp_client.call_tool("execute_code", {"code": "export("}, raise_on_error=False)
 
     blob = _blob(response)
     assert "Execution failed: boom" in blob
@@ -577,15 +681,55 @@ async def test_scalar_success_and_status_exports_are_not_mistaken_for_a_result(m
 
 
 @pytest.mark.asyncio
-async def test_code_that_did_not_run_reports_the_error(mcp_client):
+async def test_code_that_did_not_run_is_an_error_not_an_unverified_answer(mcp_client):
+    """`isError` separates a crash from a result, and a host acts on that distinction.
+
+    Reported as a normal result, a run that never happened files next to a solved one. The
+    live api answers a crash with a 4xx that the tool's `except` already raises on, so this
+    branch covers a 200 whose body says the code did not run.
+    """
     body = {"success": False, "result": None, "error": "SyntaxError: invalid syntax", "stdout": "partial\n"}
 
     with patch.object(ArgminService, "execute_code", return_value=body):
-        response = await mcp_client.call_tool("execute_code", {"code": "export("})
+        response = await mcp_client.call_tool("execute_code", {"code": "export("}, raise_on_error=False)
 
+    assert response.is_error
     blob = _blob(response)
     assert "Execution failed: SyntaxError: invalid syntax" in blob
     assert "partial" in blob
     # No verdict line: nothing ran, so there is nothing to have verified.
     assert "Verification:" not in blob
-    assert response.structured_content == body
+
+
+@pytest.mark.asyncio
+async def test_a_failing_certificate_on_a_run_that_completed_is_still_not_an_error(mcp_client):
+    """The other half of the same distinction, asserted next to it so neither drifts.
+
+    The code ran, so the exports, the certificate and the diagnosis are the answer to the
+    call — raising would throw away exactly what fixes the problem.
+    """
+    with patch.object(ArgminService, "execute_code", return_value=_unverified_response()):
+        response = await mcp_client.call_tool("execute_code", {"code": "export('result', result)"}, raise_on_error=False)
+
+    assert not response.is_error
+    assert "Verification: NOT passed" in _texts(response)[0]
+
+
+@pytest.mark.asyncio
+async def test_a_verification_payload_on_a_failed_run_still_reaches_the_caller(mcp_client):
+    """Raising drops `structured_content`, so anything diagnostic has to be in the message."""
+    body = {
+        "success": False,
+        "result": {"result": {"success": False, "status": "Infeasible"}},
+        "error": "TimeoutError: exceeded",
+        "verification": {"_summary": {"all_passed": False, "n_verifiable": 1, "n_failed": 1}, "_warnings": ["result: diverged"]},
+    }
+
+    with patch.object(ArgminService, "execute_code", return_value=body):
+        response = await mcp_client.call_tool("execute_code", {"code": "export('result', result)"}, raise_on_error=False)
+
+    assert response.is_error
+    blob = _blob(response)
+    assert "Execution failed: TimeoutError: exceeded" in blob
+    assert "Verification: NOT passed" in blob
+    assert "result: diverged" in blob
