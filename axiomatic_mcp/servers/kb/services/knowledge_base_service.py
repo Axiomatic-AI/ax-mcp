@@ -66,35 +66,37 @@ class KnowledgeBaseService(SingletonBase):
         """
         Semantic search over the organization's private knowledge base.
 
-        `self_only` restricts results to only the papers the caller personally ingested,
-        rather than every paper in the organization's private graph.
+        `self_only` restricts results to only the papers the caller personally ingested, rather
+        than every paper in the organization's private graph. The API has no `self_only` field
+        any more -- it split into an org-wide route and an always-self-scoped `/me` route, so
+        this picks which one to call rather than forwarding the flag.
 
         Same response shape as `search`, so the same formatter renders it.
 
         Returns:
             dict with keys: query, results (list of {text, score, metadata}), count
         """
+        route = ApiRoutes.KNOWLEDGE_BASE_PRIVATE_SEARCH_ME if self_only else ApiRoutes.KNOWLEDGE_BASE_PRIVATE_SEARCH
         with AxiomaticAPIClient() as client:
-            return client.post(
-                ApiRoutes.KNOWLEDGE_BASE_PRIVATE_SEARCH,
-                data={"query": query, "limit": limit, "self_only": self_only},
-            )
+            return client.post(route, data={"query": query, "limit": limit})
 
     def private_overview(self, self_only: bool = False) -> dict[str, Any]:
         """
         Node counts per label in the organization's private knowledge graph.
 
         `self_only` restricts the counts to only the papers the caller personally ingested,
-        rather than every paper in the organization's private graph.
+        rather than every paper in the organization's private graph. The API has no `self_only`
+        field any more -- it split into an org-wide route and an always-self-scoped `/me` route,
+        so this picks which one to call rather than forwarding the flag.
 
         Returns:
             dict with keys: items (list of {label, count}, largest first), total
         """
+        route = (
+            ApiRoutes.KNOWLEDGE_BASE_PRIVATE_OVERVIEW_ME if self_only else ApiRoutes.KNOWLEDGE_BASE_PRIVATE_OVERVIEW
+        )
         with AxiomaticAPIClient() as client:
-            return client.get(
-                ApiRoutes.KNOWLEDGE_BASE_PRIVATE_OVERVIEW,
-                params={"self_only": self_only},
-            )
+            return client.get(route)
 
     def private_papers(
         self, self_only: bool = False, page: int = 1, page_size: int = 20
@@ -104,17 +106,17 @@ class KnowledgeBaseService(SingletonBase):
         most recent first.
 
         `self_only` restricts the list to only the papers the caller personally ingested, rather
-        than every paper in the organization's private graph.
+        than every paper in the organization's private graph. The API has no `self_only` field
+        any more -- it split into an org-wide route and an always-self-scoped `/me` route, so
+        this picks which one to call rather than forwarding the flag.
 
         Returns:
             dict with keys: items (list of {title, ingestion_date}), total, page,
             page_size, total_pages
         """
+        route = ApiRoutes.KNOWLEDGE_BASE_PRIVATE_PAPERS_ME if self_only else ApiRoutes.KNOWLEDGE_BASE_PRIVATE_PAPERS
         with AxiomaticAPIClient() as client:
-            return client.get(
-                ApiRoutes.KNOWLEDGE_BASE_PRIVATE_PAPERS,
-                params={"self_only": self_only, "page": page, "page_size": page_size},
-            )
+            return client.get(route, params={"page": page, "page_size": page_size})
 
     def private_execute_read(self, query: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         """

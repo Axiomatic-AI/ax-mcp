@@ -29,4 +29,7 @@ run:
 	@uv run python -m axiomatic_mcp
 
 inspect:
-	@npx @modelcontextprotocol/inspector uv run python -m axiomatic_mcp
+	@npx @modelcontextprotocol/inspector \
+		-e AXIOMATIC_API_KEY="$${AXIOMATIC_API_KEY}" \
+		-e AXIOMATIC_API_URL="$${AXIOMATIC_API_URL}" \
+		uv run python -m axiomatic_mcp
