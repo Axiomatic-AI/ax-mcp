@@ -150,7 +150,7 @@ async def test_list_tools(mcp_client):
 
 @pytest.mark.asyncio
 async def test_execute_declares_no_output_schema(mcp_client):
-    """The absence is the guarantee — see the comment above `_NOTHING_EXPORTED_TEXT`.
+    """The absence is the guarantee — see the comment above `_NO_PAYLOAD_TEXT`.
 
     fastmcp derives the client's `.data` from a declared schema and keeps only what the
     schema names, so any schema here silently deletes the per-export certificates. Asserted
@@ -214,10 +214,25 @@ async def test_the_tool_description_describes_the_verdict_the_code_actually_prod
     # Claim: a warning is not by itself a failure, and the verdict line says whether it mattered.
     assert "not by itself a failure" in description
     clean_with_advisory = _verification_text(
-        {"_summary": {"all_passed": True, "n_verifiable": 1, "n_failed": 0, "n_unknown": 0}, "_warnings": advisory}
+        {
+            "_summary": {"all_passed": True, "n_verifiable": 1, "n_passed": 1, "n_failed": 0, "n_unknown": 0},
+            "_warnings": advisory,
+            "result": {"passed": True, "solver_success": True, "certificate": _certificate(True), "diagnosis": None},
+        }
     )
     assert clean_with_advisory.startswith("Verification: passed")
     assert advisory[0] in clean_with_advisory
+
+    # Claim: a certificate with no solver verdict behind it is not reported as convergence.
+    assert "certificate is not a solver verdict" in description
+    certificate_only = _verification_text(
+        {
+            "_summary": {"all_passed": True, "n_verifiable": 1, "n_passed": 1, "n_failed": 0, "n_unknown": 0},
+            "_warnings": [],
+            "best_certificate": {"passed": True, "certificate": _certificate(True), "diagnosis": None},
+        }
+    )
+    assert certificate_only.startswith("Verification: certificate only")
 
 
 # ── service layer ────────────────────────────────────────────────────────────
@@ -368,40 +383,43 @@ async def test_nothing_verifiable_is_named_as_such_not_reported_as_a_pass(mcp_cl
 
 
 @pytest.mark.asyncio
-async def test_an_older_backend_is_not_blamed_on_the_generated_code(mcp_client):
-    """The key is simply absent against a backend that predates the payload.
+@pytest.mark.parametrize(
+    "exports",
+    [
+        # A solver result reaching the caller: what the sniffing read as proof of an old
+        # deployment, and told the agent its code was fine.
+        {"result": {"success": True, "status": "Solve_Succeeded", "objective_value": 0.5}},
+        # A plain mapping that merely carries both marker keys. A *current* backend
+        # legitimately returns no payload for this — there is no certificate in it — so
+        # calling it a stale deployment is the same false cause in the other direction.
+        {"summary": {"success": True, "status": "complete"}},
+        # Nothing verifiable at all.
+        {"x": 2.0},
+    ],
+)
+async def test_a_missing_payload_names_both_causes_and_attributes_neither(mcp_client, exports):
+    """No payload has two causes, and nothing in the response separates them.
 
-    Reported live against the deployed API today, so this is the common path, not a corner
-    case. The exports hold a solver result, which a current executor would always have
-    reported on -- so telling the agent to "export the result" would send it rewriting code
-    that was already correct.
+    The exports used to be sniffed for something result-shaped to pick between "you did not
+    export a result" and "this executor predates the payload". Both readings are wrong on
+    real shapes — a mapping with `success`/`status` and no certificate in it is exactly what
+    a current backend returns no payload for, and the executor also degrades to no payload
+    when collecting one fails — and each carries an instruction, so naming the wrong cause
+    costs more than naming none. Backend age needs an explicit capability signal, which the
+    response does not carry.
     """
-    body = {
-        "success": True,
-        "result": {"result": {"success": True, "status": "Solve_Succeeded", "objective_value": 0.5}},
-        "error": None,
-        "stdout": None,
-        "execution_time": 0.01,
-    }
+    body = {"success": True, "result": exports, "error": None, "stdout": None, "execution_time": 0.01}
 
     with patch.object(ArgminService, "execute_code", return_value=body):
         response = await mcp_client.call_tool("execute_code", {"code": "export('result', result)"})
 
     verdict = _texts(response)[0]
-    assert "Verification: unavailable" in verdict
-    assert "do not rewrite it" in verdict
-    assert "export('result', result)" not in verdict
-
-
-@pytest.mark.asyncio
-async def test_a_missing_payload_with_no_solver_result_still_blames_the_code(mcp_client):
-    """The other side of the same discrimination: nothing was exported to check."""
-    body = {"success": True, "result": {"x": 2.0}, "error": None, "stdout": None, "execution_time": 0.01}
-
-    with patch.object(ArgminService, "execute_code", return_value=body):
-        response = await mcp_client.call_tool("execute_code", {"code": "export('x', 2.0)"})
-
-    assert "Verification: none" in _texts(response)[0]
+    assert "Verification: none" in verdict
+    # Both causes named, neither asserted, and the one action that helps either way.
+    assert "cannot tell them apart" in verdict
+    assert "predates" in verdict
+    assert "export('result', result)" in verdict
+    assert "do not rewrite" not in verdict
 
 
 @pytest.mark.asyncio
@@ -467,7 +485,7 @@ async def test_failure_counts_without_a_total_are_reported_coherently(mcp_client
 
     verdict = _texts(response)[0]
     assert "Verification: NOT passed" in verdict
-    assert "2 solve(s) failed their certificate" in verdict
+    assert "2 did not verify (out of an unreported total)" in verdict
     assert "of 0 checked" not in verdict
 
 
@@ -518,6 +536,7 @@ async def test_an_advisory_warning_does_not_downgrade_a_clean_run(mcp_client):
         "verification": {
             "_summary": {"all_passed": True, "n_verifiable": 1, "n_passed": 1, "n_failed": 0, "n_unknown": 0},
             "_warnings": ["export '_summary' collides with a reserved verification key"],
+            "result": {"passed": True, "solver_success": True, "solver_status": "Solve_Succeeded", "certificate": _certificate(True)},
         },
     }
 
@@ -531,7 +550,7 @@ async def test_an_advisory_warning_does_not_downgrade_a_clean_run(mcp_client):
 
 @pytest.mark.asyncio
 async def test_a_warning_driven_verdict_does_not_contradict_its_own_counts(mcp_client):
-    """No failure is counted, so the sentence must not read "0 failed ... 0 produced none"."""
+    """No failure is counted, so the sentence must not read "0 did not verify"."""
     body = {
         "success": True,
         "result": {"result": {}},
@@ -545,11 +564,11 @@ async def test_a_warning_driven_verdict_does_not_contradict_its_own_counts(mcp_c
     verdict = _texts(response)[0]
     assert "Verification: NOT passed" in verdict
     assert "none of the 3 checked solve(s) is counted as failed" in verdict
-    assert "0 failed their certificate" not in verdict
+    assert "0 did not verify" not in verdict
 
 
 @pytest.mark.asyncio
-async def test_a_non_dict_payload_on_a_failed_run_is_not_called_a_stale_backend(mcp_client):
+async def test_a_non_dict_payload_on_a_failed_run_yields_no_verdict_line(mcp_client):
     """The two gates must agree on what counts as a payload, or they contradict each other."""
     body = {"success": False, "result": None, "error": "boom", "verification": "not a dict"}
 
@@ -558,7 +577,7 @@ async def test_a_non_dict_payload_on_a_failed_run_is_not_called_a_stale_backend(
 
     blob = _blob(response)
     assert "Execution failed: boom" in blob
-    assert "predates the certificate payload" not in blob
+    assert "Verification:" not in blob
 
 
 @pytest.mark.asyncio
@@ -579,7 +598,12 @@ async def test_a_count_json_spelled_as_a_float_still_counts(mcp_client):
         "success": True,
         "result": {"result": {}},
         "execution_time": 0.1,
-        "verification": {"_summary": {"all_passed": True, "n_verifiable": 2.0}, "_warnings": []},
+        "verification": {
+            "_summary": {"all_passed": True, "n_verifiable": 2.0, "n_passed": 2.0, "n_failed": 0.0, "n_unknown": 0.0},
+            "_warnings": [],
+            "a": {"passed": True, "solver_success": True, "certificate": _certificate(True)},
+            "b": {"passed": True, "solver_success": True, "certificate": {**_certificate(True), "kkt_stationarity_inf": 1.5e-10}},
+        },
     }
 
     with patch.object(ArgminService, "execute_code", return_value=body):
@@ -640,41 +664,258 @@ async def test_a_null_execution_time_does_not_break_the_response(mcp_client):
 
 
 @pytest.mark.asyncio
-async def test_a_nested_solver_result_counts_as_exported(mcp_client):
-    """A multistart exports a list of results; that is a result reaching the caller too.
+async def test_a_bare_certificate_is_not_reported_as_convergence(mcp_client):
+    """The multistart idiom exports `best["certificate"]`, and a certificate is not a verdict.
 
-    Checking only top-level exports would tell the agent it exported nothing verifiable --
-    the exact wrong instruction this discrimination exists to avoid.
+    The shipped multistart example does exactly this: its workers return plain dicts across
+    a process pool, so the result object never reaches `export()` and the payload is built
+    from a certificate alone. `apply_certificate_veto` is one-way backend-side — it
+    downgrades a solver success its certificate contradicts but never upgrades a failure —
+    so a run that stopped at its iteration limit keeps `success=False`, and an empty
+    `objective_value` with it, while the point it returned can still satisfy KKT. Calling
+    that "converged" hands the agent an authoritative pass over numbers no solve claimed.
     """
     body = {
         "success": True,
-        "result": {"runs": [{"success": True, "status": "Solve_Succeeded"}, {"success": False, "status": "Infeasible"}]},
+        "result": {"best_variables": {"x": 1.0}, "n_successful": 3},
         "execution_time": 0.1,
+        "verification": {
+            "_summary": {"all_passed": True, "n_verifiable": 1, "n_passed": 1, "n_failed": 0, "n_unknown": 0},
+            "_warnings": [],
+            "best_certificate": {"passed": True, "certificate": _certificate(True), "diagnosis": None},
+        },
+    }
+
+    with patch.object(ArgminService, "execute_code", return_value=body):
+        response = await mcp_client.call_tool("execute_code", {"code": "export('best_certificate', best['certificate'])"})
+
+    verdict = _texts(response)[0]
+    assert "Verification: certificate only" in verdict
+    assert "Verification: passed" not in verdict
+    assert "converged" not in verdict.split("not evidence that anything converged")[0]
+    # Names the export it could not confirm, and what to export instead.
+    assert "`best_certificate`" in verdict
+    assert "'certificate': ..." in verdict
+
+
+@pytest.mark.asyncio
+async def test_a_result_exported_beside_its_own_certificate_still_passes(mcp_client):
+    """The documented idiom exports both, and the backend counts them as the one solve.
+
+    Serialization loses the object identity the backend deduped on, so the two entries are
+    matched here by certificate content instead. Without that, the commonest export pattern
+    in the codegen templates would lose its "converged" wording to its own second export.
+    """
+    certificate = _certificate(True)
+    body = {
+        "success": True,
+        "result": {"result": {"success": True, "status": "Solve_Succeeded"}},
+        "execution_time": 0.1,
+        "verification": {
+            "_summary": {"all_passed": True, "n_verifiable": 1, "n_passed": 1, "n_failed": 0, "n_unknown": 0},
+            "_warnings": [],
+            "result": {"passed": True, "solver_success": True, "solver_status": "Solve_Succeeded", "certificate": certificate},
+            "certificate": {"passed": True, "certificate": certificate, "diagnosis": None},
+        },
+    }
+
+    with patch.object(ArgminService, "execute_code", return_value=body):
+        response = await mcp_client.call_tool("execute_code", {"code": "export('result', result)"})
+
+    assert "Verification: passed. All 1 exported solve(s)" in _texts(response)[0]
+
+
+@pytest.mark.asyncio
+async def test_a_stray_certificate_does_not_ride_on_another_solves_verdict(mcp_client):
+    """Two counted solves, one verdict: the passing solve cannot vouch for the other one.
+
+    This is the shape the headline has to refuse — a solve that really did converge beside
+    a certificate belonging to something else, which the totals count as verified.
+    """
+    body = {
+        "success": True,
+        "result": {"result": {"success": True, "status": "Solve_Succeeded"}},
+        "execution_time": 0.1,
+        "verification": {
+            "_summary": {"all_passed": True, "n_verifiable": 2, "n_passed": 2, "n_failed": 0, "n_unknown": 0},
+            "_warnings": [],
+            "result": {"passed": True, "solver_success": True, "certificate": _certificate(True)},
+            "other_certificate": {
+                "passed": True,
+                "certificate": {**_certificate(True), "kkt_stationarity_inf": 7.1e-11},
+                "diagnosis": None,
+            },
+        },
+    }
+
+    with patch.object(ArgminService, "execute_code", return_value=body):
+        response = await mcp_client.call_tool("execute_code", {"code": "export('result', result)"})
+
+    verdict = _texts(response)[0]
+    assert "Verification: certificate only" in verdict
+    assert "Of 2 counted solve(s), 1 export(s) passed on a certificate alone" in verdict
+    assert "`other_certificate`" in verdict
+
+
+@pytest.mark.asyncio
+async def test_a_stray_certificate_identical_to_a_proven_one_is_still_not_a_pass(mcp_client):
+    """The counts catch what the content matching cannot tell apart.
+
+    Two solves can produce byte-identical certificates — two starts converging to the same
+    root — so matching a bare certificate to a proven one by content can credit it to the
+    wrong solve. It cannot produce a false pass: identical content means either the one
+    object the backend deduped, whose total is then 1, or a second solve the totals count
+    separately and no solver verdict accounts for. Observed against the real producer, where
+    two fixtures with the same residuals serialize identically.
+    """
+    certificate = _certificate(True)
+    body = {
+        "success": True,
+        "result": {"result": {"success": True, "status": "Solve_Succeeded"}},
+        "execution_time": 0.1,
+        "verification": {
+            "_summary": {"all_passed": True, "n_verifiable": 2, "n_passed": 2, "n_failed": 0, "n_unknown": 0},
+            "_warnings": [],
+            "result": {"passed": True, "solver_success": True, "certificate": certificate},
+            "best_certificate": {"passed": True, "certificate": certificate, "diagnosis": None},
+        },
+    }
+
+    with patch.object(ArgminService, "execute_code", return_value=body):
+        response = await mcp_client.call_tool("execute_code", {"code": "export('result', result)"})
+
+    verdict = _texts(response)[0]
+    assert "Verification: certificate only" in verdict
+    assert "states a solver verdict for only 1 of them" in verdict
+
+
+@pytest.mark.asyncio
+async def test_a_multistart_of_results_reads_the_verdict_of_every_item(mcp_client):
+    """One export, several solves: the verdicts live on `items`, not on the wrapper.
+
+    The wrapper entry carries `certificate: None` by contract, so reading only the top level
+    would find no solver verdict anywhere and downgrade a fully proven multistart.
+    """
+    body = {
+        "success": True,
+        "result": {"runs": [{"success": True}, {"success": True}]},
+        "execution_time": 0.1,
+        "verification": {
+            "_summary": {"all_passed": True, "n_verifiable": 2, "n_passed": 2, "n_failed": 0, "n_unknown": 0},
+            "_warnings": [],
+            "runs": {
+                "passed": True,
+                "certificate": None,
+                "diagnosis": None,
+                "items": {
+                    "0": {"passed": True, "solver_success": True, "certificate": _certificate(True)},
+                    "1": {"passed": True, "solver_success": True, "certificate": {**_certificate(True), "complementarity_inf": 1e-09}},
+                },
+            },
+        },
     }
 
     with patch.object(ArgminService, "execute_code", return_value=body):
         response = await mcp_client.call_tool("execute_code", {"code": "export('runs', runs)"})
 
-    assert "Verification: unavailable" in _texts(response)[0]
+    assert "Verification: passed. All 2 exported solve(s)" in _texts(response)[0]
 
 
 @pytest.mark.asyncio
-async def test_scalar_success_and_status_exports_are_not_mistaken_for_a_result(mcp_client):
-    """The optimal-control examples export `success` and `status` as separate scalars.
+async def test_counts_with_no_entry_behind_them_are_not_a_pass(mcp_client):
+    """The totals can count a solve the payload shows no entry for, and a count is not proof.
 
-    The exports mapping would then carry both marker keys itself, and treating it as a
-    result would claim a stale backend on code that really did export nothing verifiable.
+    A reserved-key collision produces exactly this: an export named `_summary` is counted in
+    the totals and reported nowhere else, so nothing in the payload states that solve's
+    verdict.
     """
     body = {
         "success": True,
-        "result": {"success": True, "status": "Solve_Succeeded", "optimal_time": 1.2},
+        "result": {"result": {}},
         "execution_time": 0.1,
+        "verification": {
+            "_summary": {"all_passed": True, "n_verifiable": 1, "n_passed": 1, "n_failed": 0, "n_unknown": 0},
+            "_warnings": ["export '_summary' collides with a reserved verification key"],
+        },
     }
 
     with patch.object(ArgminService, "execute_code", return_value=body):
-        response = await mcp_client.call_tool("execute_code", {"code": "export('success', result.success)"})
+        response = await mcp_client.call_tool("execute_code", {"code": "export('_summary', result)"})
 
-    assert "Verification: none" in _texts(response)[0]
+    verdict = _texts(response)[0]
+    assert "Verification: certificate only" in verdict
+    assert "states a solver verdict for only 0 of them" in verdict
+    # The advisory that explains the shape still travels.
+    assert "collides with a reserved verification key" in verdict
+
+
+@pytest.mark.asyncio
+async def test_a_failed_solver_verdict_beside_a_pass_flag_is_not_a_pass(mcp_client):
+    """The entry's own flags outrank the totals, in the safe direction only."""
+    body = {
+        "success": True,
+        "result": {"result": {"success": False, "status": "Maximum_Iterations_Exceeded"}},
+        "execution_time": 0.1,
+        "verification": {
+            "_summary": {"all_passed": True, "n_verifiable": 1, "n_passed": 1, "n_failed": 0, "n_unknown": 0},
+            "_warnings": [],
+            "result": {
+                "passed": True,
+                "solver_success": False,
+                "solver_status": "Maximum_Iterations_Exceeded",
+                "certificate": _certificate(True),
+            },
+        },
+    }
+
+    with patch.object(ArgminService, "execute_code", return_value=body):
+        response = await mcp_client.call_tool("execute_code", {"code": "export('result', result)"})
+
+    verdict = _texts(response)[0]
+    assert "Verification: NOT passed" in verdict
+    assert "Do not report these numbers as the answer" in verdict
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("summary", "reason"),
+    [
+        # Nobody said whether anything failed. A count that was never sent is not a zero.
+        ({"all_passed": True, "n_verifiable": 1, "n_passed": 1}, "n_failed=None"),
+        # A count that is not a number cannot be read as one.
+        ({"all_passed": True, "n_verifiable": 1, "n_passed": 1, "n_failed": "1", "n_unknown": 0}, "n_failed='1'"),
+        # The totals contradict themselves: one solve accounted for out of two.
+        ({"all_passed": True, "n_verifiable": 2, "n_passed": 1, "n_failed": 0, "n_unknown": 0}, "n_verifiable=2"),
+        # Negative is not a count either.
+        ({"all_passed": True, "n_verifiable": 1, "n_passed": 1, "n_failed": -1, "n_unknown": 0}, "n_failed=-1"),
+    ],
+)
+async def test_a_summary_whose_counts_cannot_be_read_is_inconclusive(mcp_client, summary, reason):
+    """`verification` is an open dict, so the pass path has to require valid, consistent counts.
+
+    Each of these used to certify a pass: the counts were normalized to 0 and the zero then
+    read as evidence that nothing failed. An unreadable summary is not a finding either —
+    nothing here says a solve went wrong — so the verdict says what could not be read.
+    """
+    body = {
+        "success": True,
+        "result": {"result": {}},
+        "execution_time": 0.1,
+        "verification": {
+            "_summary": summary,
+            "_warnings": [],
+            "result": {"passed": True, "solver_success": True, "certificate": _certificate(True)},
+        },
+    }
+
+    with patch.object(ArgminService, "execute_code", return_value=body):
+        response = await mcp_client.call_tool("execute_code", {"code": "export('result', result)"})
+
+    verdict = _texts(response)[0]
+    assert "Verification: inconclusive" in verdict
+    assert "Verification: passed" not in verdict
+    # The verdict quotes the counts as they arrived, so the shape is debuggable from the text.
+    assert reason in verdict
 
 
 # ── execute_code: the code itself failing ────────────────────────────────────
