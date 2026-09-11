@@ -1,1 +1,12 @@
-* @Axiomatic-AI/ax-engineers
+# Last matching pattern wins. Default: either team can satisfy
+# code-owner review (servers, examples, templates).
+* @Axiomatic-AI/ax-reviewers @Axiomatic-AI/ax-engineers
+
+# Publish, CI, lockfiles, env: ax-engineers only.
+/.github/ @Axiomatic-AI/ax-engineers
+/pyproject.toml @Axiomatic-AI/ax-engineers
+/uv.lock @Axiomatic-AI/ax-engineers
+/Makefile @Axiomatic-AI/ax-engineers
+/.env @Axiomatic-AI/ax-engineers
+/scripts/ @Axiomatic-AI/ax-engineers
+/axiomatic_mcp/config/ @Axiomatic-AI/ax-engineers
