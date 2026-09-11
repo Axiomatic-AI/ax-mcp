@@ -293,7 +293,8 @@ def _format_ingest(response: dict[str, Any]) -> str:
         )
 
     lines = [f"Ingested {title!r} into the private knowledge graph as {paper_id}."]
-    if not response.get("pdf_and_figures_stored"):
+    stored = response.get("pdf_and_figures_stored", response.get("pdf_stored", True))
+    if not stored:
         lines.append(
             "The source PDF and/or its figures did not finish uploading, so they cannot be downloaded again. "
             "The paper itself is queryable; sending the same file again completes the upload."
@@ -406,6 +407,11 @@ def _format_papers(response: dict[str, Any]) -> str:
     items = response.get("items") or []
     total = response.get("total", len(items))
     if not items:
+        if total:
+            return (
+                f"{total} paper(s) total, but page {response.get('page', 1)} of "
+                f"{response.get('total_pages', 1)} has none. Call again with a lower page number."
+            )
         return "The private knowledge graph holds no papers."
 
     lines = [

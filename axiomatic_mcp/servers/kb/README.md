@@ -48,31 +48,44 @@ RETURN e.name AS name, p.id AS paper_id, p.title AS title
 
 ## Private Knowledge Graph
 
-Your organization's own graph. All four tools below return a plain refusal if the account has no private graph, and no retry will help.
+Your organization's own graph. All five tools below return a plain refusal if the account has no private graph, and no retry will help.
+
+By default, `search_private_knowledge_base`, `get_private_knowledge_base_overview` and `list_private_knowledge_base_papers` each cover every paper in the organization's private graph, regardless of who ingested it. Pass `self_only=True` to restrict any of them to only the papers the caller personally ingested.
 
 ### `ingest_pdf_to_private_knowledge_base`
 
-Ingest one local PDF. It is converted to markdown, its statements and entities are extracted, and the source PDF is stored. **This is the only tool in this server that writes to a knowledge graph.**
+Ingest one local PDF. It is parsed into passages, figures, tables and references, and the source PDF is stored. **This is the only tool in this server that writes to a knowledge graph.**
 
 **Parameters:**
 
 - `file_path` (path, required): absolute path to the PDF
-- `title` (str, optional): leave empty to use the PDF's first heading
-- `paper_id` (str, optional): leave empty to derive it from a hash of the converted markdown
+- `doi` (str, optional): the paper's DOI, if known; leave empty if unknown
 
 **It blocks for minutes.** The call returns only when ingestion has finished. If the server's own timeout fires first you get a 504 saying the graph is unchanged — re-sending the same file is safe, and is reported as already present rather than ingested twice, so retrying is always the right move.
 
-Two response states are worth reading rather than skimming: `already_present` means nothing was extracted, so the zero counts are expected; `pdf_stored: false` means the paper is queryable but its source PDF did not finish uploading, and sending the same file again completes it.
+Two response states are worth reading rather than skimming: `already_present` means nothing was re-ingested; `pdf_and_figures_stored: false` means the paper is queryable but its source PDF and/or figures did not finish uploading, and sending the same file again completes it.
 
 The PDF's bytes are sniffed before upload, so a non-PDF with a `.pdf` name is refused in milliseconds instead of after a multi-minute request.
 
 ### `search_private_knowledge_base`
 
-Semantic search over the private graph. Same parameters and same response shape as `search_knowledge_base` — `query` and `limit` (1-50, default 5) — just a different graph. This is where an ingested paper shows up.
+Semantic search over the private graph. Same shape as `search_knowledge_base` — `query` and `limit` (1-50, default 5) — plus an optional `self_only` flag, just a different graph. This is where an ingested paper shows up.
 
 ### `get_private_knowledge_base_overview`
 
-Node counts per label in the private graph, with the same caveat about multi-label nodes as the curated one. The quickest way to see whether the private graph holds anything yet.
+Node counts per label in the private graph, with the same caveat about multi-label nodes as the curated one, plus an optional `self_only` flag. The quickest way to see whether the private graph holds anything yet.
+
+### `list_private_knowledge_base_papers`
+
+List the papers in the private graph — title and ingestion date, most recent first — without running a search or a Cypher query.
+
+**Parameters:**
+
+- `self_only` (bool, optional, default `False`): restrict to only the papers the caller personally ingested
+- `page` (int, optional, default 1): page number, starting at 1
+- `page_size` (int, optional, default 20): papers per page (1-100)
+
+Results are paginated; the structured result carries `total`, `page`, `page_size` and `total_pages` so a client can page through the rest.
 
 ### `private_knowledge_graph_read`
 
@@ -128,7 +141,7 @@ Compare the grating couplers in our private graph against the ones in Axiomatic'
 
 - The curated corpus is read-only. The only write path anywhere in this server is `ingest_pdf_to_private_knowledge_base`, and it writes only to your organization's private graph
 - Ingestion is synchronous and takes minutes for a full paper; there is no job id to poll and no progress reporting, so a client with a short tool timeout may give up before the server answers. Re-sending the same PDF is safe, so the recovery is simply to call it again
-- Browsing the corpus paper by paper is now a Cypher query rather than its own tool (`/neo4j/papers` is deprecated on the API): `MATCH (p:Document) RETURN p.id AS paper_id, p.title AS title ORDER BY p.title LIMIT 50`, paginating with `SKIP`. The one thing genuinely lost with the old `list_knowledge_base_papers` is its per-paper `keyMetricCount`, which now has to be rebuilt with a `count{}` over each paper's key-metric relationships
+- Browsing the curated corpus paper by paper is still a Cypher query rather than its own tool (`/neo4j/papers` is deprecated on the API): `MATCH (p:Document) RETURN p.id AS paper_id, p.title AS title ORDER BY p.title LIMIT 50`, paginating with `SKIP`. `list_private_knowledge_base_papers` covers only the private graph
 - `knowledge_graph_read` enforces provenance only by convention: the response flags rows whose columns don't look like a paper id, but an unusual alias can slip past the check either way. ax-stack traces provenance cell by cell for its own agent tools, but the `/neo4j/execute-read` endpoint doesn't return that trace, so it can't be enforced here
 - The rendered table is bounded — cells over 200 characters are elided and the table stops at 10,000 characters, both stated in the output. The structured result still carries every row in full, so a query selecting long text properties can still produce a large response; keep a `LIMIT` on it
 - Looking up a specific paper by title, downloading a paper's PDF, and subgraph visualization exist as internal agent tools in ax-stack but aren't exposed here yet — they need backend endpoints that don't exist today (paper lookup and download aren't REST-exposed)
