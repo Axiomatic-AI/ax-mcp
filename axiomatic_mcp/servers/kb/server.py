@@ -287,10 +287,7 @@ def _format_ingest(response: dict[str, Any]) -> str:
     title = response.get("title") or "untitled"
 
     if response.get("already_present"):
-        return (
-            f"{title!r} ({paper_id}) was already in the private knowledge graph. Nothing was re-ingested — "
-            "the paper is already queryable."
-        )
+        return f"{title!r} ({paper_id}) was already in the private knowledge graph. Nothing was re-ingested — " "the paper is already queryable."
 
     lines = [f"Ingested {title!r} into the private knowledge graph as {paper_id}."]
     stored = response.get("pdf_and_figures_stored", response.get("pdf_stored", True))
@@ -420,9 +417,7 @@ def _format_papers(response: dict[str, Any]) -> str:
         "most recently ingested first:"
     ]
     for item in items:
-        lines.append(
-            f"  - {item.get('title') or 'untitled'}, ingested {item.get('ingestion_date') or 'unknown date'}"
-        )
+        lines.append(f"  - {item.get('title') or 'untitled'}, ingested {item.get('ingestion_date') or 'unknown date'}")
     if response.get("page", 1) < response.get("total_pages", 1):
         lines.append("More papers exist — call again with a higher page to see the rest.")
     return "\n".join(lines)

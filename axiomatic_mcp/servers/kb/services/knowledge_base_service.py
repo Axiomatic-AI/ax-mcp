@@ -92,15 +92,11 @@ class KnowledgeBaseService(SingletonBase):
         Returns:
             dict with keys: items (list of {label, count}, largest first), total
         """
-        route = (
-            ApiRoutes.KNOWLEDGE_BASE_PRIVATE_OVERVIEW_ME if self_only else ApiRoutes.KNOWLEDGE_BASE_PRIVATE_OVERVIEW
-        )
+        route = ApiRoutes.KNOWLEDGE_BASE_PRIVATE_OVERVIEW_ME if self_only else ApiRoutes.KNOWLEDGE_BASE_PRIVATE_OVERVIEW
         with AxiomaticAPIClient() as client:
             return client.get(route)
 
-    def private_papers(
-        self, self_only: bool = False, page: int = 1, page_size: int = 20
-    ) -> dict[str, Any]:
+    def private_papers(self, self_only: bool = False, page: int = 1, page_size: int = 20) -> dict[str, Any]:
         """
         List the papers in the organization's private knowledge graph: title and ingestion date,
         most recent first.
