@@ -25,6 +25,7 @@ class ApiRoutes:
     KNOWLEDGE_BASE_PRIVATE_PAPERS_ME = "/neo4j/private/papers/me"
     KNOWLEDGE_BASE_PRIVATE_EXECUTE_READ = "/neo4j/private/execute-read"
     KNOWLEDGE_BASE_PRIVATE_INGEST = "/neo4j/private/ingest"
+    KNOWLEDGE_BASE_PRIVATE_DELETE = "/neo4j/private/delete/{paper_id}"
     ARXIV_SEARCH_WORKS = "/search/arxiv/works"
     OPENALEX_SEARCH_WORKS = "/search/openalex/works"
     TIDY3D_GENERATE_CODE = "/tidy3d/generate-code"

@@ -129,6 +129,18 @@ class KnowledgeBaseService(SingletonBase):
                 data={"query": query, "params": params},
             )
 
+    def private_delete_paper(self, paper_id: str) -> dict[str, Any]:
+        """
+        Remove the caller as an owner of one paper in the organization's private knowledge
+        graph. When the caller was its last owner, the paper and everything under it (passages,
+        figures, tables, references, the stored PDF) is deleted outright.
+
+        Returns:
+            dict with keys: paper_id, fully_deleted, pdf_and_figures_removed
+        """
+        with AxiomaticAPIClient() as client:
+            return client.delete(ApiRoutes.KNOWLEDGE_BASE_PRIVATE_DELETE.format(paper_id=paper_id))
+
     def private_ingest(self, file_name: str, pdf_bytes: bytes, doi: str = "") -> dict[str, Any]:
         """
         Ingest one PDF into the organization's private knowledge graph.

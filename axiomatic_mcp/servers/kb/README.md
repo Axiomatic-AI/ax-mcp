@@ -77,7 +77,7 @@ Node counts per label in the private graph, with the same caveat about multi-lab
 
 ### `list_private_knowledge_base_papers`
 
-List the papers in the private graph — title and ingestion date, most recent first — without running a search or a Cypher query.
+List the papers in the private graph — id, title and ingestion date, most recent first — without running a search or a Cypher query. This is also where to get a paper's id for `delete_private_knowledge_base_paper`.
 
 **Parameters:**
 
@@ -90,6 +90,14 @@ Results are paginated; the structured result carries `total`, `page`, `page_size
 ### `private_knowledge_graph_read`
 
 The private counterpart of `knowledge_graph_read`: same parameters, same query rules, same result shape, different graph. Provenance is still the query's job.
+
+### `delete_private_knowledge_base_paper`
+
+Remove yourself as an owner of one paper in the private graph. When you are its last owner, the paper and everything under it (passages, figures, tables, references, the stored PDF) is deleted outright; otherwise only your ownership is removed and the paper remains for its other owners. **The only other write path in this server, besides ingestion.**
+
+**Parameters:**
+
+- `doc_id` (str, required): the paper's id, as returned by `list_private_knowledge_base_papers` or in a `search_private_knowledge_base` result's metadata
 
 **Example Usage:**
 
@@ -139,7 +147,7 @@ Compare the grating couplers in our private graph against the ones in Axiomatic'
 
 ## Limitations
 
-- The curated corpus is read-only. The only write path anywhere in this server is `ingest_pdf_to_private_knowledge_base`, and it writes only to your organization's private graph
+- The curated corpus is read-only. The only write paths anywhere in this server are `ingest_pdf_to_private_knowledge_base` and `delete_private_knowledge_base_paper`, and both act only on your organization's private graph
 - Ingestion is synchronous and takes minutes for a full paper; there is no job id to poll and no progress reporting, so a client with a short tool timeout may give up before the server answers. Re-sending the same PDF is safe, so the recovery is simply to call it again
 - Browsing the curated corpus paper by paper is still a Cypher query rather than its own tool (`/neo4j/papers` is deprecated on the API): `MATCH (p:Document) RETURN p.id AS paper_id, p.title AS title ORDER BY p.title LIMIT 50`, paginating with `SKIP`. `list_private_knowledge_base_papers` covers only the private graph
 - `knowledge_graph_read` enforces provenance only by convention: the response flags rows whose columns don't look like a paper id, but an unusual alias can slip past the check either way. ax-stack traces provenance cell by cell for its own agent tools, but the `/neo4j/execute-read` endpoint doesn't return that trace, so it can't be enforced here

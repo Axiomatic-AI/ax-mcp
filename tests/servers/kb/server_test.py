@@ -50,6 +50,7 @@ async def test_list_tools(mcp_client):
         "get_private_knowledge_base_overview",
         "list_private_knowledge_base_papers",
         "private_knowledge_graph_read",
+        "delete_private_knowledge_base_paper",
     } <= tool_names
 
 
@@ -495,11 +496,11 @@ async def test_private_overview_on_an_empty_graph(mcp_client):
 
 
 @pytest.mark.asyncio
-async def test_list_papers_renders_title_and_ingestion_date(mcp_client):
+async def test_list_papers_renders_id_title_and_ingestion_date(mcp_client):
     mock_response = {
         "items": [
-            {"title": "Low-loss ring resonators", "ingestion_date": "2026-01-02T00:00:00Z"},
-            {"title": "Another paper", "ingestion_date": "2026-01-01T00:00:00Z"},
+            {"id": "hash-abc", "title": "Low-loss ring resonators", "ingestion_date": "2026-01-02T00:00:00Z"},
+            {"id": "hash-def", "title": "Another paper", "ingestion_date": "2026-01-01T00:00:00Z"},
         ],
         "total": 2,
         "page": 1,
@@ -514,8 +515,8 @@ async def test_list_papers_renders_title_and_ingestion_date(mcp_client):
     text = _texts(response)
     assert "Low-loss ring resonators" in text and "2026-01-02T00:00:00Z" in text
     assert "Another paper" in text
-    # `paper_id` was dropped from the response on purpose -- must not leak back in via the id.
-    assert "paper_id" not in text
+    # The id has to be in the rendered text too -- it's what feeds delete_private_knowledge_base_paper.
+    assert "hash-abc" in text and "hash-def" in text
     assert response.structured_content == mock_response
 
 
@@ -568,6 +569,64 @@ async def test_list_papers_surfaces_api_errors_as_a_tool_error(mcp_client):
     assert "Failed to list the private knowledge base papers" in _texts(response)
 
 
+# ── private graph: delete ────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_delete_paper_fully_deleted(mcp_client):
+    with patch.object(
+        KnowledgeBaseService,
+        "private_delete_paper",
+        return_value={"paper_id": "hash-abc", "fully_deleted": True, "pdf_and_figures_removed": True},
+    ) as delete_spy:
+        response = await mcp_client.call_tool("delete_private_knowledge_base_paper", {"doc_id": "hash-abc"})
+
+    delete_spy.assert_called_once_with("hash-abc")
+    text = _texts(response)
+    assert "was deleted" in text
+    assert "hash-abc" in text
+
+
+@pytest.mark.asyncio
+async def test_delete_paper_reports_leftover_storage_when_removal_is_partial(mcp_client):
+    with patch.object(
+        KnowledgeBaseService,
+        "private_delete_paper",
+        return_value={"paper_id": "hash-abc", "fully_deleted": True, "pdf_and_figures_removed": False},
+    ):
+        response = await mcp_client.call_tool("delete_private_knowledge_base_paper", {"doc_id": "hash-abc"})
+
+    text = _texts(response)
+    assert "was deleted" in text
+    assert "could not be removed" in text
+
+
+@pytest.mark.asyncio
+async def test_delete_paper_only_removes_ownership_when_other_owners_remain(mcp_client):
+    """`fully_deleted: false` means the paper survives for its other owners -- must not read as a deletion."""
+    with patch.object(
+        KnowledgeBaseService,
+        "private_delete_paper",
+        return_value={"paper_id": "hash-abc", "fully_deleted": False, "pdf_and_figures_removed": False},
+    ):
+        response = await mcp_client.call_tool("delete_private_knowledge_base_paper", {"doc_id": "hash-abc"})
+
+    text = _texts(response)
+    assert "removed as an owner" in text
+    assert "was not deleted" in text
+
+
+@pytest.mark.asyncio
+async def test_delete_paper_surfaces_api_errors_as_a_tool_error(mcp_client):
+    with patch.object(KnowledgeBaseService, "private_delete_paper", side_effect=_status_error(404, "not found")):
+        response = await mcp_client.call_tool(
+            "delete_private_knowledge_base_paper", {"doc_id": "hash-abc"}, raise_on_error=False
+        )
+
+    assert response.is_error is True
+    assert "Failed to delete paper" in _texts(response)
+
+
 def test_private_route_constants():
     """The contract is hand-maintained, so the paths are pinned here rather than trusted."""
     assert ApiRoutes.KNOWLEDGE_BASE_PRIVATE_SEARCH == "/neo4j/private/search"
@@ -575,3 +634,4 @@ def test_private_route_constants():
     assert ApiRoutes.KNOWLEDGE_BASE_PRIVATE_EXECUTE_READ == "/neo4j/private/execute-read"
     assert ApiRoutes.KNOWLEDGE_BASE_PRIVATE_INGEST == "/neo4j/private/ingest"
     assert ApiRoutes.KNOWLEDGE_BASE_PRIVATE_PAPERS == "/neo4j/private/papers"
+    assert ApiRoutes.KNOWLEDGE_BASE_PRIVATE_DELETE == "/neo4j/private/delete/{paper_id}"

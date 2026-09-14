@@ -28,7 +28,9 @@ mcp = FastMCP(
     The PRIVATE knowledge graph is the caller's organization's own — only the papers it ingested
     itself. It is the only writable graph. Reach it with search_private_knowledge_base,
     get_private_knowledge_base_overview, list_private_knowledge_base_papers and
-    private_knowledge_graph_read, and write to it with ingest_pdf_to_private_knowledge_base.
+    private_knowledge_graph_read, write to it with ingest_pdf_to_private_knowledge_base, and
+    remove a paper from it with delete_private_knowledge_base_paper — it takes the paper's id,
+    which list_private_knowledge_base_papers and search_private_knowledge_base both report.
     Ingestion takes minutes and returns only when finished; re-sending the same PDF is safe and is
     reported as already present, so retrying after a timeout is correct. Because it holds the call
     open that long, it is a good candidate for delegating to a background or sub-agent if you have
@@ -64,6 +66,7 @@ mcp = FastMCP(
             "get_private_knowledge_base_overview",
             "list_private_knowledge_base_papers",
             "private_knowledge_graph_read",
+            "delete_private_knowledge_base_paper",
         ]
     ),
     version="0.0.1",
@@ -417,7 +420,10 @@ def _format_papers(response: dict[str, Any]) -> str:
         "most recently ingested first:"
     ]
     for item in items:
-        lines.append(f"  - {item.get('title') or 'untitled'}, ingested {item.get('ingestion_date') or 'unknown date'}")
+        lines.append(
+            f"  - {item.get('title') or 'untitled'} (id: {item.get('id')}), "
+            f"ingested {item.get('ingestion_date') or 'unknown date'}"
+        )
     if response.get("page", 1) < response.get("total_pages", 1):
         lines.append("More papers exist — call again with a higher page to see the rest.")
     return "\n".join(lines)
@@ -426,9 +432,9 @@ def _format_papers(response: dict[str, Any]) -> str:
 @mcp.tool(
     name="list_private_knowledge_base_papers",
     description=(
-        "List the papers in the organization's private knowledge graph: title and ingestion "
+        "List the papers in the organization's private knowledge graph: id, title and ingestion "
         "date, most recent first. Use it to see what has been ingested without running a search "
-        "or a Cypher query.\n\n"
+        "or a Cypher query, and to get a paper's id for delete_private_knowledge_base_paper.\n\n"
         "By default this lists every paper in the organization's private graph, regardless of "
         "who ingested it. Set self_only=True to restrict the list to only the papers the caller "
         "personally ingested. Results are paginated; check total_pages in the structured result "
@@ -449,6 +455,51 @@ async def list_private_knowledge_base_papers(
 
     return ToolResult(
         content=[TextContent(type="text", text=_format_papers(response))],
+        structured_content=response,
+    )
+
+
+def _format_deletion(response: dict[str, Any]) -> str:
+    paper_id = response.get("paper_id")
+    if response.get("fully_deleted"):
+        lines = [f"Paper {paper_id!r} was deleted from the private knowledge graph, along with everything under it."]
+        if not response.get("pdf_and_figures_removed"):
+            lines.append(
+                "The stored PDF and/or its figures could not be removed and may still be present in storage; "
+                "the paper itself is gone from the graph and no longer queryable."
+            )
+        return "\n".join(lines)
+    return (
+        f"You were removed as an owner of paper {paper_id!r}. Other owners remain, so the paper "
+        "itself was not deleted and is still queryable by them."
+    )
+
+
+@mcp.tool(
+    name="delete_private_knowledge_base_paper",
+    description=(
+        "Remove yourself as an owner of one paper in the organization's private knowledge graph. "
+        "When you are its last owner, the paper and everything under it (passages, figures, "
+        "tables, references, the stored PDF) is deleted outright; otherwise only your ownership "
+        "is removed and the paper remains for its other owners.\n\n"
+        "Identify the paper by its id — get it from list_private_knowledge_base_papers or from a "
+        "search_private_knowledge_base result's metadata, never guess or construct one."
+    ),
+    tags=["knowledge-base", "private", "papers", "delete", "write"],
+)
+async def delete_private_knowledge_base_paper(
+    doc_id: Annotated[
+        str, "The paper's id, as returned by list_private_knowledge_base_papers or search_private_knowledge_base"
+    ],
+) -> ToolResult:
+    """Remove the caller's ownership of one paper in the private knowledge graph, by id."""
+    try:
+        response = knowledge_base_service.private_delete_paper(doc_id)
+    except Exception as e:
+        raise ToolError(f"Failed to delete paper {doc_id!r}: {e!s}") from e
+
+    return ToolResult(
+        content=[TextContent(type="text", text=_format_deletion(response))],
         structured_content=response,
     )
 
