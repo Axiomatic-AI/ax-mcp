@@ -62,30 +62,57 @@ class KnowledgeBaseService(SingletonBase):
                 data={"query": query, "params": params},
             )
 
-    def private_search(self, query: str, limit: int = 5) -> dict[str, Any]:
+    def private_search(self, query: str, limit: int = 5, self_only: bool = False) -> dict[str, Any]:
         """
         Semantic search over the organization's private knowledge base.
+
+        `self_only` restricts results to only the papers the caller personally ingested, rather
+        than every paper in the organization's private graph. The API has no `self_only` field
+        any more -- it split into an org-wide route and an always-self-scoped `/me` route, so
+        this picks which one to call rather than forwarding the flag.
 
         Same response shape as `search`, so the same formatter renders it.
 
         Returns:
             dict with keys: query, results (list of {text, score, metadata}), count
         """
+        route = ApiRoutes.KNOWLEDGE_BASE_PRIVATE_SEARCH_ME if self_only else ApiRoutes.KNOWLEDGE_BASE_PRIVATE_SEARCH
         with AxiomaticAPIClient() as client:
-            return client.post(
-                ApiRoutes.KNOWLEDGE_BASE_PRIVATE_SEARCH,
-                data={"query": query, "limit": limit},
-            )
+            return client.post(route, data={"query": query, "limit": limit})
 
-    def private_overview(self) -> dict[str, Any]:
+    def private_overview(self, self_only: bool = False) -> dict[str, Any]:
         """
         Node counts per label in the organization's private knowledge graph.
+
+        `self_only` restricts the counts to only the papers the caller personally ingested,
+        rather than every paper in the organization's private graph. The API has no `self_only`
+        field any more -- it split into an org-wide route and an always-self-scoped `/me` route,
+        so this picks which one to call rather than forwarding the flag.
 
         Returns:
             dict with keys: items (list of {label, count}, largest first), total
         """
+        route = ApiRoutes.KNOWLEDGE_BASE_PRIVATE_OVERVIEW_ME if self_only else ApiRoutes.KNOWLEDGE_BASE_PRIVATE_OVERVIEW
         with AxiomaticAPIClient() as client:
-            return client.get(ApiRoutes.KNOWLEDGE_BASE_PRIVATE_OVERVIEW)
+            return client.get(route)
+
+    def private_papers(self, self_only: bool = False, page: int = 1, page_size: int = 20) -> dict[str, Any]:
+        """
+        List the papers in the organization's private knowledge graph: title and ingestion date,
+        most recent first.
+
+        `self_only` restricts the list to only the papers the caller personally ingested, rather
+        than every paper in the organization's private graph. The API has no `self_only` field
+        any more -- it split into an org-wide route and an always-self-scoped `/me` route, so
+        this picks which one to call rather than forwarding the flag.
+
+        Returns:
+            dict with keys: items (list of {title, ingestion_date}), total, page,
+            page_size, total_pages
+        """
+        route = ApiRoutes.KNOWLEDGE_BASE_PRIVATE_PAPERS_ME if self_only else ApiRoutes.KNOWLEDGE_BASE_PRIVATE_PAPERS
+        with AxiomaticAPIClient() as client:
+            return client.get(route, params={"page": page, "page_size": page_size})
 
     def private_execute_read(self, query: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         """
@@ -102,17 +129,16 @@ class KnowledgeBaseService(SingletonBase):
                 data={"query": query, "params": params},
             )
 
-    def private_ingest(self, file_name: str, pdf_bytes: bytes, title: str = "", paper_id: str = "") -> dict[str, Any]:
+    def private_ingest(self, file_name: str, pdf_bytes: bytes, doi: str = "") -> dict[str, Any]:
         """
         Ingest one PDF into the organization's private knowledge graph.
 
         Returns:
-            dict with keys: paper_id, title, already_present, pdf_stored, passages, entities,
-            statements
+            dict with keys: paper_id, title, already_present, pdf_and_figures_stored
         """
         with AxiomaticAPIClient() as client:
             return client.post(
                 ApiRoutes.KNOWLEDGE_BASE_PRIVATE_INGEST,
                 files={"file": (file_name, pdf_bytes, "application/pdf")},
-                data={"title": title, "paper_id": paper_id},
+                data={"doi": doi},
             )
