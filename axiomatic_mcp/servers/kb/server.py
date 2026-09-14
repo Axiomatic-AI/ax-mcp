@@ -93,9 +93,7 @@ def _format_search_results(response: dict[str, Any]) -> str:
         paper_id = metadata.get("paper_id")
         source = title or paper_id or "unknown source"
         id_suffix = f", id: {paper_id}" if paper_id and title else ""
-        lines.append(
-            f"{i}. [source: {source}{id_suffix}, score={result.get('score') or 0:.3f}]\n{result.get('text', '')}\n"
-        )
+        lines.append(f"{i}. [source: {source}{id_suffix}, score={result.get('score') or 0:.3f}]\n{result.get('text', '')}\n")
     return "\n".join(lines)
 
 
