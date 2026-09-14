@@ -76,6 +76,9 @@ async def test_search_knowledge_base_surfaces_citations(mcp_client):
     texts = [c.text for c in response.content if hasattr(c, "text")]
     assert any("Low-loss ring resonators" in t for t in texts)
     assert any("0.870" in t for t in texts)
+    # The id has to be in the rendered text, not just structured_content -- it's what feeds
+    # get_knowledge_base_paper_markdown, and clients that only see content blocks need it there.
+    assert any("2301.07041" in t for t in texts)
 
 
 @pytest.mark.asyncio
@@ -460,6 +463,9 @@ async def test_private_search_reuses_the_citation_formatter(mcp_client):
     spy.assert_called_once_with("our ring resonator", 3, False)
     text = _texts(response)
     assert "Internal report" in text and "0.910" in text
+    # The id has to be in the rendered text, not just structured_content -- it's what feeds
+    # delete_private_knowledge_base_paper and get_private_knowledge_base_paper_markdown.
+    assert "internal-1" in text
     assert response.structured_content == mock_response
 
 
