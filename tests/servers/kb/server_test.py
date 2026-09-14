@@ -76,8 +76,6 @@ async def test_search_knowledge_base_surfaces_citations(mcp_client):
     texts = [c.text for c in response.content if hasattr(c, "text")]
     assert any("Low-loss ring resonators" in t for t in texts)
     assert any("0.870" in t for t in texts)
-    # The id has to be in the rendered text, not just structured_content -- it's what feeds
-    # get_knowledge_base_paper_markdown, and clients that only see content blocks need it there.
     assert any("2301.07041" in t for t in texts)
 
 

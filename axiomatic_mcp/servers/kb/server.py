@@ -92,8 +92,6 @@ def _format_search_results(response: dict[str, Any]) -> str:
         title = metadata.get("paper_title")
         paper_id = metadata.get("paper_id")
         source = title or paper_id or "unknown source"
-        # The id has to be in the rendered text too, not just structured_content -- it's what
-        # feeds delete_private_knowledge_base_paper and the markdown tools.
         id_suffix = f", id: {paper_id}" if paper_id and title else ""
         lines.append(
             f"{i}. [source: {source}{id_suffix}, score={result.get('score') or 0:.3f}]\n{result.get('text', '')}\n"
