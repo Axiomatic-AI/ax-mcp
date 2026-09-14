@@ -62,6 +62,17 @@ class KnowledgeBaseService(SingletonBase):
                 data={"query": query, "params": params},
             )
 
+    def get_markdown(self, doc_id: str) -> dict[str, Any]:
+        """
+        Reconstruct one paper's full content as markdown, in reading order, from the curated
+        knowledge base.
+
+        Returns:
+            dict with keys: doc_id, title, content
+        """
+        with AxiomaticAPIClient() as client:
+            return client.get(ApiRoutes.KNOWLEDGE_BASE_MARKDOWN, params={"doc_id": doc_id})
+
     def private_search(self, query: str, limit: int = 5, self_only: bool = False) -> dict[str, Any]:
         """
         Semantic search over the organization's private knowledge base.
@@ -140,6 +151,17 @@ class KnowledgeBaseService(SingletonBase):
         """
         with AxiomaticAPIClient() as client:
             return client.delete(ApiRoutes.KNOWLEDGE_BASE_PRIVATE_DELETE.format(paper_id=paper_id))
+
+    def private_get_markdown(self, doc_id: str) -> dict[str, Any]:
+        """
+        Reconstruct one paper's full content as markdown, in reading order, from the
+        organization's private knowledge graph.
+
+        Returns:
+            dict with keys: doc_id, title, content
+        """
+        with AxiomaticAPIClient() as client:
+            return client.get(ApiRoutes.KNOWLEDGE_BASE_PRIVATE_MARKDOWN, params={"doc_id": doc_id})
 
     def private_ingest(self, file_name: str, pdf_bytes: bytes, doi: str = "") -> dict[str, Any]:
         """

@@ -46,9 +46,17 @@ MATCH (p:Document {id: e.doc_id})
 RETURN e.name AS name, p.id AS paper_id, p.title AS title
 ```
 
+### `get_knowledge_base_paper_markdown`
+
+Reconstruct one paper's full content as markdown, in reading order: section headings, passage text, figure captions, table content and captions, then references under a final References heading.
+
+**Parameters:**
+
+- `doc_id` (str, required): the paper's id, e.g. from a `knowledge_graph_read` result
+
 ## Private Knowledge Graph
 
-Your organization's own graph. All five tools below return a plain refusal if the account has no private graph, and no retry will help.
+Your organization's own graph. All tools below return a plain refusal if the account has no private graph, and no retry will help.
 
 By default, `search_private_knowledge_base`, `get_private_knowledge_base_overview` and `list_private_knowledge_base_papers` each cover every paper in the organization's private graph, regardless of who ingested it. Pass `self_only=True` to restrict any of them to only the papers the caller personally ingested.
 
@@ -94,6 +102,14 @@ The private counterpart of `knowledge_graph_read`: same parameters, same query r
 ### `delete_private_knowledge_base_paper`
 
 Remove yourself as an owner of one paper in the private graph. When you are its last owner, the paper and everything under it (passages, figures, tables, references, the stored PDF) is deleted outright; otherwise only your ownership is removed and the paper remains for its other owners. **The only other write path in this server, besides ingestion.**
+
+**Parameters:**
+
+- `doc_id` (str, required): the paper's id, as returned by `list_private_knowledge_base_papers` or in a `search_private_knowledge_base` result's metadata
+
+### `get_private_knowledge_base_paper_markdown`
+
+The private counterpart of `get_knowledge_base_paper_markdown`: same rendering, different graph.
 
 **Parameters:**
 
@@ -152,4 +168,5 @@ Compare the grating couplers in our private graph against the ones in Axiomatic'
 - Browsing the curated corpus paper by paper is still a Cypher query rather than its own tool (`/neo4j/papers` is deprecated on the API): `MATCH (p:Document) RETURN p.id AS paper_id, p.title AS title ORDER BY p.title LIMIT 50`, paginating with `SKIP`. `list_private_knowledge_base_papers` covers only the private graph
 - `knowledge_graph_read` enforces provenance only by convention: the response flags rows whose columns don't look like a paper id, but an unusual alias can slip past the check either way. ax-stack traces provenance cell by cell for its own agent tools, but the `/neo4j/execute-read` endpoint doesn't return that trace, so it can't be enforced here
 - The rendered table is bounded — cells over 200 characters are elided and the table stops at 10,000 characters, both stated in the output. The structured result still carries every row in full, so a query selecting long text properties can still produce a large response; keep a `LIMIT` on it
-- Looking up a specific paper by title, downloading a paper's PDF, and subgraph visualization exist as internal agent tools in ax-stack but aren't exposed here yet — they need backend endpoints that don't exist today (paper lookup and download aren't REST-exposed)
+- `get_knowledge_base_paper_markdown`/`get_private_knowledge_base_paper_markdown` return a paper's full reconstructed text with no size cap — unlike every other tool here, this is meant to return the whole document, so a long paper can still be a large response
+- Looking up a specific paper by title, downloading a paper's original PDF, and subgraph visualization exist as internal agent tools in ax-stack but aren't exposed here yet — they need backend endpoints that don't exist today (paper lookup and download aren't REST-exposed)

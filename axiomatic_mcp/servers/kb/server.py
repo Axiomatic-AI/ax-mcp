@@ -23,14 +23,16 @@ mcp = FastMCP(
     The CURATED knowledge base is Axiomatic's own: scientific papers, extracted entities (devices,
     materials, performance metrics), and passages retrieved via semantic search. It is read-only.
     Reach it with search_knowledge_base for semantic/citation lookups, get_knowledge_base_overview
-    for what the corpus holds, and knowledge_graph_read when the answer has to be a table.
+    for what the corpus holds, knowledge_graph_read when the answer has to be a table, and
+    get_knowledge_base_paper_markdown to read one paper's full text.
 
     The PRIVATE knowledge graph is the caller's organization's own — only the papers it ingested
     itself. It is the only writable graph. Reach it with search_private_knowledge_base,
-    get_private_knowledge_base_overview, list_private_knowledge_base_papers and
-    private_knowledge_graph_read, write to it with ingest_pdf_to_private_knowledge_base, and
-    remove a paper from it with delete_private_knowledge_base_paper — it takes the paper's id,
-    which list_private_knowledge_base_papers and search_private_knowledge_base both report.
+    get_private_knowledge_base_overview, list_private_knowledge_base_papers,
+    private_knowledge_graph_read and get_private_knowledge_base_paper_markdown, write to it with
+    ingest_pdf_to_private_knowledge_base, and remove a paper from it with
+    delete_private_knowledge_base_paper — the delete and markdown tools take the paper's id, which
+    list_private_knowledge_base_papers and search_private_knowledge_base both report.
     Ingestion takes minutes and returns only when finished; re-sending the same PDF is safe and is
     reported as already present, so retrying after a timeout is correct. Because it holds the call
     open that long, it is a good candidate for delegating to a background or sub-agent if you have
@@ -61,12 +63,14 @@ mcp = FastMCP(
             "get_knowledge_base_schema",
             "get_knowledge_base_overview",
             "knowledge_graph_read",
+            "get_knowledge_base_paper_markdown",
             "ingest_pdf_to_private_knowledge_base",
             "search_private_knowledge_base",
             "get_private_knowledge_base_overview",
             "list_private_knowledge_base_papers",
             "private_knowledge_graph_read",
             "delete_private_knowledge_base_paper",
+            "get_private_knowledge_base_paper_markdown",
         ]
     ),
     version="0.0.1",
@@ -276,6 +280,39 @@ async def knowledge_graph_read(
 
     return ToolResult(
         content=[TextContent(type="text", text=_format_rows(response))],
+        structured_content=response,
+    )
+
+
+def _format_markdown(response: dict[str, Any]) -> str:
+    content = response.get("content")
+    if content:
+        return content
+    return f"{response.get('title') or 'This paper'!r} has no reconstructable content."
+
+
+@mcp.tool(
+    name="get_knowledge_base_paper_markdown",
+    description=(
+        "Reconstruct one paper's full content as markdown, in reading order, from Axiomatic's "
+        "curated knowledge base: section headings, passage text, figure captions, table content "
+        "and captions, then references under a final References heading.\n\n"
+        "Takes the paper's id — get it from a knowledge_graph_read result, e.g. "
+        "MATCH (p:Paper) RETURN p.id AS paper_id, p.title AS title."
+    ),
+    tags=["knowledge-base", "papers", "markdown"],
+)
+async def get_knowledge_base_paper_markdown(
+    doc_id: Annotated[str, "The paper's id, e.g. from a knowledge_graph_read result"],
+) -> ToolResult:
+    """Reconstruct one paper's full content as markdown, from the curated knowledge base."""
+    try:
+        response = knowledge_base_service.get_markdown(doc_id)
+    except Exception as e:
+        raise ToolError(f"Failed to fetch markdown for paper {doc_id!r}: {e!s}") from e
+
+    return ToolResult(
+        content=[TextContent(type="text", text=_format_markdown(response))],
         structured_content=response,
     )
 
@@ -500,6 +537,34 @@ async def delete_private_knowledge_base_paper(
 
     return ToolResult(
         content=[TextContent(type="text", text=_format_deletion(response))],
+        structured_content=response,
+    )
+
+
+@mcp.tool(
+    name="get_private_knowledge_base_paper_markdown",
+    description=(
+        "Reconstruct one paper's full content as markdown, in reading order, from the "
+        "organization's private knowledge graph. Same rendering as "
+        "get_knowledge_base_paper_markdown, different graph.\n\n"
+        "Takes the paper's id — get it from list_private_knowledge_base_papers or from a "
+        "search_private_knowledge_base result's metadata."
+    ),
+    tags=["knowledge-base", "private", "papers", "markdown"],
+)
+async def get_private_knowledge_base_paper_markdown(
+    doc_id: Annotated[
+        str, "The paper's id, as returned by list_private_knowledge_base_papers or search_private_knowledge_base"
+    ],
+) -> ToolResult:
+    """Reconstruct one paper's full content as markdown, from the private knowledge graph."""
+    try:
+        response = knowledge_base_service.private_get_markdown(doc_id)
+    except Exception as e:
+        raise ToolError(f"Failed to fetch markdown for paper {doc_id!r}: {e!s}") from e
+
+    return ToolResult(
+        content=[TextContent(type="text", text=_format_markdown(response))],
         structured_content=response,
     )
 
