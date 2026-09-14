@@ -457,10 +457,7 @@ def _format_papers(response: dict[str, Any]) -> str:
         "most recently ingested first:"
     ]
     for item in items:
-        lines.append(
-            f"  - {item.get('title') or 'untitled'} (id: {item.get('id')}), "
-            f"ingested {item.get('ingestion_date') or 'unknown date'}"
-        )
+        lines.append(f"  - {item.get('title') or 'untitled'} (id: {item.get('id')}), " f"ingested {item.get('ingestion_date') or 'unknown date'}")
     if response.get("page", 1) < response.get("total_pages", 1):
         lines.append("More papers exist — call again with a higher page to see the rest.")
     return "\n".join(lines)
@@ -525,9 +522,7 @@ def _format_deletion(response: dict[str, Any]) -> str:
     tags=["knowledge-base", "private", "papers", "delete", "write"],
 )
 async def delete_private_knowledge_base_paper(
-    doc_id: Annotated[
-        str, "The paper's id, as returned by list_private_knowledge_base_papers or search_private_knowledge_base"
-    ],
+    doc_id: Annotated[str, "The paper's id, as returned by list_private_knowledge_base_papers or search_private_knowledge_base"],
 ) -> ToolResult:
     """Remove the caller's ownership of one paper in the private knowledge graph, by id."""
     try:
@@ -553,9 +548,7 @@ async def delete_private_knowledge_base_paper(
     tags=["knowledge-base", "private", "papers", "markdown"],
 )
 async def get_private_knowledge_base_paper_markdown(
-    doc_id: Annotated[
-        str, "The paper's id, as returned by list_private_knowledge_base_papers or search_private_knowledge_base"
-    ],
+    doc_id: Annotated[str, "The paper's id, as returned by list_private_knowledge_base_papers or search_private_knowledge_base"],
 ) -> ToolResult:
     """Reconstruct one paper's full content as markdown, from the private knowledge graph."""
     try:
