@@ -6,6 +6,7 @@ import httpx
 import pytest
 import pytest_asyncio
 from fastmcp.client import Client
+from fastmcp.client.elicitation import ElicitResult
 
 from axiomatic_mcp.servers.kb.server import mcp
 from axiomatic_mcp.servers.kb.services.knowledge_base_service import KnowledgeBaseService
@@ -30,9 +31,14 @@ def _pdf(tmp_path, name: str = "paper.pdf", content: bytes = PDF_BYTES):
     return path
 
 
+async def _auto_accept_elicitation(message, response_type, params, context):
+    """Default handler for tests that aren't exercising the confirmation gate itself."""
+    return None
+
+
 @pytest_asyncio.fixture
 async def mcp_client():
-    async with Client(transport=mcp) as client:
+    async with Client(transport=mcp, elicitation_handler=_auto_accept_elicitation) as client:
         yield client
 
 
@@ -261,6 +267,69 @@ async def test_ingest_reports_the_outcome(mcp_client, tmp_path):
     # The paper is only in the private graph, so the model must be pointed at the right search tool.
     assert "search_private_knowledge_base" in text
     assert response.structured_content == mock_response
+
+
+@pytest.mark.asyncio
+async def test_ingest_elicits_confirmation_naming_file_and_destination(tmp_path):
+    """The confirmation must give the caller enough to decide: which file, and that it's the
+    private graph rather than the curated corpus."""
+    path = _pdf(tmp_path)
+    mock_response = {
+        "paper_id": "hash-abc",
+        "title": "Low-loss ring resonators",
+        "already_present": False,
+        "pdf_and_figures_stored": True,
+    }
+    captured = {}
+
+    async def accept(message, response_type, params, context):
+        captured["message"] = message
+        return None
+
+    with patch.object(KnowledgeBaseService, "private_ingest", return_value=mock_response) as spy:
+        async with Client(transport=mcp, elicitation_handler=accept) as client:
+            response = await client.call_tool("ingest_pdf_to_private_knowledge_base", {"file_path": str(path)})
+
+    spy.assert_called_once_with("paper.pdf", PDF_BYTES, "")
+    assert path.name in captured["message"]
+    assert "private" in captured["message"].lower()
+    assert response.is_error is False
+
+
+@pytest.mark.asyncio
+async def test_ingest_decline_writes_nothing(tmp_path):
+    """A decline must read as a decline, not an error, and must not touch the API."""
+    path = _pdf(tmp_path)
+
+    async def decline(message, response_type, params, context):
+        return ElicitResult(action="decline")
+
+    with patch.object(KnowledgeBaseService, "private_ingest") as spy:
+        async with Client(transport=mcp, elicitation_handler=decline) as client:
+            response = await client.call_tool("ingest_pdf_to_private_knowledge_base", {"file_path": str(path)})
+
+    spy.assert_not_called()
+    assert response.is_error is False
+    text = _texts(response)
+    assert "declined" in text.lower()
+    assert "nothing was written" in text.lower()
+
+
+@pytest.mark.asyncio
+async def test_ingest_cancel_also_writes_nothing(tmp_path):
+    """A cancelled elicitation (e.g. the user closing the dialog) must be treated the same as a
+    decline, not retried or surfaced as an error."""
+    path = _pdf(tmp_path)
+
+    async def cancel(message, response_type, params, context):
+        return ElicitResult(action="cancel")
+
+    with patch.object(KnowledgeBaseService, "private_ingest") as spy:
+        async with Client(transport=mcp, elicitation_handler=cancel) as client:
+            response = await client.call_tool("ingest_pdf_to_private_knowledge_base", {"file_path": str(path)})
+
+    spy.assert_not_called()
+    assert response.is_error is False
 
 
 @pytest.mark.asyncio
