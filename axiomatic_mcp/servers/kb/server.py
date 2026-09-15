@@ -8,6 +8,7 @@ import filetype
 from fastmcp import Context, FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.tools.tool import ToolResult
+from mcp.shared.exceptions import McpError
 from mcp.types import TextContent
 
 from ...providers.middleware_provider import get_mcp_middleware
@@ -36,12 +37,6 @@ mcp = FastMCP(
     private graph — it will never turn up in search_knowledge_base, so do not read its absence
     there as a failed ingestion. If the account has no private graph these five refuse with a
     message saying so, and no retry will help.
-
-    Offer ingest_pdf_to_private_knowledge_base whenever a PDF surfaces in the conversation — the
-    user attaches or names one, or you find and download one yourself, e.g. while searching the
-    literature — rather than waiting to be asked to add it. It is safe to call speculatively: it
-    always raises its own confirmation before writing, so nothing lands in the graph unless the
-    user actually agrees, and a decline costs nothing.
 
     search_private_knowledge_base, get_private_knowledge_base_overview and
     list_private_knowledge_base_papers each take an optional self_only flag: off by default
@@ -318,8 +313,10 @@ def _format_ingest(response: dict[str, Any]) -> str:
         "Re-sending the same PDF is safe — it is reported as already present rather than ingested twice — so "
         "on a timeout or an unclear failure, retrying is the correct move.\n\n"
         "Before writing, this tool raises an MCP elicitation asking the user to confirm the file name and "
-        "the destination graph. A decline (or a client that cancels, or does not support elicitation) writes "
-        "nothing and comes back as a plain decline, not an error — do not retry without a fresh confirmation."
+        "the destination graph. A decline, a cancel, or a client that does not support elicitation at all "
+        "writes nothing and comes back as a plain non-error result — do not retry any of these without a "
+        "genuinely fresh reason to think the answer would differ; a client that lacks elicitation support "
+        "will fail the same way every time."
     ),
     tags=["knowledge-base", "private", "ingest", "write"],
 )
@@ -341,10 +338,26 @@ async def ingest_pdf_to_private_knowledge_base(
         found = guessed.mime if guessed else "an unrecognized type"
         raise ToolError(f"Only PDFs can be ingested, but {path.name} is {found}.")
 
-    confirmation = await ctx.elicit(
-        message=f"Ingest {path.name!r} into your organization's private knowledge graph?",
-        response_type=None,
-    )
+    try:
+        confirmation = await ctx.elicit(
+            message=f"Ingest {path.name!r} into your organization's private knowledge graph?",
+            response_type=None,
+        )
+    except McpError:
+        return ToolResult(
+            content=[
+                TextContent(
+                    type="text",
+                    text=(
+                        f"Could not ask for confirmation before ingesting {path.name!r}: this client does not "
+                        "support MCP elicitation. Nothing was written. Retrying will not help — either get "
+                        "the user's go-ahead and ingest from a client that supports elicitation, or don't "
+                        "call this tool for this file."
+                    ),
+                )
+            ],
+            structured_content={"ingested": False, "action": "unsupported"},
+        )
     if confirmation.action != "accept":
         return ToolResult(
             content=[TextContent(type="text", text=f"Ingestion of {path.name!r} was declined; nothing was written.")],

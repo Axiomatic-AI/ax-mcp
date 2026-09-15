@@ -333,6 +333,29 @@ async def test_ingest_cancel_also_writes_nothing(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_ingest_reports_unsupported_elicitation_without_raising(tmp_path):
+    """A client with no elicitation handler at all returns ErrorData("Elicitation not supported"),
+    which the low-level protocol turns into McpError inside ctx.elicit. That must not propagate as
+    a tool error -- it has to read as a clean, non-retryable non-write, per the tool's own contract."""
+    path = _pdf(tmp_path)
+
+    with patch.object(KnowledgeBaseService, "private_ingest") as spy:
+        async with Client(transport=mcp) as client:  # no elicitation_handler configured
+            response = await client.call_tool(
+                "ingest_pdf_to_private_knowledge_base",
+                {"file_path": str(path)},
+                raise_on_error=False,
+            )
+
+    spy.assert_not_called()
+    assert response.is_error is False
+    text = _texts(response)
+    assert "does not support" in text.lower() or "unsupported" in text.lower()
+    assert "nothing was written" in text.lower()
+    assert response.structured_content == {"ingested": False, "action": "unsupported"}
+
+
+@pytest.mark.asyncio
 async def test_ingest_passes_doi_through(mcp_client, tmp_path):
     path = _pdf(tmp_path)
     mock_response = {
