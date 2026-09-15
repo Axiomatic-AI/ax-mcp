@@ -5,10 +5,11 @@ from pathlib import Path
 from typing import Annotated, Any
 
 import filetype
-from fastmcp import FastMCP
+from fastmcp import Context, FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.tools.tool import ToolResult
-from mcp.types import TextContent
+from mcp.shared.exceptions import McpError
+from mcp.types import ClientCapabilities, ElicitationCapability, TextContent
 
 from ...providers.middleware_provider import get_mcp_middleware
 from ...providers.toolset_provider import get_mcp_tools
@@ -287,7 +288,7 @@ def _format_ingest(response: dict[str, Any]) -> str:
     title = response.get("title") or "untitled"
 
     if response.get("already_present"):
-        return f"{title!r} ({paper_id}) was already in the private knowledge graph. Nothing was re-ingested — " "the paper is already queryable."
+        return f"{title!r} ({paper_id}) was already in the private knowledge graph. Nothing was re-ingested — the paper is already queryable."
 
     lines = [f"Ingested {title!r} into the private knowledge graph as {paper_id}."]
     stored = response.get("pdf_and_figures_stored", response.get("pdf_stored", True))
@@ -310,11 +311,17 @@ def _format_ingest(response: dict[str, Any]) -> str:
         "and never through search_knowledge_base.\n\n"
         "Synchronous and slow: it returns when ingestion has finished, which takes minutes for a full paper. "
         "Re-sending the same PDF is safe — it is reported as already present rather than ingested twice — so "
-        "on a timeout or an unclear failure, retrying is the correct move."
+        "on a timeout or an unclear failure, retrying is the correct move.\n\n"
+        "Before writing, this tool raises an MCP elicitation asking the user to confirm the file name and "
+        "the destination graph. A decline, a cancel, or a client that does not support elicitation at all "
+        "writes nothing and comes back as a plain non-error result — do not retry any of these without a "
+        "genuinely fresh reason to think the answer would differ; a client that lacks elicitation support "
+        "will fail the same way every time."
     ),
     tags=["knowledge-base", "private", "ingest", "write"],
 )
 async def ingest_pdf_to_private_knowledge_base(
+    ctx: Context,
     file_path: Annotated[Path, "The absolute path to the PDF file to ingest"],
     doi: Annotated[str, "The paper's DOI, if known. Leave empty if unknown."] = "",
 ) -> ToolResult:
@@ -330,6 +337,35 @@ async def ingest_pdf_to_private_knowledge_base(
     if guessed is None or guessed.mime != _PDF_CONTENT_TYPE:
         found = guessed.mime if guessed else "an unrecognized type"
         raise ToolError(f"Only PDFs can be ingested, but {path.name} is {found}.")
+
+    if not ctx.session.check_client_capability(ClientCapabilities(elicitation=ElicitationCapability())):
+        return ToolResult(
+            content=[
+                TextContent(
+                    type="text",
+                    text=(
+                        f"Could not ask for confirmation before ingesting {path.name!r}: this client did not "
+                        "declare support for MCP elicitation. Nothing was written. Retrying will not help — "
+                        "either get the user's go-ahead and ingest from a client that supports elicitation, "
+                        "or don't call this tool for this file."
+                    ),
+                )
+            ],
+            structured_content={"ingested": False, "action": "unsupported"},
+        )
+
+    try:
+        confirmation = await ctx.elicit(
+            message=f"Ingest {path.name!r} into your organization's private knowledge graph?",
+            response_type=None,
+        )
+    except McpError as e:
+        raise ToolError(f"Failed to get the user's confirmation before ingesting {path.name!r}: {e.error.message}") from e
+    if confirmation.action != "accept":
+        return ToolResult(
+            content=[TextContent(type="text", text=f"Ingestion of {path.name!r} was declined; nothing was written.")],
+            structured_content={"ingested": False, "action": confirmation.action},
+        )
 
     try:
         # Choose to pass by `asyncio.to_thread` just for the ingest
