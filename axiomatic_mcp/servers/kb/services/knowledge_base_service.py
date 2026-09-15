@@ -62,6 +62,17 @@ class KnowledgeBaseService(SingletonBase):
                 data={"query": query, "params": params},
             )
 
+    def get_markdown(self, doc_id: str) -> dict[str, Any]:
+        """
+        Reconstruct one paper's full content as markdown, in reading order, from the curated
+        knowledge base.
+
+        Returns:
+            dict with keys: doc_id, title, content
+        """
+        with AxiomaticAPIClient() as client:
+            return client.get(ApiRoutes.KNOWLEDGE_BASE_MARKDOWN, params={"doc_id": doc_id})
+
     def private_search(self, query: str, limit: int = 5, self_only: bool = False) -> dict[str, Any]:
         """
         Semantic search over the organization's private knowledge base.
@@ -128,6 +139,29 @@ class KnowledgeBaseService(SingletonBase):
                 ApiRoutes.KNOWLEDGE_BASE_PRIVATE_EXECUTE_READ,
                 data={"query": query, "params": params},
             )
+
+    def private_delete_paper(self, paper_id: str) -> dict[str, Any]:
+        """
+        Remove the caller as an owner of one paper in the organization's private knowledge
+        graph. When the caller was its last owner, the paper and everything under it (passages,
+        figures, tables, references, the stored PDF) is deleted outright.
+
+        Returns:
+            dict with keys: paper_id, fully_deleted, pdf_and_figures_removed
+        """
+        with AxiomaticAPIClient() as client:
+            return client.delete(ApiRoutes.KNOWLEDGE_BASE_PRIVATE_DELETE.format(paper_id=paper_id))
+
+    def private_get_markdown(self, doc_id: str) -> dict[str, Any]:
+        """
+        Reconstruct one paper's full content as markdown, in reading order, from the
+        organization's private knowledge graph.
+
+        Returns:
+            dict with keys: doc_id, title, content
+        """
+        with AxiomaticAPIClient() as client:
+            return client.get(ApiRoutes.KNOWLEDGE_BASE_PRIVATE_MARKDOWN, params={"doc_id": doc_id})
 
     def private_ingest(self, file_name: str, pdf_bytes: bytes, doi: str = "") -> dict[str, Any]:
         """

@@ -64,6 +64,15 @@ class AxiomaticAPIClient:
         self._handle_raise_for_status(response)
         return response.json()
 
+    def delete(
+        self,
+        endpoint: str,
+        params: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        response = self.client.delete(endpoint, params=params)
+        self._handle_raise_for_status(response)
+        return response.json()
+
     def __enter__(self):
         return self
 
