@@ -334,9 +334,10 @@ async def test_ingest_cancel_also_writes_nothing(tmp_path):
 
 @pytest.mark.asyncio
 async def test_ingest_reports_unsupported_elicitation_without_raising(tmp_path):
-    """A client with no elicitation handler at all returns ErrorData("Elicitation not supported"),
-    which the low-level protocol turns into McpError inside ctx.elicit. That must not propagate as
-    a tool error -- it has to read as a clean, non-retryable non-write, per the tool's own contract."""
+    """A client with no elicitation handler at all never declares the elicitation capability at
+    initialize time. The tool checks that capability proactively (rather than guessing from
+    whatever ctx.elicit happens to raise), so this must read as a clean, non-retryable non-write
+    without ever attempting the round trip."""
     path = _pdf(tmp_path)
 
     with patch.object(KnowledgeBaseService, "private_ingest") as spy:
@@ -350,9 +351,34 @@ async def test_ingest_reports_unsupported_elicitation_without_raising(tmp_path):
     spy.assert_not_called()
     assert response.is_error is False
     text = _texts(response)
-    assert "does not support" in text.lower() or "unsupported" in text.lower()
+    assert "declare support" in text.lower() or "unsupported" in text.lower()
     assert "nothing was written" in text.lower()
     assert response.structured_content == {"ingested": False, "action": "unsupported"}
+
+
+@pytest.mark.asyncio
+async def test_ingest_does_not_mislabel_a_genuine_elicitation_error_as_unsupported(tmp_path):
+    """A client that DOES declare elicitation support (it registered a handler) but whose handler
+    blows up at call time is a real, possibly transient failure -- not a capability gap. Confusing
+    the two would tell the caller not to retry something that might well succeed next time."""
+    path = _pdf(tmp_path)
+
+    async def broken_handler(message, response_type, params, context):
+        raise RuntimeError("simulated transient failure in the client's own handler")
+
+    with patch.object(KnowledgeBaseService, "private_ingest") as spy:
+        async with Client(transport=mcp, elicitation_handler=broken_handler) as client:
+            response = await client.call_tool(
+                "ingest_pdf_to_private_knowledge_base",
+                {"file_path": str(path)},
+                raise_on_error=False,
+            )
+
+    spy.assert_not_called()
+    assert response.is_error is True
+    text = _texts(response)
+    assert "unsupported" not in text.lower()
+    assert "confirmation" in text.lower()
 
 
 @pytest.mark.asyncio

@@ -9,7 +9,7 @@ from fastmcp import Context, FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.tools.tool import ToolResult
 from mcp.shared.exceptions import McpError
-from mcp.types import TextContent
+from mcp.types import ClientCapabilities, ElicitationCapability, TextContent
 
 from ...providers.middleware_provider import get_mcp_middleware
 from ...providers.toolset_provider import get_mcp_tools
@@ -338,26 +338,29 @@ async def ingest_pdf_to_private_knowledge_base(
         found = guessed.mime if guessed else "an unrecognized type"
         raise ToolError(f"Only PDFs can be ingested, but {path.name} is {found}.")
 
-    try:
-        confirmation = await ctx.elicit(
-            message=f"Ingest {path.name!r} into your organization's private knowledge graph?",
-            response_type=None,
-        )
-    except McpError:
+    if not ctx.session.check_client_capability(ClientCapabilities(elicitation=ElicitationCapability())):
         return ToolResult(
             content=[
                 TextContent(
                     type="text",
                     text=(
-                        f"Could not ask for confirmation before ingesting {path.name!r}: this client does not "
-                        "support MCP elicitation. Nothing was written. Retrying will not help — either get "
-                        "the user's go-ahead and ingest from a client that supports elicitation, or don't "
-                        "call this tool for this file."
+                        f"Could not ask for confirmation before ingesting {path.name!r}: this client did not "
+                        "declare support for MCP elicitation. Nothing was written. Retrying will not help — "
+                        "either get the user's go-ahead and ingest from a client that supports elicitation, "
+                        "or don't call this tool for this file."
                     ),
                 )
             ],
             structured_content={"ingested": False, "action": "unsupported"},
         )
+
+    try:
+        confirmation = await ctx.elicit(
+            message=f"Ingest {path.name!r} into your organization's private knowledge graph?",
+            response_type=None,
+        )
+    except McpError as e:
+        raise ToolError(f"Failed to get the user's confirmation before ingesting {path.name!r}: {e.error.message}") from e
     if confirmation.action != "accept":
         return ToolResult(
             content=[TextContent(type="text", text=f"Ingestion of {path.name!r} was declined; nothing was written.")],
