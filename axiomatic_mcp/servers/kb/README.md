@@ -61,11 +61,13 @@ Ingest one local PDF. It is parsed into passages, figures, tables and references
 - `file_path` (path, required): absolute path to the PDF
 - `doi` (str, optional): the paper's DOI, if known; leave empty if unknown
 
-**It blocks for minutes.** The call returns only when ingestion has finished. If the server's own timeout fires first you get a 504 saying the graph is unchanged — re-sending the same file is safe, and is reported as already present rather than ingested twice, so retrying is always the right move.
+**It asks before it writes.** Before calling the ingest endpoint, the tool raises an MCP elicitation naming the file and the destination ("your organization's private knowledge graph, not the curated corpus"), and waits for the client to render that as a yes/no confirmation dialog. A decline or a cancel writes nothing and comes back as a plain non-error result, so callers should read the response rather than assume success. If the client never declared the elicitation capability at connection time, the tool checks for that up front and refuses with `action: "unsupported"` instead of attempting the round trip — that one is not worth retrying, since the same client will fail identically every time. A client that *did* declare support but whose confirmation round trip genuinely fails (a transient error, a bug in its handler) is a different, real error — it is not mislabeled as unsupported, since that failure might not repeat.
+
+**It blocks for minutes.** Once confirmed, the call returns only when ingestion has finished. If the server's own timeout fires first you get a 504 saying the graph is unchanged — re-sending the same file (and confirming again) is safe, and is reported as already present rather than ingested twice, so retrying is always the right move.
 
 Two response states are worth reading rather than skimming: `already_present` means nothing was re-ingested; `pdf_and_figures_stored: false` means the paper is queryable but its source PDF and/or figures did not finish uploading, and sending the same file again completes it.
 
-The PDF's bytes are sniffed before upload, so a non-PDF with a `.pdf` name is refused in milliseconds instead of after a multi-minute request.
+The PDF's bytes are sniffed before upload, so a non-PDF with a `.pdf` name is refused in milliseconds instead of after a multi-minute request. The mime check and the elicitation both happen before any network call, so a decline or a bad file never touches the API.
 
 ### `search_private_knowledge_base`
 
@@ -145,3 +147,4 @@ Compare the grating couplers in our private graph against the ones in Axiomatic'
 - `knowledge_graph_read` enforces provenance only by convention: the response flags rows whose columns don't look like a paper id, but an unusual alias can slip past the check either way. ax-stack traces provenance cell by cell for its own agent tools, but the `/neo4j/execute-read` endpoint doesn't return that trace, so it can't be enforced here
 - The rendered table is bounded — cells over 200 characters are elided and the table stops at 10,000 characters, both stated in the output. The structured result still carries every row in full, so a query selecting long text properties can still produce a large response; keep a `LIMIT` on it
 - Looking up a specific paper by title, downloading a paper's PDF, and subgraph visualization exist as internal agent tools in ax-stack but aren't exposed here yet — they need backend endpoints that don't exist today (paper lookup and download aren't REST-exposed)
+- `ingest_pdf_to_private_knowledge_base`'s confirmation is an MCP elicitation (see [gofastmcp.com/servers/elicitation](https://gofastmcp.com/servers/elicitation)), which only works against a client that declared the elicitation capability at connection time; the tool checks that capability up front and reports `action: "unsupported"` rather than writing unconfirmed or raising — a client that declared support but then genuinely fails the round trip gets a real error instead, since that one might succeed on retry
