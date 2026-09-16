@@ -13,6 +13,13 @@ install-dev:
 	@uv pip install -e ".[dev]"
 	@echo "✅ Dev environment ready!"
 
+install-pic:
+	@command -v uv >/dev/null 2>&1 || (echo "Installing uv..." && curl -LsSf https://astral.sh/uv/install.sh | sh)
+	@echo "Setting up development environment..."
+	@uv venv
+	@uv pip install -e ".[pic]"
+	@echo "✅ Pic Dev environment ready!"
+
 test:
 	@uv run pytest tests/ -v --tb=short || true
 
