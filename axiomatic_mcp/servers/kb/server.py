@@ -351,7 +351,7 @@ def _format_asset_matches(matches: list[dict[str, Any]], kind: _AssetKind, fetch
         "matches a query, ranked by relevance. Returns each match's position (seq) and caption; "
         "fetch the actual figure or table with get_paper_asset.\n\n"
         "query is Lucene query syntax, not a plain string, e.g. "
-        "'\"fig 4\"^5 OR \"figure 4\"^5 OR neural network architecture'."
+        '\'"fig 4"^5 OR "figure 4"^5 OR neural network architecture\'.'
     ),
     tags=["knowledge-base", "papers", "figures", "tables", "search"],
 )
@@ -396,9 +396,7 @@ async def get_paper_asset(
     try:
         if kind == "figure":
             image_bytes, content_type = knowledge_base_asset_service.get_figure(doc_id, seq)
-            content: list[Any] = [
-                ImageContent(type="image", data=base64.b64encode(image_bytes).decode("ascii"), mimeType=content_type)
-            ]
+            content: list[Any] = [ImageContent(type="image", data=base64.b64encode(image_bytes).decode("ascii"), mimeType=content_type)]
             structured = {"doc_id": doc_id, "seq": seq, "kind": kind, "content_type": content_type}
         else:
             markdown = knowledge_base_asset_service.get_table(doc_id, seq)
@@ -712,7 +710,7 @@ async def delete_private_knowledge_base_paper(
         "search_paper_assets: same query rules, same result shape, different graph. Fetch the "
         "actual figure or table with get_private_paper_asset.\n\n"
         "query is Lucene query syntax, not a plain string, e.g. "
-        "'\"fig 4\"^5 OR \"figure 4\"^5 OR neural network architecture'."
+        '\'"fig 4"^5 OR "figure 4"^5 OR neural network architecture\'.'
     ),
     tags=["knowledge-base", "private", "papers", "figures", "tables", "search"],
 )
@@ -758,9 +756,7 @@ async def get_private_paper_asset(
     try:
         if kind == "figure":
             image_bytes, content_type = knowledge_base_asset_service.private_get_figure(doc_id, seq)
-            content: list[Any] = [
-                ImageContent(type="image", data=base64.b64encode(image_bytes).decode("ascii"), mimeType=content_type)
-            ]
+            content: list[Any] = [ImageContent(type="image", data=base64.b64encode(image_bytes).decode("ascii"), mimeType=content_type)]
             structured = {"doc_id": doc_id, "seq": seq, "kind": kind, "content_type": content_type}
         else:
             markdown = knowledge_base_asset_service.private_get_table(doc_id, seq)

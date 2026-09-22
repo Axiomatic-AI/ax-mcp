@@ -79,9 +79,7 @@ class KnowledgeBaseAssetService(SingletonBase):
     def private_get_figure(self, doc_id: str, seq: int) -> tuple[bytes, str]:
         """Private-graph counterpart of `get_figure`."""
         with AxiomaticAPIClient() as client:
-            return client.get_bytes(
-                ApiRoutes.KNOWLEDGE_BASE_PRIVATE_FIGURE, params={"doc_id": doc_id, "seq": seq}
-            )
+            return client.get_bytes(ApiRoutes.KNOWLEDGE_BASE_PRIVATE_FIGURE, params={"doc_id": doc_id, "seq": seq})
 
     def private_get_table(self, doc_id: str, seq: int) -> str:
         """Private-graph counterpart of `get_table`."""
