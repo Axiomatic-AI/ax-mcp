@@ -71,7 +71,7 @@ class KnowledgeBaseService(SingletonBase):
             dict with keys: doc_id, title, content
         """
         with AxiomaticAPIClient() as client:
-            return client.get(ApiRoutes.KNOWLEDGE_BASE_MARKDOWN, params={"doc_id": doc_id})
+            return client.get(ApiRoutes.KNOWLEDGE_BASE_MARKDOWN.format(doc_id=doc_id))
 
     def private_search(self, query: str, limit: int = 5, self_only: bool = False) -> dict[str, Any]:
         """
@@ -161,7 +161,7 @@ class KnowledgeBaseService(SingletonBase):
             dict with keys: doc_id, title, content
         """
         with AxiomaticAPIClient() as client:
-            return client.get(ApiRoutes.KNOWLEDGE_BASE_PRIVATE_MARKDOWN, params={"doc_id": doc_id})
+            return client.get(ApiRoutes.KNOWLEDGE_BASE_PRIVATE_MARKDOWN.format(doc_id=doc_id))
 
     def private_ingest(self, file_name: str, pdf_bytes: bytes, doi: str = "") -> dict[str, Any]:
         """

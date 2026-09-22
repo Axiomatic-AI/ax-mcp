@@ -1,19 +1,21 @@
 """AxKnowledgeBase MCP server — Axiomatic's curated knowledge base, and the caller's private one."""
 
 import asyncio
+import base64
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 import filetype
 from fastmcp import Context, FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.tools.tool import ToolResult
 from mcp.shared.exceptions import McpError
-from mcp.types import ClientCapabilities, ElicitationCapability, TextContent
+from mcp.types import ClientCapabilities, ElicitationCapability, ImageContent, TextContent
 
 from ...providers.middleware_provider import get_mcp_middleware
 from ...providers.toolset_provider import get_mcp_tools
 from ...shared.utils.prompt_utils import get_feedback_prompt
+from .services.knowledge_base_asset_service import KnowledgeBaseAssetService
 from .services.knowledge_base_service import KnowledgeBaseService
 
 mcp = FastMCP(
@@ -24,16 +26,20 @@ mcp = FastMCP(
     The CURATED knowledge base is Axiomatic's own: scientific papers, extracted entities (devices,
     materials, performance metrics), and passages retrieved via semantic search. It is read-only.
     Reach it with search_knowledge_base for semantic/citation lookups, get_knowledge_base_overview
-    for what the corpus holds, knowledge_graph_read when the answer has to be a table, and
-    get_knowledge_base_paper_markdown to read one paper's full text.
+    for what the corpus holds, knowledge_graph_read when the answer has to be a table,
+    get_knowledge_base_paper_markdown to read one paper's full text, and
+    search_paper_assets/get_paper_asset for its figures and tables — if a passage mentions "Figure
+    4" or "Table 2", search that paper's assets for it rather than guessing at its content.
 
     The PRIVATE knowledge graph is the caller's organization's own — only the papers it ingested
     itself. It is the only writable graph. Reach it with search_private_knowledge_base,
     get_private_knowledge_base_overview, list_private_knowledge_base_papers,
-    private_knowledge_graph_read and get_private_knowledge_base_paper_markdown, write to it with
+    private_knowledge_graph_read, get_private_knowledge_base_paper_markdown and
+    search_private_paper_assets/get_private_paper_asset, write to it with
     ingest_pdf_to_private_knowledge_base, and remove a paper from it with
-    delete_private_knowledge_base_paper — the delete and markdown tools take the paper's id, which
-    list_private_knowledge_base_papers and search_private_knowledge_base both report.
+    delete_private_knowledge_base_paper — every one of these except search/list/ingest takes the
+    paper's id, which list_private_knowledge_base_papers and search_private_knowledge_base both
+    report.
     Ingestion takes minutes and returns only when finished; re-sending the same PDF is safe and is
     reported as already present, so retrying after a timeout is correct. Because it holds the call
     open that long, it is a good candidate for delegating to a background or sub-agent if you have
@@ -65,6 +71,8 @@ mcp = FastMCP(
             "get_knowledge_base_overview",
             "knowledge_graph_read",
             "get_knowledge_base_paper_markdown",
+            "search_paper_assets",
+            "get_paper_asset",
             "ingest_pdf_to_private_knowledge_base",
             "search_private_knowledge_base",
             "get_private_knowledge_base_overview",
@@ -72,6 +80,8 @@ mcp = FastMCP(
             "private_knowledge_graph_read",
             "delete_private_knowledge_base_paper",
             "get_private_knowledge_base_paper_markdown",
+            "search_private_paper_assets",
+            "get_private_paper_asset",
         ]
     ),
     version="0.0.1",
@@ -80,6 +90,9 @@ mcp = FastMCP(
 )
 
 knowledge_base_service = KnowledgeBaseService()
+knowledge_base_asset_service = KnowledgeBaseAssetService()
+
+_AssetKind = Literal["figure", "table"]
 
 
 def _format_search_results(response: dict[str, Any]) -> str:
@@ -321,6 +334,82 @@ async def get_knowledge_base_paper_markdown(
     )
 
 
+def _format_asset_matches(matches: list[dict[str, Any]], kind: _AssetKind, fetch_tool_name: str) -> str:
+    if not matches:
+        return f"No {kind}s in this paper matched that query."
+    lines = [f"Found {len(matches)} {kind}(s):"]
+    for match in matches:
+        lines.append(f"  - seq {match.get('seq')}: {match.get('caption')}")
+    lines.append(f"Fetch one with {fetch_tool_name}(doc_id=..., kind={kind!r}, seq=<seq>).")
+    return "\n".join(lines)
+
+
+@mcp.tool(
+    name="search_paper_assets",
+    description=(
+        "Find figures or tables in one paper of Axiomatic's curated knowledge base whose caption "
+        "matches a query, ranked by relevance. Returns each match's position (seq) and caption; "
+        "fetch the actual figure or table with get_paper_asset.\n\n"
+        "query is Lucene query syntax, not a plain string, e.g. "
+        "'\"fig 4\"^5 OR \"figure 4\"^5 OR neural network architecture'."
+    ),
+    tags=["knowledge-base", "papers", "figures", "tables", "search"],
+)
+async def search_paper_assets(
+    doc_id: Annotated[str, "The paper's id, e.g. from a knowledge_graph_read or search_knowledge_base result"],
+    kind: Annotated[_AssetKind, "Which kind of asset to search for"],
+    query: Annotated[str, "Lucene query syntax matched against the caption, e.g. '\"fig 4\"^5 OR neural network architecture'"],
+    limit: Annotated[int, "Maximum number of matches to return (1-50)"] = 5,
+) -> ToolResult:
+    """Find figures or tables in one paper of the curated knowledge base, by caption."""
+    try:
+        matches = (
+            knowledge_base_asset_service.search_figures(doc_id, query, limit)
+            if kind == "figure"
+            else knowledge_base_asset_service.search_tables(doc_id, query, limit)
+        )
+    except Exception as e:
+        raise ToolError(f"Failed to search {kind}s in paper {doc_id!r}: {e!s}") from e
+
+    return ToolResult(
+        content=[TextContent(type="text", text=_format_asset_matches(matches, kind, "get_paper_asset"))],
+        structured_content={"matches": matches},
+    )
+
+
+@mcp.tool(
+    name="get_paper_asset",
+    description=(
+        "Download one figure or table from a paper in Axiomatic's curated knowledge base, "
+        "addressed by its position in the document (seq, from search_paper_assets). A figure "
+        "comes back as an image the model can view directly; a table comes back as markdown. "
+        "Figures have no size cap, so a large scientific figure can be a large response."
+    ),
+    tags=["knowledge-base", "papers", "figures", "tables"],
+)
+async def get_paper_asset(
+    doc_id: Annotated[str, "The paper's id"],
+    kind: Annotated[_AssetKind, "Which kind of asset to fetch"],
+    seq: Annotated[int, "The asset's position in the document, from search_paper_assets"],
+) -> ToolResult:
+    """Download one figure or table from a paper in the curated knowledge base."""
+    try:
+        if kind == "figure":
+            image_bytes, content_type = knowledge_base_asset_service.get_figure(doc_id, seq)
+            content: list[Any] = [
+                ImageContent(type="image", data=base64.b64encode(image_bytes).decode("ascii"), mimeType=content_type)
+            ]
+            structured = {"doc_id": doc_id, "seq": seq, "kind": kind, "content_type": content_type}
+        else:
+            markdown = knowledge_base_asset_service.get_table(doc_id, seq)
+            content = [TextContent(type="text", text=markdown)]
+            structured = {"doc_id": doc_id, "seq": seq, "kind": kind, "markdown": markdown}
+    except Exception as e:
+        raise ToolError(f"Failed to fetch {kind} {seq} from paper {doc_id!r}: {e!s}") from e
+
+    return ToolResult(content=content, structured_content=structured)
+
+
 # --- Private graph ----------------------------------------------------------------------------
 
 _PDF_CONTENT_TYPE = "application/pdf"
@@ -348,10 +437,11 @@ def _format_ingest(response: dict[str, Any]) -> str:
     name="ingest_pdf_to_private_knowledge_base",
     description=(
         "Ingest one local PDF into the organization's private knowledge graph. The PDF is parsed into "
-        "passages, figures, tables and references, and the source PDF is stored. This is the only tool "
-        "that writes to a knowledge graph, and the private graph is the only graph it writes to — an "
-        "ingested paper is reachable through search_private_knowledge_base and private_knowledge_graph_read, "
-        "and never through search_knowledge_base.\n\n"
+        "passages, figures, tables and references, and the source PDF is stored. This is one of two tools "
+        "that write to a knowledge graph — delete_private_knowledge_base_paper is the other — and the "
+        "private graph is the only graph either writes to: an ingested paper is reachable through "
+        "search_private_knowledge_base and private_knowledge_graph_read, and never through "
+        "search_knowledge_base.\n\n"
         "Synchronous and slow: it returns when ingestion has finished, which takes minutes for a full paper. "
         "Re-sending the same PDF is safe — it is reported as already present rather than ingested twice — so "
         "on a timeout or an unclear failure, retrying is the correct move.\n\n"
@@ -556,14 +646,53 @@ def _format_deletion(response: dict[str, Any]) -> str:
         "tables, references, the stored PDF) is deleted outright; otherwise only your ownership "
         "is removed and the paper remains for its other owners.\n\n"
         "Identify the paper by its id — get it from list_private_knowledge_base_papers or from a "
-        "search_private_knowledge_base result's metadata, never guess or construct one."
+        "search_private_knowledge_base result's metadata, never guess or construct one.\n\n"
+        "Before deleting, this tool raises an MCP elicitation asking the user to confirm the paper. A "
+        "decline, a cancel, or a client that does not support elicitation at all deletes nothing and "
+        "comes back as a plain non-error result — do not retry any of these without a genuinely fresh "
+        "reason to think the answer would differ; a client that lacks elicitation support will fail the "
+        "same way every time."
     ),
     tags=["knowledge-base", "private", "papers", "delete", "write"],
 )
 async def delete_private_knowledge_base_paper(
+    ctx: Context,
     doc_id: Annotated[str, "The paper's id, as returned by list_private_knowledge_base_papers or search_private_knowledge_base"],
 ) -> ToolResult:
     """Remove the caller's ownership of one paper in the private knowledge graph, by id."""
+    if not ctx.session.check_client_capability(ClientCapabilities(elicitation=ElicitationCapability())):
+        return ToolResult(
+            content=[
+                TextContent(
+                    type="text",
+                    text=(
+                        f"Could not ask for confirmation before deleting paper {doc_id!r}: this client did not "
+                        "declare support for MCP elicitation. Nothing was deleted. Retrying will not help — "
+                        "either get the user's go-ahead and delete from a client that supports elicitation, "
+                        "or don't call this tool for this paper."
+                    ),
+                )
+            ],
+            structured_content={"deleted": False, "action": "unsupported"},
+        )
+
+    try:
+        confirmation = await ctx.elicit(
+            message=(
+                f"Remove your ownership of paper {doc_id!r} in your organization's private knowledge graph? "
+                "If you are its last owner, this also deletes the paper and everything under it (passages, "
+                "figures, tables, references, the stored PDF)."
+            ),
+            response_type=None,
+        )
+    except McpError as e:
+        raise ToolError(f"Failed to get the user's confirmation before deleting paper {doc_id!r}: {e.error.message}") from e
+    if confirmation.action != "accept":
+        return ToolResult(
+            content=[TextContent(type="text", text=f"Deletion of paper {doc_id!r} was declined; nothing was deleted.")],
+            structured_content={"deleted": False, "action": confirmation.action},
+        )
+
     try:
         response = knowledge_base_service.private_delete_paper(doc_id)
     except Exception as e:
@@ -573,6 +702,74 @@ async def delete_private_knowledge_base_paper(
         content=[TextContent(type="text", text=_format_deletion(response))],
         structured_content=response,
     )
+
+
+@mcp.tool(
+    name="search_private_paper_assets",
+    description=(
+        "Find figures or tables in one paper of the organization's private knowledge graph whose "
+        "caption matches a query, ranked by relevance. The private counterpart of "
+        "search_paper_assets: same query rules, same result shape, different graph. Fetch the "
+        "actual figure or table with get_private_paper_asset.\n\n"
+        "query is Lucene query syntax, not a plain string, e.g. "
+        "'\"fig 4\"^5 OR \"figure 4\"^5 OR neural network architecture'."
+    ),
+    tags=["knowledge-base", "private", "papers", "figures", "tables", "search"],
+)
+async def search_private_paper_assets(
+    doc_id: Annotated[str, "The paper's id, as returned by list_private_knowledge_base_papers or search_private_knowledge_base"],
+    kind: Annotated[_AssetKind, "Which kind of asset to search for"],
+    query: Annotated[str, "Lucene query syntax matched against the caption, e.g. '\"fig 4\"^5 OR neural network architecture'"],
+    limit: Annotated[int, "Maximum number of matches to return (1-50)"] = 5,
+) -> ToolResult:
+    """Find figures or tables in one paper of the private knowledge graph, by caption."""
+    try:
+        matches = (
+            knowledge_base_asset_service.private_search_figures(doc_id, query, limit)
+            if kind == "figure"
+            else knowledge_base_asset_service.private_search_tables(doc_id, query, limit)
+        )
+    except Exception as e:
+        raise ToolError(f"Failed to search {kind}s in paper {doc_id!r}: {e!s}") from e
+
+    return ToolResult(
+        content=[TextContent(type="text", text=_format_asset_matches(matches, kind, "get_private_paper_asset"))],
+        structured_content={"matches": matches},
+    )
+
+
+@mcp.tool(
+    name="get_private_paper_asset",
+    description=(
+        "Download one figure or table from a paper in the organization's private knowledge "
+        "graph, addressed by its position in the document (seq, from search_private_paper_assets). "
+        "The private counterpart of get_paper_asset: a figure comes back as an image the model "
+        "can view directly, a table as markdown. Figures have no size cap, so a large scientific "
+        "figure can be a large response."
+    ),
+    tags=["knowledge-base", "private", "papers", "figures", "tables"],
+)
+async def get_private_paper_asset(
+    doc_id: Annotated[str, "The paper's id"],
+    kind: Annotated[_AssetKind, "Which kind of asset to fetch"],
+    seq: Annotated[int, "The asset's position in the document, from search_private_paper_assets"],
+) -> ToolResult:
+    """Download one figure or table from a paper in the private knowledge graph."""
+    try:
+        if kind == "figure":
+            image_bytes, content_type = knowledge_base_asset_service.private_get_figure(doc_id, seq)
+            content: list[Any] = [
+                ImageContent(type="image", data=base64.b64encode(image_bytes).decode("ascii"), mimeType=content_type)
+            ]
+            structured = {"doc_id": doc_id, "seq": seq, "kind": kind, "content_type": content_type}
+        else:
+            markdown = knowledge_base_asset_service.private_get_table(doc_id, seq)
+            content = [TextContent(type="text", text=markdown)]
+            structured = {"doc_id": doc_id, "seq": seq, "kind": kind, "markdown": markdown}
+    except Exception as e:
+        raise ToolError(f"Failed to fetch {kind} {seq} from paper {doc_id!r}: {e!s}") from e
+
+    return ToolResult(content=content, structured_content=structured)
 
 
 @mcp.tool(

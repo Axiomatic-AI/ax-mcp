@@ -1,6 +1,6 @@
 # AxKnowledgeBase Server
 
-An MCP server that exposes two knowledge graphs: Axiomatic's curated Knowledge Base — scientific papers, extracted entities (devices, materials, performance metrics), and passages retrieved via semantic search — and your organization's own **private** graph, which you can ingest papers into.
+An MCP server that exposes two knowledge graphs: Axiomatic's curated Knowledge Base — scientific papers, extracted entities (devices, materials, performance metrics), passages retrieved via semantic search, and each paper's figures and tables — and your organization's own **private** graph, which you can ingest papers into.
 
 ## Overview
 
@@ -54,6 +54,27 @@ Reconstruct one paper's full content as markdown, in reading order: section head
 
 - `doc_id` (str, required): the paper's id, e.g. from a `knowledge_graph_read` result
 
+### `search_paper_assets`
+
+Find figures or tables in one paper of the curated corpus whose caption matches a query, ranked by relevance. Returns each match's position (`seq`) and caption; fetch the actual figure or table with `get_paper_asset`. This is how to resolve a passage that mentions "Figure 4" or "Table 2" instead of guessing at its content.
+
+**Parameters:**
+
+- `doc_id` (str, required): the paper's id
+- `kind` (`"figure"` | `"table"`, required): which kind of asset to search for
+- `query` (str, required): **Lucene query syntax**, not a plain string, matched against the caption — e.g. `'"fig 4"^5 OR "figure 4"^5 OR neural network architecture'`
+- `limit` (int, optional, default 5): maximum number of matches to return (1-50)
+
+### `get_paper_asset`
+
+Download one figure or table from a paper in the curated corpus, addressed by its position in the document (`seq`, from `search_paper_assets`). A figure comes back as an image the model can view directly (inline `ImageContent`); a table comes back as markdown text.
+
+**Parameters:**
+
+- `doc_id` (str, required): the paper's id
+- `kind` (`"figure"` | `"table"`, required): which kind of asset to fetch
+- `seq` (int, required): the asset's position in the document
+
 ## Private Knowledge Graph
 
 Your organization's own graph. All tools below return a plain refusal if the account has no private graph, and no retry will help.
@@ -62,7 +83,7 @@ By default, `search_private_knowledge_base`, `get_private_knowledge_base_overvie
 
 ### `ingest_pdf_to_private_knowledge_base`
 
-Ingest one local PDF. It is parsed into passages, figures, tables and references, and the source PDF is stored. **This is the only tool in this server that writes to a knowledge graph.**
+Ingest one local PDF. It is parsed into passages, figures, tables and references, and the source PDF is stored. **This is one of two tools in this server that write to a knowledge graph** — `delete_private_knowledge_base_paper` is the other.
 
 **Parameters:**
 
@@ -109,6 +130,8 @@ Remove yourself as an owner of one paper in the private graph. When you are its 
 
 - `doc_id` (str, required): the paper's id, as returned by `list_private_knowledge_base_papers` or in a `search_private_knowledge_base` result's metadata
 
+**It asks before it deletes.** Before calling the delete endpoint, the tool raises an MCP elicitation naming the paper and warning that a last-owner delete also removes the PDF and figures, and waits for the client to render that as a yes/no confirmation dialog. A decline or a cancel deletes nothing and comes back as a plain non-error result. The same capability check, `unsupported` result, and genuine-error-vs-unsupported distinction as ingestion apply here too.
+
 ### `get_private_knowledge_base_paper_markdown`
 
 The private counterpart of `get_knowledge_base_paper_markdown`: same rendering, different graph.
@@ -116,6 +139,10 @@ The private counterpart of `get_knowledge_base_paper_markdown`: same rendering, 
 **Parameters:**
 
 - `doc_id` (str, required): the paper's id, as returned by `list_private_knowledge_base_papers` or in a `search_private_knowledge_base` result's metadata
+
+### `search_private_paper_assets` / `get_private_paper_asset`
+
+The private counterparts of `search_paper_assets`/`get_paper_asset`: same parameters, same Lucene query rules, same result shapes, different graph.
 
 **Example Usage:**
 
@@ -166,9 +193,12 @@ Compare the grating couplers in our private graph against the ones in Axiomatic'
 ## Limitations
 
 - The curated corpus is read-only. The only write paths anywhere in this server are `ingest_pdf_to_private_knowledge_base` and `delete_private_knowledge_base_paper`, and both act only on your organization's private graph
+- `search_paper_assets`/`search_private_paper_assets` take Lucene query syntax for `query`, not a plain string — the same convention the underlying API uses for figure/table/reference caption search
+- `get_paper_asset`/`get_private_paper_asset` return a figure's raw image bytes with no size cap, same reasoning as the markdown tools — a large scientific figure can be a large response, and unlike an image a caller fetches for display, this one is meant to be read by the model, so it comes back as inline content rather than a link
 - Ingestion is synchronous and takes minutes for a full paper; there is no job id to poll and no progress reporting, so a client with a short tool timeout may give up before the server answers. Re-sending the same PDF is safe, so the recovery is simply to call it again
 - Browsing the curated corpus paper by paper is still a Cypher query rather than its own tool (`/neo4j/papers` is deprecated on the API): `MATCH (p:Document) RETURN p.id AS paper_id, p.title AS title ORDER BY p.title LIMIT 50`, paginating with `SKIP`. `list_private_knowledge_base_papers` covers only the private graph
 - `knowledge_graph_read` enforces provenance only by convention: the response flags rows whose columns don't look like a paper id, but an unusual alias can slip past the check either way. ax-stack traces provenance cell by cell for its own agent tools, but the `/neo4j/execute-read` endpoint doesn't return that trace, so it can't be enforced here
 - The rendered table is bounded — cells over 200 characters are elided and the table stops at 10,000 characters, both stated in the output. The structured result still carries every row in full, so a query selecting long text properties can still produce a large response; keep a `LIMIT` on it
 - `get_knowledge_base_paper_markdown`/`get_private_knowledge_base_paper_markdown` return a paper's full reconstructed text with no size cap — unlike every other tool here, this is meant to return the whole document, so a long paper can still be a large response
-- `ingest_pdf_to_private_knowledge_base`'s confirmation is an MCP elicitation (see [gofastmcp.com/servers/elicitation](https://gofastmcp.com/servers/elicitation)), which only works against a client that declared the elicitation capability at connection time; the tool checks that capability up front and reports `action: "unsupported"` rather than writing unconfirmed or raising — a client that declared support but then genuinely fails the round trip gets a real error instead, since that one might succeed on retry
+- Reference citations have the same search-by-caption shape as figures and tables in the underlying API, but aren't exposed as a tool yet
+- `ingest_pdf_to_private_knowledge_base` and `delete_private_knowledge_base_paper`'s confirmations are both MCP elicitations (see [gofastmcp.com/servers/elicitation](https://gofastmcp.com/servers/elicitation)), which only work against a client that declared the elicitation capability at connection time; each tool checks that capability up front and reports `action: "unsupported"` rather than writing/deleting unconfirmed or raising — a client that declared support but then genuinely fails the round trip gets a real error instead, since that one might succeed on retry

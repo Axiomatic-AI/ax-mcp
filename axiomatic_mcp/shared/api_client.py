@@ -73,6 +73,28 @@ class AxiomaticAPIClient:
         self._handle_raise_for_status(response)
         return response.json()
 
+    def get_bytes(
+        self,
+        endpoint: str,
+        params: dict[str, Any] | None = None,
+    ) -> tuple[bytes, str]:
+        """Like `get`, but for a non-JSON binary response (e.g. an image); returns the raw body
+        alongside its content type rather than parsing it as JSON."""
+        response = self.client.get(endpoint, params=params)
+        self._handle_raise_for_status(response)
+        return response.content, response.headers.get("content-type", "application/octet-stream")
+
+    def get_text(
+        self,
+        endpoint: str,
+        params: dict[str, Any] | None = None,
+    ) -> str:
+        """Like `get`, but for a non-JSON text response (e.g. markdown); returns the raw body
+        rather than parsing it as JSON."""
+        response = self.client.get(endpoint, params=params)
+        self._handle_raise_for_status(response)
+        return response.text
+
     def __enter__(self):
         return self
 
