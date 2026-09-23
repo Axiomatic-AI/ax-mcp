@@ -1,5 +1,6 @@
 """Tests for the AxKnowledgeBase MCP server."""
 
+import base64
 from unittest.mock import patch
 
 import httpx
@@ -7,8 +8,10 @@ import pytest
 import pytest_asyncio
 from fastmcp.client import Client
 from fastmcp.client.elicitation import ElicitResult
+from mcp.types import ImageContent
 
 from axiomatic_mcp.servers.kb.server import mcp
+from axiomatic_mcp.servers.kb.services.knowledge_base_asset_service import KnowledgeBaseAssetService
 from axiomatic_mcp.servers.kb.services.knowledge_base_service import KnowledgeBaseService
 from axiomatic_mcp.shared.constants.api_constants import ApiRoutes
 
@@ -52,10 +55,17 @@ async def test_list_tools(mcp_client):
         "get_knowledge_base_overview",
         "knowledge_graph_read",
         "ingest_pdf_to_private_knowledge_base",
+        "get_knowledge_base_paper_markdown",
         "search_private_knowledge_base",
         "get_private_knowledge_base_overview",
         "list_private_knowledge_base_papers",
         "private_knowledge_graph_read",
+        "delete_private_knowledge_base_paper",
+        "get_private_knowledge_base_paper_markdown",
+        "search_paper_assets",
+        "get_paper_asset",
+        "search_private_paper_assets",
+        "get_private_paper_asset",
     } <= tool_names
 
 
@@ -79,6 +89,7 @@ async def test_search_knowledge_base_surfaces_citations(mcp_client):
     texts = [c.text for c in response.content if hasattr(c, "text")]
     assert any("Low-loss ring resonators" in t for t in texts)
     assert any("0.870" in t for t in texts)
+    assert any("2301.07041" in t for t in texts)
 
 
 @pytest.mark.asyncio
@@ -243,6 +254,149 @@ async def test_knowledge_graph_read_bounds_response_size(mcp_client):
     assert "Table stopped after" in text
     assert len(text) < 15_000
     assert response.structured_content["rows"][0]["text"] == long_text
+
+
+
+@pytest.mark.asyncio
+async def test_get_markdown_returns_the_reconstructed_content(mcp_client):
+    mock_response = {
+        "doc_id": "2301.07041",
+        "title": "Low-loss ring resonators",
+        "content": "# Low-loss ring resonators\n\n## Introduction\n\nSome text.",
+    }
+
+    with patch.object(KnowledgeBaseService, "get_markdown", return_value=mock_response) as spy:
+        response = await mcp_client.call_tool("get_knowledge_base_paper_markdown", {"doc_id": "2301.07041"})
+
+    spy.assert_called_once_with("2301.07041")
+    text = _texts(response)
+    assert text == mock_response["content"]
+    assert response.structured_content == mock_response
+
+
+@pytest.mark.asyncio
+async def test_get_markdown_handles_empty_content(mcp_client):
+    mock_response = {"doc_id": "2301.07041", "title": "Empty paper", "content": ""}
+
+    with patch.object(KnowledgeBaseService, "get_markdown", return_value=mock_response):
+        response = await mcp_client.call_tool("get_knowledge_base_paper_markdown", {"doc_id": "2301.07041"})
+
+    assert "Empty paper" in _texts(response)
+    assert "no reconstructable content" in _texts(response)
+
+
+@pytest.mark.asyncio
+async def test_get_markdown_surfaces_api_errors_as_a_tool_error(mcp_client):
+    with patch.object(KnowledgeBaseService, "get_markdown", side_effect=_status_error(404, "Paper not found.")):
+        response = await mcp_client.call_tool(
+            "get_knowledge_base_paper_markdown", {"doc_id": "nope"}, raise_on_error=False
+        )
+
+    assert response.is_error is True
+    assert "Failed to fetch markdown for paper" in _texts(response)
+
+
+# ── curated graph: figures/tables ────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_search_paper_assets_figures(mcp_client):
+    mock_matches = [{"seq": 3, "caption": "Fig. 4: Device schematic."}]
+
+    with patch.object(KnowledgeBaseAssetService, "search_figures", return_value=mock_matches) as spy:
+        response = await mcp_client.call_tool(
+            "search_paper_assets", {"doc_id": "2301.07041", "kind": "figure", "query": '"fig 4"', "limit": 3}
+        )
+
+    spy.assert_called_once_with("2301.07041", '"fig 4"', 3)
+    text = _texts(response)
+    assert "Fig. 4: Device schematic." in text
+    assert "seq 3" in text
+    assert "get_paper_asset" in text
+    assert response.structured_content == {"matches": mock_matches}
+
+
+@pytest.mark.asyncio
+async def test_search_paper_assets_tables(mcp_client):
+    mock_matches = [{"seq": 1, "caption": "Table 2: Measured losses."}]
+
+    with patch.object(KnowledgeBaseAssetService, "search_tables", return_value=mock_matches) as spy:
+        response = await mcp_client.call_tool(
+            "search_paper_assets", {"doc_id": "2301.07041", "kind": "table", "query": "losses"}
+        )
+
+    spy.assert_called_once_with("2301.07041", "losses", 5)
+    assert "Table 2: Measured losses." in _texts(response)
+
+
+@pytest.mark.asyncio
+async def test_search_paper_assets_no_matches(mcp_client):
+    with patch.object(KnowledgeBaseAssetService, "search_figures", return_value=[]):
+        response = await mcp_client.call_tool(
+            "search_paper_assets", {"doc_id": "2301.07041", "kind": "figure", "query": "nope"}
+        )
+
+    assert "No figures in this paper matched" in _texts(response)
+
+
+@pytest.mark.asyncio
+async def test_search_paper_assets_surfaces_api_errors_as_a_tool_error(mcp_client):
+    with patch.object(KnowledgeBaseAssetService, "search_figures", side_effect=_status_error(403, "no access")):
+        response = await mcp_client.call_tool(
+            "search_paper_assets",
+            {"doc_id": "2301.07041", "kind": "figure", "query": "x"},
+            raise_on_error=False,
+        )
+
+    assert response.is_error is True
+    assert "Failed to search figures in paper" in _texts(response)
+
+
+@pytest.mark.asyncio
+async def test_get_paper_asset_figure_returns_an_inline_image(mcp_client):
+    image_bytes = b"\x89PNG\r\n\x1a\n" + b"\x00" * 16
+
+    with patch.object(
+        KnowledgeBaseAssetService, "get_figure", return_value=(image_bytes, "image/png")
+    ) as spy:
+        response = await mcp_client.call_tool(
+            "get_paper_asset", {"doc_id": "2301.07041", "kind": "figure", "seq": 3}
+        )
+
+    spy.assert_called_once_with("2301.07041", 3)
+    assert len(response.content) == 1
+    block = response.content[0]
+    assert isinstance(block, ImageContent)
+    assert block.mimeType == "image/png"
+    assert base64.b64decode(block.data) == image_bytes
+    assert response.structured_content == {
+        "doc_id": "2301.07041",
+        "seq": 3,
+        "kind": "figure",
+        "content_type": "image/png",
+    }
+
+
+@pytest.mark.asyncio
+async def test_get_paper_asset_table_returns_markdown(mcp_client):
+    with patch.object(KnowledgeBaseAssetService, "get_table", return_value="| a | b |\n|---|---|\n| 1 | 2 |") as spy:
+        response = await mcp_client.call_tool("get_paper_asset", {"doc_id": "2301.07041", "kind": "table", "seq": 1})
+
+    spy.assert_called_once_with("2301.07041", 1)
+    text = _texts(response)
+    assert text == "| a | b |\n|---|---|\n| 1 | 2 |"
+    assert response.structured_content["markdown"] == text
+
+
+@pytest.mark.asyncio
+async def test_get_paper_asset_surfaces_api_errors_as_a_tool_error(mcp_client):
+    with patch.object(KnowledgeBaseAssetService, "get_figure", side_effect=_status_error(404, "not found")):
+        response = await mcp_client.call_tool(
+            "get_paper_asset", {"doc_id": "2301.07041", "kind": "figure", "seq": 99}, raise_on_error=False
+        )
+
+    assert response.is_error is True
+    assert "Failed to fetch figure 99 from paper" in _texts(response)
 
 
 # ── private graph: ingest ────────────────────────────────────────────────────
@@ -533,6 +687,9 @@ async def test_private_search_reuses_the_citation_formatter(mcp_client):
     spy.assert_called_once_with("our ring resonator", 3, False)
     text = _texts(response)
     assert "Internal report" in text and "0.910" in text
+    # The id has to be in the rendered text, not just structured_content -- it's what feeds
+    # delete_private_knowledge_base_paper and get_private_knowledge_base_paper_markdown.
+    assert "internal-1" in text
     assert response.structured_content == mock_response
 
 
@@ -613,11 +770,11 @@ async def test_private_overview_on_an_empty_graph(mcp_client):
 
 
 @pytest.mark.asyncio
-async def test_list_papers_renders_title_and_ingestion_date(mcp_client):
+async def test_list_papers_renders_id_title_and_ingestion_date(mcp_client):
     mock_response = {
         "items": [
-            {"title": "Low-loss ring resonators", "ingestion_date": "2026-01-02T00:00:00Z"},
-            {"title": "Another paper", "ingestion_date": "2026-01-01T00:00:00Z"},
+            {"id": "hash-abc", "title": "Low-loss ring resonators", "ingestion_date": "2026-01-02T00:00:00Z"},
+            {"id": "hash-def", "title": "Another paper", "ingestion_date": "2026-01-01T00:00:00Z"},
         ],
         "total": 2,
         "page": 1,
@@ -632,8 +789,8 @@ async def test_list_papers_renders_title_and_ingestion_date(mcp_client):
     text = _texts(response)
     assert "Low-loss ring resonators" in text and "2026-01-02T00:00:00Z" in text
     assert "Another paper" in text
-    # `paper_id` was dropped from the response on purpose -- must not leak back in via the id.
-    assert "paper_id" not in text
+    # The id has to be in the rendered text too -- it's what feeds delete_private_knowledge_base_paper.
+    assert "hash-abc" in text and "hash-def" in text
     assert response.structured_content == mock_response
 
 
@@ -686,6 +843,294 @@ async def test_list_papers_surfaces_api_errors_as_a_tool_error(mcp_client):
     assert "Failed to list the private knowledge base papers" in _texts(response)
 
 
+# ── private graph: delete ────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_delete_paper_fully_deleted(mcp_client):
+    with patch.object(
+        KnowledgeBaseService,
+        "private_delete_paper",
+        return_value={"paper_id": "hash-abc", "fully_deleted": True, "pdf_and_figures_removed": True},
+    ) as delete_spy:
+        response = await mcp_client.call_tool("delete_private_knowledge_base_paper", {"doc_id": "hash-abc"})
+
+    delete_spy.assert_called_once_with("hash-abc")
+    text = _texts(response)
+    assert "was deleted" in text
+    assert "hash-abc" in text
+
+
+@pytest.mark.asyncio
+async def test_delete_paper_reports_leftover_storage_when_removal_is_partial(mcp_client):
+    with patch.object(
+        KnowledgeBaseService,
+        "private_delete_paper",
+        return_value={"paper_id": "hash-abc", "fully_deleted": True, "pdf_and_figures_removed": False},
+    ):
+        response = await mcp_client.call_tool("delete_private_knowledge_base_paper", {"doc_id": "hash-abc"})
+
+    text = _texts(response)
+    assert "was deleted" in text
+    assert "could not be removed" in text
+
+
+@pytest.mark.asyncio
+async def test_delete_paper_only_removes_ownership_when_other_owners_remain(mcp_client):
+    """`fully_deleted: false` means the paper survives for its other owners -- must not read as a deletion."""
+    with patch.object(
+        KnowledgeBaseService,
+        "private_delete_paper",
+        return_value={"paper_id": "hash-abc", "fully_deleted": False, "pdf_and_figures_removed": False},
+    ):
+        response = await mcp_client.call_tool("delete_private_knowledge_base_paper", {"doc_id": "hash-abc"})
+
+    text = _texts(response)
+    assert "removed as an owner" in text
+    assert "was not deleted" in text
+
+
+@pytest.mark.asyncio
+async def test_delete_paper_surfaces_api_errors_as_a_tool_error(mcp_client):
+    with patch.object(KnowledgeBaseService, "private_delete_paper", side_effect=_status_error(404, "not found")):
+        response = await mcp_client.call_tool(
+            "delete_private_knowledge_base_paper", {"doc_id": "hash-abc"}, raise_on_error=False
+        )
+
+    assert response.is_error is True
+    assert "Failed to delete paper" in _texts(response)
+
+
+@pytest.mark.asyncio
+async def test_delete_paper_elicits_confirmation_naming_the_paper(tmp_path):
+    """The confirmation must give the caller enough to decide: which paper, and that a last-owner
+    delete also removes the PDF and figures."""
+    mock_response = {"paper_id": "hash-abc", "fully_deleted": True, "pdf_and_figures_removed": True}
+    captured = {}
+
+    async def accept(message, response_type, params, context):
+        captured["message"] = message
+        return None
+
+    with patch.object(KnowledgeBaseService, "private_delete_paper", return_value=mock_response) as spy:
+        async with Client(transport=mcp, elicitation_handler=accept) as client:
+            response = await client.call_tool("delete_private_knowledge_base_paper", {"doc_id": "hash-abc"})
+
+    spy.assert_called_once_with("hash-abc")
+    assert "hash-abc" in captured["message"]
+    assert "last owner" in captured["message"].lower()
+    assert response.is_error is False
+
+
+@pytest.mark.asyncio
+async def test_delete_paper_decline_deletes_nothing(tmp_path):
+    """A decline must read as a decline, not an error, and must not touch the API."""
+
+    async def decline(message, response_type, params, context):
+        return ElicitResult(action="decline")
+
+    with patch.object(KnowledgeBaseService, "private_delete_paper") as spy:
+        async with Client(transport=mcp, elicitation_handler=decline) as client:
+            response = await client.call_tool("delete_private_knowledge_base_paper", {"doc_id": "hash-abc"})
+
+    spy.assert_not_called()
+    assert response.is_error is False
+    text = _texts(response)
+    assert "declined" in text.lower()
+    assert "nothing was deleted" in text.lower()
+
+
+@pytest.mark.asyncio
+async def test_delete_paper_cancel_also_deletes_nothing(tmp_path):
+    """A cancelled elicitation (e.g. the user closing the dialog) must be treated the same as a
+    decline, not retried or surfaced as an error."""
+
+    async def cancel(message, response_type, params, context):
+        return ElicitResult(action="cancel")
+
+    with patch.object(KnowledgeBaseService, "private_delete_paper") as spy:
+        async with Client(transport=mcp, elicitation_handler=cancel) as client:
+            response = await client.call_tool("delete_private_knowledge_base_paper", {"doc_id": "hash-abc"})
+
+    spy.assert_not_called()
+    assert response.is_error is False
+
+
+@pytest.mark.asyncio
+async def test_delete_paper_reports_unsupported_elicitation_without_raising(tmp_path):
+    """A client with no elicitation handler at all never declares the elicitation capability at
+    initialize time. The tool checks that capability proactively, so this must read as a clean,
+    non-retryable non-delete without ever attempting the round trip."""
+    with patch.object(KnowledgeBaseService, "private_delete_paper") as spy:
+        async with Client(transport=mcp) as client:  # no elicitation_handler configured
+            response = await client.call_tool(
+                "delete_private_knowledge_base_paper",
+                {"doc_id": "hash-abc"},
+                raise_on_error=False,
+            )
+
+    spy.assert_not_called()
+    assert response.is_error is False
+    text = _texts(response)
+    assert "declare support" in text.lower() or "unsupported" in text.lower()
+    assert "nothing was deleted" in text.lower()
+    assert response.structured_content == {"deleted": False, "action": "unsupported"}
+
+
+@pytest.mark.asyncio
+async def test_delete_paper_does_not_mislabel_a_genuine_elicitation_error_as_unsupported(tmp_path):
+    """A client that DOES declare elicitation support (it registered a handler) but whose handler
+    blows up at call time is a real, possibly transient failure -- not a capability gap."""
+
+    async def broken_handler(message, response_type, params, context):
+        raise RuntimeError("simulated transient failure in the client's own handler")
+
+    with patch.object(KnowledgeBaseService, "private_delete_paper") as spy:
+        async with Client(transport=mcp, elicitation_handler=broken_handler) as client:
+            response = await client.call_tool(
+                "delete_private_knowledge_base_paper",
+                {"doc_id": "hash-abc"},
+                raise_on_error=False,
+            )
+
+    spy.assert_not_called()
+    assert response.is_error is True
+    text = _texts(response)
+    assert "unsupported" not in text.lower()
+    assert "confirmation" in text.lower()
+
+
+# ── private graph: markdown ──────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_private_get_markdown_returns_the_reconstructed_content(mcp_client):
+    mock_response = {
+        "doc_id": "hash-abc",
+        "title": "Low-loss ring resonators",
+        "content": "# Low-loss ring resonators\n\n## Introduction\n\nSome text.",
+    }
+
+    with patch.object(KnowledgeBaseService, "private_get_markdown", return_value=mock_response) as spy:
+        response = await mcp_client.call_tool("get_private_knowledge_base_paper_markdown", {"doc_id": "hash-abc"})
+
+    spy.assert_called_once_with("hash-abc")
+    text = _texts(response)
+    assert text == mock_response["content"]
+    assert response.structured_content == mock_response
+
+
+@pytest.mark.asyncio
+async def test_private_get_markdown_handles_empty_content(mcp_client):
+    mock_response = {"doc_id": "hash-abc", "title": "Empty paper", "content": ""}
+
+    with patch.object(KnowledgeBaseService, "private_get_markdown", return_value=mock_response):
+        response = await mcp_client.call_tool("get_private_knowledge_base_paper_markdown", {"doc_id": "hash-abc"})
+
+    assert "Empty paper" in _texts(response)
+    assert "no reconstructable content" in _texts(response)
+
+
+@pytest.mark.asyncio
+async def test_private_get_markdown_surfaces_api_errors_as_a_tool_error(mcp_client):
+    with patch.object(
+        KnowledgeBaseService, "private_get_markdown", side_effect=_status_error(404, "Paper not found.")
+    ):
+        response = await mcp_client.call_tool(
+            "get_private_knowledge_base_paper_markdown", {"doc_id": "nope"}, raise_on_error=False
+        )
+
+    assert response.is_error is True
+    assert "Failed to fetch markdown for paper" in _texts(response)
+
+
+# ── private graph: figures/tables ────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_search_private_paper_assets_figures(mcp_client):
+    mock_matches = [{"seq": 3, "caption": "Fig. 4: Device schematic."}]
+
+    with patch.object(KnowledgeBaseAssetService, "private_search_figures", return_value=mock_matches) as spy:
+        response = await mcp_client.call_tool(
+            "search_private_paper_assets", {"doc_id": "hash-abc", "kind": "figure", "query": '"fig 4"', "limit": 3}
+        )
+
+    spy.assert_called_once_with("hash-abc", '"fig 4"', 3)
+    text = _texts(response)
+    assert "Fig. 4: Device schematic." in text
+    assert "get_private_paper_asset" in text
+    assert response.structured_content == {"matches": mock_matches}
+
+
+@pytest.mark.asyncio
+async def test_search_private_paper_assets_tables(mcp_client):
+    mock_matches = [{"seq": 1, "caption": "Table 2: Measured losses."}]
+
+    with patch.object(KnowledgeBaseAssetService, "private_search_tables", return_value=mock_matches) as spy:
+        response = await mcp_client.call_tool(
+            "search_private_paper_assets", {"doc_id": "hash-abc", "kind": "table", "query": "losses"}
+        )
+
+    spy.assert_called_once_with("hash-abc", "losses", 5)
+    assert "Table 2: Measured losses." in _texts(response)
+
+
+@pytest.mark.asyncio
+async def test_search_private_paper_assets_surfaces_api_errors_as_a_tool_error(mcp_client):
+    with patch.object(
+        KnowledgeBaseAssetService, "private_search_tables", side_effect=_status_error(403, "no private graph")
+    ):
+        response = await mcp_client.call_tool(
+            "search_private_paper_assets",
+            {"doc_id": "hash-abc", "kind": "table", "query": "x"},
+            raise_on_error=False,
+        )
+
+    assert response.is_error is True
+    assert "Failed to search tables in paper" in _texts(response)
+
+
+@pytest.mark.asyncio
+async def test_get_private_paper_asset_figure_returns_an_inline_image(mcp_client):
+    image_bytes = b"\x89PNG\r\n\x1a\n" + b"\x00" * 16
+
+    with patch.object(
+        KnowledgeBaseAssetService, "private_get_figure", return_value=(image_bytes, "image/png")
+    ) as spy:
+        response = await mcp_client.call_tool(
+            "get_private_paper_asset", {"doc_id": "hash-abc", "kind": "figure", "seq": 3}
+        )
+
+    spy.assert_called_once_with("hash-abc", 3)
+    block = response.content[0]
+    assert isinstance(block, ImageContent)
+    assert block.mimeType == "image/png"
+    assert base64.b64decode(block.data) == image_bytes
+
+
+@pytest.mark.asyncio
+async def test_get_private_paper_asset_table_returns_markdown(mcp_client):
+    with patch.object(KnowledgeBaseAssetService, "private_get_table", return_value="| a |\n|---|\n| 1 |") as spy:
+        response = await mcp_client.call_tool(
+            "get_private_paper_asset", {"doc_id": "hash-abc", "kind": "table", "seq": 1}
+        )
+
+    spy.assert_called_once_with("hash-abc", 1)
+    assert _texts(response) == "| a |\n|---|\n| 1 |"
+
+
+@pytest.mark.asyncio
+async def test_get_private_paper_asset_surfaces_api_errors_as_a_tool_error(mcp_client):
+    with patch.object(KnowledgeBaseAssetService, "private_get_figure", side_effect=_status_error(404, "not found")):
+        response = await mcp_client.call_tool(
+            "get_private_paper_asset", {"doc_id": "hash-abc", "kind": "figure", "seq": 99}, raise_on_error=False
+        )
+
+    assert response.is_error is True
+    assert "Failed to fetch figure 99 from paper" in _texts(response)
+
+
 def test_private_route_constants():
     """The contract is hand-maintained, so the paths are pinned here rather than trusted."""
     assert ApiRoutes.KNOWLEDGE_BASE_PRIVATE_SEARCH == "/neo4j/private/search"
@@ -693,3 +1138,14 @@ def test_private_route_constants():
     assert ApiRoutes.KNOWLEDGE_BASE_PRIVATE_EXECUTE_READ == "/neo4j/private/execute-read"
     assert ApiRoutes.KNOWLEDGE_BASE_PRIVATE_INGEST == "/neo4j/private/ingest"
     assert ApiRoutes.KNOWLEDGE_BASE_PRIVATE_PAPERS == "/neo4j/private/papers"
+    assert ApiRoutes.KNOWLEDGE_BASE_PRIVATE_DELETE == "/neo4j/private/papers/{paper_id}"
+    assert ApiRoutes.KNOWLEDGE_BASE_MARKDOWN == "/neo4j/papers/{doc_id}/markdown"
+    assert ApiRoutes.KNOWLEDGE_BASE_PRIVATE_MARKDOWN == "/neo4j/private/papers/{doc_id}/markdown"
+    assert ApiRoutes.KNOWLEDGE_BASE_FIGURE == "/neo4j/assets/figures"
+    assert ApiRoutes.KNOWLEDGE_BASE_FIGURE_SEARCH == "/neo4j/assets/figures/search"
+    assert ApiRoutes.KNOWLEDGE_BASE_TABLE == "/neo4j/assets/tables"
+    assert ApiRoutes.KNOWLEDGE_BASE_TABLE_SEARCH == "/neo4j/assets/tables/search"
+    assert ApiRoutes.KNOWLEDGE_BASE_PRIVATE_FIGURE == "/neo4j/private/assets/figures"
+    assert ApiRoutes.KNOWLEDGE_BASE_PRIVATE_FIGURE_SEARCH == "/neo4j/private/assets/figures/search"
+    assert ApiRoutes.KNOWLEDGE_BASE_PRIVATE_TABLE == "/neo4j/private/assets/tables"
+    assert ApiRoutes.KNOWLEDGE_BASE_PRIVATE_TABLE_SEARCH == "/neo4j/private/assets/tables/search"
