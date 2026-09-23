@@ -265,6 +265,10 @@ Numerical optimization, rootfinding, ODE simulation, and optimal control. Descri
 
 Semantic search over Axiomatic's curated Knowledge Base — scientific papers, entities, and passages, always returned with their source for citation. Also exposes your organization's own private knowledge graph: ingest a PDF into it, then search and query it with the same tools. Both graphs answer read-only Cypher for when the answer has to be a table.
 
+### 📐 [AxBlueprints](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/blueprints/)
+
+Browse Axiomatic's component blueprints and read their contracts — ports, modes, parameters, lifecycle status, and the validity, source and verification notes — one section at a time.
+
 ### 🔎 [AxPaperSearch](https://github.com/Axiomatic-AI/ax-mcp/tree/main/axiomatic_mcp/servers/paper_search/)
 
 Search arXiv and OpenAlex for scientific papers — abstracts, authors, DOIs, citation counts, and direct PDF links.

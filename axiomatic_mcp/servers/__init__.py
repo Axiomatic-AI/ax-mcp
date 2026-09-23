@@ -7,6 +7,7 @@ from fastmcp import FastMCP
 from .annotations.server import mcp as annotations_mcp
 from .argmin.server import mcp as argmin_mcp
 from .axmodelfitter.server import mcp as axmodelfitter_mcp
+from .blueprints.server import mcp as blueprints_mcp
 from .documents.server import mcp as documents_mcp
 from .equations.server import mcp as equations_mcp
 from .kb.server import mcp as kb_mcp
@@ -34,6 +35,7 @@ servers: list[ServerConfig] = [
     ServerConfig(domain="modelfitter", name="AxModelFitter", server=modelfitter_mcp),
     ServerConfig(domain="pde", name="AxPDE", server=pde_mcp),
     ServerConfig(domain="kb", name="AxKnowledgeBase", server=kb_mcp),
+    ServerConfig(domain="blueprints", name="AxBlueprints", server=blueprints_mcp),
     ServerConfig(domain="paper_search", name="AxPaperSearch", server=paper_search_mcp),
     ServerConfig(domain="tidy3d", name="AxTidy3D", server=tidy3d_mcp),
     ServerConfig(domain="meep", name="AxMeep", server=meep_mcp),
