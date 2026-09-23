@@ -33,8 +33,7 @@ mcp = FastMCP(
 
     A blueprint's contract is what these tools return, nothing more. Do not look for blueprints on
     disk, and do not guess ids — an unknown id comes back as an error listing the ids that exist.
-    """
-    + get_feedback_prompt(["list_blueprints", "get_blueprint"]),
+    """ + get_feedback_prompt(["list_blueprints", "get_blueprint"]),
     version="0.0.1",
     middleware=get_mcp_middleware(),
     tools=get_mcp_tools(),
