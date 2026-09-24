@@ -49,6 +49,8 @@ class ApiRoutes:
     KNOWLEDGE_BASE_PRIVATE_FIGURE_SEARCH = "/neo4j/private/assets/figures/search"
     KNOWLEDGE_BASE_PRIVATE_TABLE = "/neo4j/private/assets/tables"
     KNOWLEDGE_BASE_PRIVATE_TABLE_SEARCH = "/neo4j/private/assets/tables/search"
+    BLUEPRINTS_LIST = "/blueprints"
+    BLUEPRINTS_GET = "/blueprints/{domain}/{name}"
     ARXIV_SEARCH_WORKS = "/search/arxiv/works"
     OPENALEX_SEARCH_WORKS = "/search/openalex/works"
     TIDY3D_GENERATE_CODE = "/tidy3d/generate-code"

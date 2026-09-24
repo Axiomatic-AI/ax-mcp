@@ -55,6 +55,13 @@
       "env": {
         "AXIOMATIC_API_KEY": ""
       }
+    },
+    "axiomatic-blueprints": {
+      "command": "uvx",
+      "args": ["--from", "axiomatic-mcp", "axiomatic-blueprints"],
+      "env": {
+        "AXIOMATIC_API_KEY": ""
+      }
     }
   }
 }
