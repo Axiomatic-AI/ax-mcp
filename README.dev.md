@@ -102,7 +102,7 @@ mcp = FastMCP(
 )
 ```
 
-Then add the `report_feedback` tool (see [`axiomatic_mcp/servers/pic/server.py`](axiomatic_mcp/servers/pic/server.py) for a full example):
+Then add the `report_feedback` tool (see [`axiomatic_mcp/servers/pde/server.py`](axiomatic_mcp/servers/pde/server.py) for a full example):
 
 ```python
 @mcp.tool(
