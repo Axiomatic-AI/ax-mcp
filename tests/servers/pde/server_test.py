@@ -96,13 +96,13 @@ async def test_tools_publish_output_schemas(mcp_client):
     """Test if schemas are passed correctly."""
     tools = {t.name: t for t in await mcp_client.list_tools()}
 
-    parse_props = tools["parse_pde"].outputSchema["properties"]
+    parse_props = tools["parse_pde"].output_schema["properties"]
     assert "equations" in parse_props["spec"]["properties"]
 
-    derive_props = tools["derive_source"].outputSchema["properties"]
+    derive_props = tools["derive_source"].output_schema["properties"]
     assert "source_exprs" in derive_props
 
-    verify_schema = tools["verify_solution"].outputSchema
+    verify_schema = tools["verify_solution"].output_schema
     assert "passed" in verify_schema["required"]
     assert {"equation_diagnostics", "bc_diagnostics"} <= set(verify_schema["properties"])
 

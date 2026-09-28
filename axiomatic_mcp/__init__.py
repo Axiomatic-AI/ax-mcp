@@ -2,8 +2,6 @@
 
 __version__ = "0.1.22"
 
-import asyncio
-
 from fastmcp import FastMCP
 
 from .providers.middleware_provider import get_mcp_middleware
@@ -21,14 +19,14 @@ axiomatic_mcp = FastMCP(
 )
 
 
-async def setup():
+def setup():
     for server in servers:
-        await axiomatic_mcp.import_server(server["server"], prefix=server["name"])
+        axiomatic_mcp.mount(server["server"], namespace=server["name"])
 
 
 def main():
     """Main entry point for the all-in-one server."""
-    asyncio.run(setup())
+    setup()
     axiomatic_mcp.run(transport="stdio")
 
 
