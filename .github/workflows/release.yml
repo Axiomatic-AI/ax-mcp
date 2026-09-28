@@ -68,7 +68,7 @@ jobs:
       - name: Run basic import test
         run: |
           python -c "import axiomatic_mcp; print('Package imported successfully')"
-          python -c "from axiomatic_mcp.servers.pic import main; print('PIC server importable')"
+          python -c "from axiomatic_mcp.servers.pde import main; print('PDE server importable')"
 
   publish-test-pypi:
     if: github.event.inputs.test_pypi == 'true'

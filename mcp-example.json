@@ -42,13 +42,6 @@
         "AXIOMATIC_API_KEY": ""
       }
     },
-    "axiomatic-pic": {
-      "command": "uvx",
-      "args": ["--from", "axiomatic-mcp", "axiomatic-pic"],
-      "env": {
-        "AXIOMATIC_API_KEY": ""
-      }
-    },
     "axiomatic-meep": {
       "command": "uvx",
       "args": ["--from", "axiomatic-mcp", "axiomatic-meep"],
