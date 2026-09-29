@@ -112,11 +112,12 @@ class MeepService(SingletonBase):
 
     def get_results(self, task_id: str) -> dict[str, Any]:
         """
-        Fetch the exports of a completed meep job.
+        Fetch exports and verification findings from a terminal meep job.
 
         Returns:
-            dict with keys: task_id, console_output, exports, failed_objects — or a
-            failure dict (409 while the job is still running).
+            dict with keys: task_id, execution_status, console_output, exports,
+            failed_objects, diagnosis, setup_findings — or a failure dict (409
+            while the job is still running).
         """
         try:
             with AxiomaticAPIClient() as client:

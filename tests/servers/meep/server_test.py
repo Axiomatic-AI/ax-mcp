@@ -2,6 +2,7 @@
 
 import base64
 import io
+import json
 from unittest.mock import patch
 
 import httpx
@@ -34,12 +35,44 @@ def _npz_b64(**arrays: np.ndarray) -> str:
     return base64.b64encode(buffer.getvalue()).decode()
 
 
-def _results(exports: dict, console_output: str = "meep finished\n", failed_objects: dict | None = None) -> dict:
+def _finding(
+    kind: str = "courant_unstable",
+    *,
+    source: str = "computed",
+    suggestion: str = "Lower the Courant factor to 1.0 or below.",
+    detail: dict | None = None,
+) -> dict:
+    return {
+        "kind": kind,
+        "passed": False,
+        "source": source,
+        "not_applicable": [],
+        "diverged": kind in {"courant_unstable", "diverged"},
+        "final_decay_value": None,
+        "shutoff_target": None,
+        "engine_warnings": [],
+        "detail": detail or {"courant": 1.2, "limit": 1.0},
+        "suggestion": suggestion,
+    }
+
+
+def _results(
+    exports: dict,
+    console_output: str = "meep finished\n",
+    failed_objects: dict | None = None,
+    *,
+    execution_status: str = "completed",
+    diagnosis: dict | None = None,
+    setup_findings: list[dict] | None = None,
+) -> dict:
     return {
         "task_id": "job-1",
+        "execution_status": execution_status,
         "console_output": console_output,
         "exports": exports,
         "failed_objects": failed_objects or {},
+        "diagnosis": diagnosis,
+        "setup_findings": setup_findings or [],
     }
 
 
@@ -102,6 +135,14 @@ async def test_tools_publish_output_schemas(mcp_client):
         # No "required": both the success shape and the failure shape must validate, and
         # fastmcp enforces the declared schema client-side.
         assert "required" not in schema
+
+
+@pytest.mark.asyncio
+async def test_get_results_schema_describes_verification_fields(mcp_client):
+    tools = {t.name: t for t in await mcp_client.list_tools()}
+    properties = tools["get_results"].outputSchema["properties"]
+
+    assert {"execution_status", "diagnosis", "setup_findings", "checks_path"} <= properties.keys()
 
 
 @pytest.mark.asyncio
@@ -388,6 +429,18 @@ async def test_get_status_failed_surfaces_trace_and_retry_advice(mcp_client):
 
 
 @pytest.mark.asyncio
+async def test_get_status_failed_directs_result_retrieval_before_retry(mcp_client):
+    body = {"task_id": "job-1", "status": "failed", "error_trace": "RuntimeError: fields are NaN"}
+
+    with patch.object(MeepService, "get_status", return_value=body):
+        response = await mcp_client.call_tool("get_simulation_status", {"task_id": "job-1"})
+
+    blob = _blob(response)
+    assert "get_results" in blob
+    assert blob.index("get_results") < blob.index("generate_code")
+
+
+@pytest.mark.asyncio
 async def test_get_status_failed_without_trace_does_not_print_none(mcp_client):
     body = {"task_id": "job-1", "status": "failed", "error_trace": None}
 
@@ -446,6 +499,156 @@ async def test_get_results_not_completed_points_at_status_tool(mcp_client):
     assert response.is_error is False
     assert "get_simulation_status" in blob
     assert "running" in blob
+
+
+@pytest.mark.asyncio
+async def test_get_results_not_completed_for_failed_job_does_not_send_back_to_polling(mcp_client):
+    """An older backend answers 409 for a failed job; polling for 'completed' would never end."""
+    body = {"success": False, "error": "job failed", "error_type": "not_completed", "status_code": 409, "status": "failed"}
+
+    with patch.object(MeepService, "get_results", return_value=body):
+        response = await mcp_client.call_tool("get_results", {"task_id": "job-1"})
+
+    blob = _blob(response)
+    assert "until it reports" not in blob
+    assert "Do not poll" in blob
+    assert "previous_error" in blob
+
+
+@pytest.mark.asyncio
+async def test_get_results_leads_with_failed_verification_finding(mcp_client, tmp_path):
+    diagnosis = _finding()
+    body = _results({}, execution_status="failed", diagnosis=diagnosis)
+
+    with patch.object(MeepService, "get_results", return_value=body):
+        response = await mcp_client.call_tool("get_results", {"task_id": "job-1", "output_dir": str(tmp_path)})
+
+    first_text = _texts(response)[0]
+    assert first_text.startswith("Verification: NOT passed.")
+    assert "courant_unstable" in first_text
+    assert "courant=1.2" in first_text
+    assert "limit=1.0" in first_text
+    assert "Lower the Courant factor" in first_text
+
+
+@pytest.mark.asyncio
+async def test_get_results_reports_setup_findings(mcp_client, tmp_path):
+    finding = _finding(
+        "under_resolved_in_material",
+        source="static",
+        suggestion="Increase resolution.",
+        detail={"pixels_per_wavelength": 3.2, "minimum": 10.0},
+    )
+    body = _results({}, setup_findings=[finding])
+
+    with patch.object(MeepService, "get_results", return_value=body):
+        response = await mcp_client.call_tool("get_results", {"task_id": "job-1", "output_dir": str(tmp_path)})
+
+    first_text = _texts(response)[0]
+    assert first_text.startswith("Verification: NOT passed.")
+    assert "pre-solve under_resolved_in_material" in first_text
+    assert "Increase resolution" in first_text
+
+
+@pytest.mark.asyncio
+async def test_get_results_preserves_verification_fields_in_structured_content(mcp_client, tmp_path):
+    diagnosis = _finding()
+    setup_finding = _finding("structure_in_pml", source="static", suggestion="Move the structure out of the PML.")
+    body = _results({}, execution_status="failed", diagnosis=diagnosis, setup_findings=[setup_finding])
+
+    with patch.object(MeepService, "get_results", return_value=body):
+        response = await mcp_client.call_tool("get_results", {"task_id": "job-1", "output_dir": str(tmp_path)})
+
+    assert response.structured_content["execution_status"] == "failed"
+    assert response.structured_content["diagnosis"] == diagnosis
+    assert response.structured_content["setup_findings"] == [setup_finding]
+
+
+@pytest.mark.asyncio
+async def test_get_results_writes_checks_json_beside_exports(mcp_client, tmp_path):
+    diagnosis = _finding()
+    body = _results({}, diagnosis=diagnosis)
+
+    with patch.object(MeepService, "get_results", return_value=body):
+        response = await mcp_client.call_tool("get_results", {"task_id": "job-1", "output_dir": str(tmp_path)})
+
+    checks_path = tmp_path / "meep_job-1" / "checks.json"
+    assert json.loads(checks_path.read_text()) == {
+        "task_id": "job-1",
+        "execution_status": "completed",
+        "diagnosis": diagnosis,
+        "setup_findings": [],
+    }
+    assert response.structured_content["checks_path"] == str(checks_path)
+
+
+@pytest.mark.asyncio
+async def test_checks_json_does_not_overwrite_an_export_named_checks(mcp_client, tmp_path):
+    exported_checks = '{"owner":"user export"}'
+    body = _results(
+        {"checks": {"kind": "text", "payload": exported_checks, "size_bytes": len(exported_checks)}},
+        diagnosis=_finding(),
+    )
+
+    with patch.object(MeepService, "get_results", return_value=body):
+        response = await mcp_client.call_tool("get_results", {"task_id": "job-1", "output_dir": str(tmp_path)})
+
+    checks_path = response.structured_content["checks_path"]
+    export_path = response.structured_content["exports"]["checks"]["path"]
+    assert export_path != checks_path
+    assert json.loads((tmp_path / "meep_job-1" / "checks.json").read_text())["diagnosis"]["kind"] == "courant_unstable"
+    assert (tmp_path / "meep_job-1" / "checks (1).json").read_text() == exported_checks
+
+
+@pytest.mark.asyncio
+async def test_get_results_clean_run_does_not_claim_accuracy(mcp_client, tmp_path):
+    body = _results({})
+
+    with patch.object(MeepService, "get_results", return_value=body):
+        response = await mcp_client.call_tool("get_results", {"task_id": "job-1", "output_dir": str(tmp_path)})
+
+    first_text = _texts(response)[0]
+    assert first_text.startswith("Verification:")
+    assert "no findings reported" in first_text
+    assert "convergence and accuracy were not established" in first_text
+
+
+@pytest.mark.asyncio
+async def test_get_results_marks_which_findings_failed(mcp_client, tmp_path):
+    diagnosis = {**_finding("healthy"), "passed": True, "diverged": False}
+    setup_finding = _finding("structure_in_pml", source="static", suggestion="Move the structure out of the PML.")
+    body = _results({}, diagnosis=diagnosis, setup_findings=[setup_finding])
+
+    with patch.object(MeepService, "get_results", return_value=body):
+        response = await mcp_client.call_tool("get_results", {"task_id": "job-1", "output_dir": str(tmp_path)})
+
+    first_text = _texts(response)[0]
+    assert "1 verification finding(s) failed" in first_text
+    assert "- passed: post-run healthy" in first_text
+    assert "- FAILED: pre-solve structure_in_pml" in first_text
+
+
+@pytest.mark.asyncio
+async def test_get_results_surfaces_decay_divergence_and_engine_warnings(mcp_client, tmp_path):
+    diagnosis = {
+        **_finding("healthy"),
+        "passed": True,
+        "diverged": True,
+        "final_decay_value": 0.02,
+        "shutoff_target": 0.001,
+        "engine_warnings": ["PML thinner than half a wavelength"],
+    }
+    body = _results({}, diagnosis=diagnosis)
+
+    with patch.object(MeepService, "get_results", return_value=body):
+        response = await mcp_client.call_tool("get_results", {"task_id": "job-1", "output_dir": str(tmp_path)})
+
+    first_text = _texts(response)[0]
+    assert "engine raised 1 warning(s)" in first_text
+    assert "reported no failures." not in first_text
+    assert "fields diverged" in first_text
+    assert "final decay 0.02 vs shutoff target 0.001" in first_text
+    assert "engine warning: PML thinner than half a wavelength" in first_text
 
 
 @pytest.mark.asyncio
@@ -608,6 +811,19 @@ async def test_get_results_no_exports_explains_itself(mcp_client, tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_get_results_failed_job_without_exports_does_not_claim_completion(mcp_client, tmp_path):
+    body = _results({}, execution_status="failed", diagnosis=_finding())
+
+    with patch.object(MeepService, "get_results", return_value=body):
+        response = await mcp_client.call_tool("get_results", {"task_id": "job-1", "output_dir": str(tmp_path)})
+
+    blob = _blob(response)
+    assert "The job failed and produced no exports" in blob
+    assert "completed but produced no exports" not in blob
+    assert "never ran" not in blob
+
+
+@pytest.mark.asyncio
 async def test_get_results_honours_output_dir_env_var(mcp_client, tmp_path, monkeypatch):
     monkeypatch.setenv("AXIOMATIC_MEEP_OUTPUT_DIR", str(tmp_path))
     body = _results({"ez": {"kind": "npy", "payload": _npy_b64(np.arange(2)), "size_bytes": 0}})
@@ -646,6 +862,24 @@ async def test_get_results_survives_unwritable_output_dir(mcp_client, tmp_path):
     assert response.is_error is False
     assert "could NOT be written" in blob
     assert "ez" in blob
+    assert response.structured_content["checks_path"] is None
+
+
+@pytest.mark.asyncio
+async def test_get_results_reports_checks_path_written_before_a_later_disk_failure(mcp_client, tmp_path):
+    body = _results({"ez": {"kind": "npy", "payload": _npy_b64(np.arange(2)), "size_bytes": 0}}, diagnosis=_finding())
+
+    with (
+        patch.object(MeepService, "get_results", return_value=body),
+        patch("axiomatic_mcp.servers.meep.server.summarize_exports", side_effect=OSError("disk full")),
+    ):
+        response = await mcp_client.call_tool("get_results", {"task_id": "job-1", "output_dir": str(tmp_path)})
+
+    checks_path = tmp_path / "meep_job-1" / "checks.json"
+    assert checks_path.exists()
+    assert response.structured_content["checks_path"] == str(checks_path)
+    assert response.structured_content["output_dir"] == str(tmp_path / "meep_job-1")
+    assert str(checks_path) in _blob(response)
 
 
 @pytest.mark.asyncio
