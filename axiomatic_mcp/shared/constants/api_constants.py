@@ -15,6 +15,7 @@ class ApiRoutes:
     # introduce new path segments here that name a specific vendor/technology (e.g. a DB engine).
     KNOWLEDGE_BASE_SEARCH = "/neo4j/search"
     KNOWLEDGE_BASE_GET_SCHEMA = "/neo4j/get-schema"
+    KNOWLEDGE_BASE_GET_CONCEPTUAL_SCHEMA = "/neo4j/get-conceptual-schema"
     KNOWLEDGE_BASE_OVERVIEW = "/neo4j/overview"
     KNOWLEDGE_BASE_EXECUTE_READ = "/neo4j/execute-read"
     KNOWLEDGE_BASE_MARKDOWN = "/neo4j/papers/{doc_id}/markdown"
