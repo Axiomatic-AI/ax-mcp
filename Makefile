@@ -14,7 +14,7 @@ install-dev:
 	@echo "✅ Dev environment ready!"
 
 test:
-	@uv run pytest tests/ -v --tb=short || true
+	@uv run pytest tests/ -v --tb=short
 
 format:
 	@uv run ruff check --fix .
