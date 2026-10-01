@@ -23,6 +23,10 @@ Semantic search: embed a text query and return the most similar passages, each w
 
 Retrieve the schema: entity types with their properties, and relationship types with their properties and which entity types they connect.
 
+### `get_knowledge_base_conceptual_schema`
+
+A curated, human-readable Mermaid diagram of how a paper is represented in the knowledge base, plus a legend, for getting oriented at a glance. This is a simplified summary, not a literal description of every label/relationship the graph holds — call `get_knowledge_base_schema` instead before writing any Cypher.
+
 ### `get_knowledge_base_overview`
 
 Corpus-level statistics: the graph's total node count and the breakdown by entity label, largest first. Useful for getting oriented before searching.

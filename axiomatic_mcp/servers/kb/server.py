@@ -54,6 +54,9 @@ mcp = FastMCP(
 
     get_knowledge_base_schema describes BOTH graphs, since every graph shares one schema. Call it
     first to learn the labels and property names before writing any Cypher.
+    get_knowledge_base_conceptual_schema is a curated, human-readable diagram of that same
+    structure for getting oriented at a glance -- not a substitute for get_knowledge_base_schema
+    when writing Cypher.
 
     Search results carry their source (paper id/title), so they should always be used and cited
     instead of relying on unsourced recollection of "standard results from the literature". The two
@@ -68,6 +71,7 @@ mcp = FastMCP(
         [
             "search_knowledge_base",
             "get_knowledge_base_schema",
+            "get_knowledge_base_conceptual_schema",
             "get_knowledge_base_overview",
             "knowledge_graph_read",
             "get_knowledge_base_paper_markdown",
@@ -217,6 +221,35 @@ async def get_knowledge_base_schema() -> ToolResult:
 
     return ToolResult(
         content=[TextContent(type="text", text="\n".join(lines))],
+        structured_content=response,
+    )
+
+
+def _format_conceptual_schema(response: dict[str, Any]) -> str:
+    mermaid = response.get("mermaid", "")
+    legend = response.get("legend", "")
+    return f"```mermaid\n{mermaid.strip()}\n```\n\n{legend.strip()}"
+
+
+@mcp.tool(
+    name="get_knowledge_base_conceptual_schema",
+    description=(
+        "Retrieve a curated, human-readable Mermaid diagram of how a paper is represented in "
+        "the knowledge base, plus a legend, for getting oriented at a glance. This is a "
+        "simplified summary, not a literal description of every label/relationship the graph "
+        "holds -- call get_knowledge_base_schema instead before writing any Cypher."
+    ),
+    tags=["knowledge-base", "schema"],
+)
+async def get_knowledge_base_conceptual_schema() -> ToolResult:
+    """Retrieve the curated, human-readable Mermaid diagram of the knowledge base's structure."""
+    try:
+        response = knowledge_base_service.get_conceptual_schema()
+    except Exception as e:
+        raise ToolError(f"Failed to retrieve the knowledge base conceptual schema: {e!s}") from e
+
+    return ToolResult(
+        content=[TextContent(type="text", text=_format_conceptual_schema(response))],
         structured_content=response,
     )
 
