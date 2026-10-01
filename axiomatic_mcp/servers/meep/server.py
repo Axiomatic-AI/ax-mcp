@@ -1,6 +1,7 @@
 """AxMeep MCP server — generate and run Meep FDTD simulations as asynchronous jobs."""
 
 import asyncio
+import json
 import time
 from typing import Annotated, Any
 
@@ -25,16 +26,18 @@ WORKFLOW:
    so this returns a task_id IMMEDIATELY and nothing has been simulated yet.
 3. get_simulation_status(task_id, wait_seconds=120) — wait for the job. It returns the
    moment the job is terminal. Typical runtime is 1-2 minutes.
-4. get_results(task_id) — fetch the exports once the status is 'completed'.
+4. get_results(task_id) — fetch exports and verification findings once the status is terminal
+   ('completed' or 'failed'). Failed jobs can retain diagnoses and partial exports.
 
 WAITING PROTOCOL: to wait, pass wait_seconds (cap 120 per call). Never loop bare
 get_simulation_status() calls with wait_seconds=0 — that returns instantly and floods the
 conversation. Chain at most ~5 waiting calls (~10 minutes total), then hand the task_id
 back to the user and invite them to check later.
 
-RETRY PROTOCOL: when a job reports status 'failed', feed its error_trace back into
-generate_code as previous_error, together with the exact script you submitted as
-previous_code. That patches the specific failure instead of starting over.
+RETRY PROTOCOL: when a job reports status 'failed', call get_results first to recover its
+diagnosis and any partial exports. Then feed its error_trace back into generate_code as
+previous_error, together with the exact script you submitted as previous_code. That patches
+the specific failure instead of starting over.
 
 ACCESS: the three execute tools require an Axiomatic key with playground access
 (ADMIN/INTERNAL/PLAYGROUND). generate_code works with any authenticated key. A 403 means
@@ -44,6 +47,11 @@ RESULTS: a script returns values only via the export(name, obj) builtin, and mus
 meep — both are checked statically before submission, at no cost. Exports come back
 summarized (arrays as shape/dtype/min/max/mean), PNG figures are shown inline, and every
 artifact is written to a local directory.
+
+The first get_results text block starts with `Verification:`. Report that verdict and every
+finding to the user. A clean line means only that the available checks reported no failure;
+it does not establish numerical convergence or physical accuracy. Structured findings are
+also written to checks.json beside the simulation artifacts.
 
 Only numpy arrays and matplotlib figures come back readable. A plain Python scalar (a
 float such as a peak field value, an efficiency, a Q factor) is serialized as an opaque
@@ -142,6 +150,17 @@ _RESULTS_OUTPUT_SCHEMA = {
         "output_dir": {"type": ["string", "null"], "description": "Directory the artifacts were written to."},
         "console_output_path": {"type": ["string", "null"]},
         "console_output_excerpt": {"type": ["string", "null"]},
+        "checks_path": {"type": ["string", "null"], "description": "Path to the structured verification findings."},
+        "execution_status": {"type": ["string", "null"], "description": "Preserved terminal job status: completed or failed."},
+        "diagnosis": {
+            "type": ["object", "null"],
+            "description": "Post-run health finding, or null when the available run-health checks found no failure.",
+        },
+        "setup_findings": {
+            "type": "array",
+            "description": "Pre-solve setup findings returned by the backend.",
+            "items": {"type": "object"},
+        },
         "exports": {
             "type": "object",
             "description": "Per export: kind, size_bytes, path and a one-line summary. Never the raw payload.",
@@ -170,8 +189,7 @@ _ACCESS_DENIED_TEXT = (
 )
 _RETRY_GUIDANCE = {
     "generation_error": (
-        " The generator run itself broke (model backend or timeout) — this is usually transient, so retrying this "
-        "identical call once is worthwhile."
+        " The generator run itself broke (model backend or timeout) — this is usually transient, so retrying this identical call once is worthwhile."
     ),
     "iteration_limit": (
         " The generator used up its self-correction attempts on this request. Do NOT resend the same description — "
@@ -223,9 +241,17 @@ def _failure_text(response: dict[str, Any]) -> str:
         return f"No meep job with that task_id: {message} Check the task_id returned by execute_code — job ids expire from the scheduler."
     if error_type == "not_completed":
         job_status = response.get("status") or "not finished"
+        if job_status == "failed":
+            # An older backend refuses results for failed jobs; polling would never change that.
+            return (
+                "The backend does not serve results for this failed job, so no diagnosis or partial exports can be "
+                "recovered. Do not poll or call get_results again — the job will not change. Take the error_trace from "
+                "get_simulation_status and call generate_code with the exact script you submitted as previous_code and "
+                "that trace as previous_error."
+            )
         return (
             f"Results are not available yet — the job is '{job_status}'. Call get_simulation_status(task_id, wait_seconds=120) "
-            "until it reports 'completed', then call get_results again."
+            "until it reports 'completed' or 'failed', then call get_results again."
         )
     if error_type == "scheduler_error":
         return f"The job scheduler refused the request: {message} {_SCHEDULER_ERROR_SUFFIX}"
@@ -350,7 +376,8 @@ async def _poll_until_terminal(task_id: str, wait_seconds: int) -> tuple[dict[st
         "Check a Meep job, optionally waiting for it to finish. Pass wait_seconds (capped at 120 per call) to "
         "wait — it returns the moment the job is terminal, so a typical 1-2 minute job needs one call. Do NOT "
         "loop with wait_seconds=0; chain at most ~5 waiting calls, then hand the task_id back to the user. "
-        "When the status is 'failed', pass the returned error_trace to generate_code as previous_error."
+        "When the status is 'failed', call get_results to recover its diagnosis before passing the returned "
+        "error_trace to generate_code as previous_error."
     ),
     tags=["meep", "status"],
     output_schema=_STATUS_OUTPUT_SCHEMA,
@@ -372,7 +399,12 @@ async def get_simulation_status(task_id: TASK_ID_ARG, wait_seconds: WAIT_SECONDS
         parts.append(_text(f"Task {task_id} failed{waited_text}."))
         trace = response.get("error_trace")
         parts.append(_text(f"Error trace:\n{trace}" if trace else "The job reported no error trace."))
-        parts.append(_text("To fix it, call generate_code with the exact script you submitted as previous_code and this trace as previous_error."))
+        parts.append(
+            _text(
+                "Next: call get_results with this task_id to retrieve the terminal diagnosis and any partial exports. "
+                "Then, to fix it, call generate_code with the exact script you submitted as previous_code and this trace as previous_error."
+            )
+        )
     else:
         capped = f" The per-call cap is {_MAX_WAIT_SECONDS}s of the {wait_seconds}s requested." if wait_seconds > _MAX_WAIT_SECONDS else ""
         parts.append(_text(f"Task {task_id} is {status}{waited_text}.{capped}"))
@@ -396,14 +428,110 @@ def _minimal_export_listing(exports: dict[str, Any]) -> list[str]:
     return lines
 
 
+def _checks_payload(response: dict[str, Any], task_id: str) -> dict[str, Any]:
+    """Keep the backend's typed findings intact for agents and later reviewers."""
+    return {
+        "task_id": response.get("task_id") or task_id,
+        "execution_status": response.get("execution_status") or "completed",
+        "diagnosis": response.get("diagnosis"),
+        "setup_findings": list(response.get("setup_findings") or []),
+    }
+
+
+def _value_text(value: Any) -> str:
+    if isinstance(value, str):
+        return value
+    return json.dumps(value, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+
+
+def _detail_text(detail: Any) -> str:
+    if not isinstance(detail, dict) or not detail:
+        return ""
+    return ", ".join(f"{key}={_value_text(value)}" for key, value in sorted(detail.items()))
+
+
+def _engine_warnings(finding: dict[str, Any]) -> list[str]:
+    return [str(warning) for warning in finding.get("engine_warnings") or []]
+
+
+def _outcome_label(finding: dict[str, Any]) -> str:
+    passed = finding.get("passed")
+    if passed is False:
+        return "FAILED"
+    if passed is True:
+        return "passed"
+    return "unscored"
+
+
+def _finding_text(stage: str, finding: dict[str, Any]) -> str:
+    kind = finding.get("kind") or "unknown"
+    source = finding.get("source") or "unknown source"
+    line = f"- {_outcome_label(finding)}: {stage} {kind} [{source}]"
+
+    facts = []
+    if finding.get("diverged") is True:
+        facts.append("fields diverged")
+    decay = finding.get("final_decay_value")
+    target = finding.get("shutoff_target")
+    if decay is not None:
+        facts.append(f"final decay {_value_text(decay)}" + (f" vs shutoff target {_value_text(target)}" if target is not None else ""))
+    elif target is not None:
+        facts.append(f"shutoff target {_value_text(target)} (no final decay value reported)")
+    details = _detail_text(finding.get("detail"))
+    if details:
+        facts.append(details)
+    if facts:
+        line += ": " + "; ".join(facts)
+
+    suggestion = finding.get("suggestion")
+    if suggestion:
+        line += f". Fix: {suggestion}"
+    for warning in _engine_warnings(finding):
+        line += f"\n  engine warning: {warning}"
+    return line
+
+
+def _verification_text(checks: dict[str, Any]) -> str:
+    diagnosis = checks["diagnosis"]
+    setup_findings = checks["setup_findings"]
+    findings: list[tuple[str, dict[str, Any]]] = []
+    if isinstance(diagnosis, dict):
+        findings.append(("post-run", diagnosis))
+    findings.extend(("pre-solve", finding) for finding in setup_findings if isinstance(finding, dict))
+
+    failed_findings = [finding for _, finding in findings if finding.get("passed") is False]
+    warning_count = sum(len(_engine_warnings(finding)) for _, finding in findings)
+    if checks["execution_status"] == "failed" or failed_findings:
+        reasons = []
+        if checks["execution_status"] == "failed":
+            reasons.append("the simulation job failed")
+        if failed_findings:
+            reasons.append(f"{len(failed_findings)} verification finding(s) failed")
+        summary = "Verification: NOT passed. " + "; ".join(reasons) + "."
+    elif warning_count:
+        summary = (
+            f"Verification: available checks reported no failures, but the engine raised {warning_count} warning(s) — "
+            "read them below before trusting the result; convergence and accuracy were not established."
+        )
+    elif findings:
+        summary = "Verification: available checks reported no failures; convergence and accuracy were not established."
+    else:
+        summary = "Verification: no findings reported by available checks; convergence and accuracy were not established."
+
+    if findings:
+        summary += "\n" + "\n".join(_finding_text(stage, finding) for stage, finding in findings)
+    return summary
+
+
 @mcp.tool(
     name="get_results",
     description=(
-        "Fetch the exports of a completed Meep job. Check get_simulation_status first — calling this early "
-        "reports that the job is still running, it does not wait. Each export is summarized (arrays as "
+        "Fetch exports and verification findings from a terminal Meep job, whether completed or failed. Check "
+        "get_simulation_status first — calling this early reports that the job is still running, it does not wait. "
+        "The first text block is the verification verdict and must be reported to the user. Each export is summarized (arrays as "
         "shape/dtype/min/max/mean, scalars exactly), PNG figures are returned inline as images, and every "
-        "artifact is written to a local file whose path is returned so it can be loaded with numpy. Pickled "
-        "objects are reported but never decoded."
+        "artifact is written to a local file whose path is returned so it can be loaded with numpy. Verification "
+        "findings are written to checks.json beside the artifacts. Pickled objects are reported but never decoded."
     ),
     tags=["meep", "results", "artifacts"],
     output_schema=_RESULTS_OUTPUT_SCHEMA,
@@ -425,30 +553,50 @@ async def get_results(
     exports = response.get("exports") or {}
     failed_objects = dict(response.get("failed_objects") or {})
     console_output = response.get("console_output") or ""
+    checks = _checks_payload(response, task_id)
+    verification = _verification_text(checks)
+    directory = None
+    checks_path = None
 
     try:
         directory = resolve_output_dir(task_id, output_dir)
+        checks_file = directory / "checks.json"
+        checks_file.write_text(json.dumps(checks, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        checks_path = checks_file
         summaries = summarize_exports(exports, directory, max_inline_images)
         console_excerpt, console_path = excerpt_console(console_output, directory)
     except OSError as e:
-        # Never lose a completed simulation's results to a disk problem.
+        # Never lose a terminal simulation's results or findings to a disk problem.
         listing = _minimal_export_listing(exports)
-        parts = [_text(f"Task {task_id} completed, but artifacts could NOT be written ({type(e).__name__}: {e}).")]
+        written = f" Verification findings were saved to {checks_path}." if checks_path else ""
+        parts = [
+            _text(verification),
+            _text(f"Task {task_id} {checks['execution_status']}, but artifacts could NOT be written ({type(e).__name__}: {e}).{written}"),
+        ]
         if listing:
             parts.append(_text("Exports the job produced:\n" + "\n".join(listing)))
         if console_output:
             parts.append(_text(f"Console output (excerpt):\n{console_output[:2000]}"))
         return ToolResult(
             content=parts,
-            structured_content={"task_id": task_id, "output_dir": None, "error": str(e), "failed_objects": failed_objects},
+            structured_content={
+                **checks,
+                "output_dir": str(directory) if checks_path else None,
+                "checks_path": str(checks_path) if checks_path else None,
+                "error": str(e),
+                "failed_objects": failed_objects,
+            },
         )
 
     for summary in summaries:
         if summary.failure:
             failed_objects[summary.name] = summary.failure
 
-    headline = f"Task {task_id} completed. {len(summaries)} export(s), {len(failed_objects)} failed. Artifacts written to {directory}"
-    parts = [_text(headline)]
+    headline = (
+        f"Task {task_id} {checks['execution_status']}. {len(summaries)} export(s), {len(failed_objects)} failed. "
+        f"Artifacts and checks written to {directory}"
+    )
+    parts = [_text(verification), _text(headline)]
     for summary in summaries:
         parts.append(_text(summary.summary))
         if summary.image is not None:
@@ -464,6 +612,8 @@ async def get_results(
                 + "\nArtifacts are capped at 50 MB each and 200 MB per job — downsample, slice, or re-export at lower resolution in the script."
             )
         )
+    elif not summaries and checks["execution_status"] == "failed":
+        parts.append(_text("The job failed and produced no exports — the verification findings and console output above say why."))
     elif not summaries:
         parts.append(
             _text(
@@ -472,10 +622,11 @@ async def get_results(
         )
 
     structured = {
-        "task_id": response.get("task_id") or task_id,
+        **checks,
         "output_dir": str(directory),
         "console_output_path": str(console_path) if console_path else None,
         "console_output_excerpt": console_excerpt,
+        "checks_path": str(checks_path),
         "exports": {
             s.name: {"kind": s.kind, "size_bytes": s.size_bytes, "path": str(s.path) if s.path else None, "summary": s.summary} for s in summaries
         },
