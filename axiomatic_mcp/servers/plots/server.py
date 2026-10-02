@@ -9,7 +9,7 @@ from typing import Annotated
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from fastmcp.tools.tool import ToolResult
+from fastmcp.tools import ToolResult
 from mcp.types import TextContent
 from pydantic import BaseModel
 

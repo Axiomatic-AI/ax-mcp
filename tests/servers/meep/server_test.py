@@ -130,7 +130,7 @@ async def test_list_tools(mcp_client):
 async def test_tools_publish_output_schemas(mcp_client):
     tools = {t.name: t for t in await mcp_client.list_tools()}
     for name in ("generate_code", "execute_code", "get_simulation_status", "get_results"):
-        schema = tools[name].outputSchema
+        schema = tools[name].output_schema
         assert schema["type"] == "object"
         # No "required": both the success shape and the failure shape must validate, and
         # fastmcp enforces the declared schema client-side.
@@ -678,7 +678,7 @@ async def test_get_results_returns_png_as_image_content(mcp_client, tmp_path):
     with patch.object(MeepService, "get_results", return_value=body):
         response = await mcp_client.call_tool("get_results", {"task_id": "job-1", "output_dir": str(tmp_path)})
 
-    images = [block for block in response.content if getattr(block, "mimeType", None) == "image/png"]
+    images = [block for block in response.content if getattr(block, "mime_type", None) == "image/png"]
     assert len(images) == 1
     assert list(tmp_path.rglob("field_fig.png"))
 

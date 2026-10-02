@@ -1,6 +1,6 @@
 from typing import Any
 
-from fastmcp.tools.tool import ToolResult
+from fastmcp.tools import ToolResult
 
 
 def serialize_tool_call_result(result: ToolResult, event: str) -> dict[str, Any]:

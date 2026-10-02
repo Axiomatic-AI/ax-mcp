@@ -12,7 +12,7 @@ from typing import Annotated
 
 import numpy as np
 from fastmcp import FastMCP
-from fastmcp.tools.tool import ToolResult
+from fastmcp.tools import ToolResult
 from mcp.types import TextContent
 
 from ...providers.middleware_provider import get_mcp_middleware
@@ -2245,4 +2245,4 @@ async def compute_parameter_covariance(
 
 def main():
     """Main entry point for the model fitting MCP server."""
-    mcp.run()
+    mcp.run(transport="stdio", show_banner=False)

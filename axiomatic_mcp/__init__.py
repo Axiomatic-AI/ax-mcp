@@ -2,12 +2,12 @@
 
 __version__ = "0.1.21"
 
-import asyncio
-
 from fastmcp import FastMCP
+from fastmcp.server.providers import FastMCPProvider
 
 from .providers.middleware_provider import get_mcp_middleware
 from .servers import servers
+from .shared.transforms import ServerTitle
 
 axiomatic_mcp = FastMCP(
     name="Axiomatic MCP",
@@ -21,15 +21,17 @@ axiomatic_mcp = FastMCP(
 )
 
 
-async def setup():
+def setup():
+    # mount() plus a title transform, applied before the namespace as mount() does its tool renames.
     for server in servers:
-        await axiomatic_mcp.import_server(server["server"], prefix=server["name"])
+        provider = FastMCPProvider(server["server"]).wrap_transform(ServerTitle(server["name"]))
+        axiomatic_mcp.add_provider(provider, namespace=server["name"])
 
 
 def main():
     """Main entry point for the all-in-one server."""
-    asyncio.run(setup())
-    axiomatic_mcp.run(transport="stdio")
+    setup()
+    axiomatic_mcp.run(transport="stdio", show_banner=False)
 
 
 if __name__ == "__main__":

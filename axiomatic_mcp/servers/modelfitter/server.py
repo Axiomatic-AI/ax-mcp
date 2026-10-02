@@ -4,7 +4,7 @@ from typing import Annotated
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from fastmcp.tools.tool import ToolResult
+from fastmcp.tools import ToolResult
 from mcp.types import TextContent
 
 from ...providers.middleware_provider import get_mcp_middleware
@@ -101,4 +101,4 @@ async def execute_code(
 
 def main():
     """Main entry point for the model fitter MCP server."""
-    mcp.run(transport="stdio")
+    mcp.run(transport="stdio", show_banner=False)
