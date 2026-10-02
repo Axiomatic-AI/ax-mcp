@@ -101,4 +101,4 @@ async def execute_code(
 
 def main():
     """Main entry point for the model fitter MCP server."""
-    mcp.run(transport="stdio")
+    mcp.run(transport="stdio", show_banner=False)

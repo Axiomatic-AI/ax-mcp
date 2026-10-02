@@ -2245,4 +2245,4 @@ async def compute_parameter_covariance(
 
 def main():
     """Main entry point for the model fitting MCP server."""
-    mcp.run()
+    mcp.run(transport="stdio", show_banner=False)
