@@ -27,7 +27,7 @@ def setup():
 def main():
     """Main entry point for the all-in-one server."""
     setup()
-    axiomatic_mcp.run(transport="stdio")
+    axiomatic_mcp.run(transport="stdio", show_banner=False)
 
 
 if __name__ == "__main__":
