@@ -140,7 +140,7 @@ async def test_tools_publish_output_schemas(mcp_client):
 @pytest.mark.asyncio
 async def test_get_results_schema_describes_verification_fields(mcp_client):
     tools = {t.name: t for t in await mcp_client.list_tools()}
-    properties = tools["get_results"].outputSchema["properties"]
+    properties = tools["get_results"].output_schema["properties"]
 
     assert {"execution_status", "diagnosis", "setup_findings", "checks_path"} <= properties.keys()
 
