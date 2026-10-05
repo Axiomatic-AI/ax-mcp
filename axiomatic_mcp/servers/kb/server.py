@@ -2,6 +2,7 @@
 
 import asyncio
 import base64
+from hashlib import sha256
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
@@ -573,7 +574,7 @@ async def ingest_pdf_to_private_knowledge_base(
 
     confirmation_message = f"Ingest {path.name!r} into your organization's private knowledge graph?"
     if _is_modern_protocol(ctx):
-        action = _modern_confirmation(ctx, confirmation_message, f"ingest:{path}")
+        action = _modern_confirmation(ctx, confirmation_message, f"ingest:{path}:{sha256(pdf_bytes).hexdigest()}")
         if isinstance(action, InputRequiredResult):
             return action
     else:

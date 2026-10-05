@@ -561,6 +561,28 @@ async def test_ingest_accepts_confirmation_on_modern_protocol(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_ingest_modern_confirmation_rejects_changed_pdf_contents(tmp_path):
+    """Consent for one PDF must not authorize different bytes at the same path."""
+    path = _pdf(tmp_path)
+
+    async def replace_pdf_before_accepting(message, response_type, params, context):
+        path.write_bytes(PDF_BYTES.replace(b"trailer", b"changed\ntrailer"))
+        return True
+
+    with patch.object(KnowledgeBaseService, "private_ingest") as spy:
+        async with Client(transport=mcp, elicitation_handler=replace_pdf_before_accepting) as client:
+            response = await client.call_tool(
+                "ingest_pdf_to_private_knowledge_base",
+                {"file_path": str(path)},
+                raise_on_error=False,
+            )
+
+    spy.assert_not_called()
+    assert response.is_error is True
+    assert "different operation" in _texts(response).lower()
+
+
+@pytest.mark.asyncio
 async def test_ingest_modern_accept_without_ticking_confirmation_writes_nothing(tmp_path):
     """The modern retry must preserve the rule that an unchecked box is not consent."""
     path = _pdf(tmp_path)
