@@ -35,6 +35,18 @@ class KnowledgeBaseService(SingletonBase):
         with AxiomaticAPIClient() as client:
             return client.post(ApiRoutes.KNOWLEDGE_BASE_GET_SCHEMA)
 
+    def get_conceptual_schema(self) -> dict[str, Any]:
+        """
+        Retrieve a curated, human-readable Mermaid diagram of the knowledge base's structure,
+        plus a legend, for getting oriented at a glance. Unlike `get_schema`, this is not a
+        literal description of every label/relationship -- see `get_schema` for that.
+
+        Returns:
+            dict with keys: mermaid, legend
+        """
+        with AxiomaticAPIClient() as client:
+            return client.get(ApiRoutes.KNOWLEDGE_BASE_GET_CONCEPTUAL_SCHEMA)
+
     def get_overview(self) -> dict[str, Any]:
         """
         Retrieve summary statistics for the knowledge base: total papers, total key

@@ -52,6 +52,7 @@ async def test_list_tools(mcp_client):
     assert {
         "search_knowledge_base",
         "get_knowledge_base_schema",
+        "get_knowledge_base_conceptual_schema",
         "get_knowledge_base_overview",
         "knowledge_graph_read",
         "ingest_pdf_to_private_knowledge_base",
@@ -121,6 +122,22 @@ async def test_get_knowledge_base_schema(mcp_client):
 
     texts = [c.text for c in response.content if hasattr(c, "text")]
     assert any("Paper" in t and "CITES" in t for t in texts)
+
+
+@pytest.mark.asyncio
+async def test_get_knowledge_base_conceptual_schema(mcp_client):
+    mock_response = {
+        "mermaid": "flowchart TB\n    Paper --> Document",
+        "legend": "A graph representation of a scientific paper.",
+    }
+
+    with patch.object(KnowledgeBaseService, "get_conceptual_schema", return_value=mock_response):
+        response = await mcp_client.call_tool("get_knowledge_base_conceptual_schema", {})
+
+    text = _texts(response)
+    assert "```mermaid" in text
+    assert "Paper --> Document" in text
+    assert "A graph representation of a scientific paper." in text
 
 
 @pytest.mark.asyncio
