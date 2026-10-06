@@ -11,7 +11,7 @@ from fastmcp import Context, FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.tools import ToolResult
 from mcp.shared.exceptions import MCPError
-from mcp.types import ClientCapabilities, ElicitationCapability, ImageContent, TextContent
+from mcp.types import ImageContent, TextContent
 from mcp_types import ElicitRequest, ElicitRequestFormParams, ElicitResult, InputRequiredResult
 from mcp_types.version import MODERN_PROTOCOL_VERSIONS
 
@@ -452,8 +452,16 @@ _ConfirmationAction = Literal["accept", "decline", "cancel"]
 
 
 def _can_elicit(ctx: Context) -> bool:
-    """Whether the client declared support for form elicitation."""
-    return bool(ctx.session.check_client_capability(ClientCapabilities(elicitation=ElicitationCapability())))
+    """Whether the client declared support for form elicitation.
+
+    A bare ``elicitation: {}`` (the only shape before modes existed) counts as form support; a client
+    that declared only URL mode does not. This is the SDK's own rule; ``check_client_capability``
+    only checks that ``elicitation`` is present.
+    """
+    capabilities = ctx.session.client_capabilities
+    elicitation = capabilities.elicitation if capabilities is not None else None
+    # Before modes existed, bare `elicitation: {}` advertised form support.
+    return elicitation is not None and (elicitation.form is not None or elicitation.url is None)
 
 
 def _is_modern_protocol(ctx: Context) -> bool:
@@ -531,9 +539,9 @@ def _format_ingest(response: dict[str, Any]) -> str:
         "Re-sending the same PDF is safe — it is reported as already present rather than ingested twice — so "
         "on a timeout or an unclear failure, retrying is the correct move.\n\n"
         "Before writing, this tool asks through MCP elicitation for confirmation of the file name and "
-        "the destination graph. A decline, a cancel, or a client that does not support elicitation at all "
+        "the destination graph. A decline, a cancel, or a client that does not support form-mode elicitation "
         "writes nothing and comes back as a plain non-error result — do not retry any of these without a "
-        "genuinely fresh reason to think the answer would differ; a client that lacks elicitation support "
+        "genuinely fresh reason to think the answer would differ; a client that lacks form-mode elicitation "
         "will fail the same way every time."
     ),
     tags=["knowledge-base", "private", "ingest", "write"],
@@ -563,7 +571,7 @@ async def ingest_pdf_to_private_knowledge_base(
                     type="text",
                     text=(
                         f"Could not ask for confirmation before ingesting {path.name!r}: this client does not "
-                        "support MCP elicitation on this connection. Nothing was written. Retrying will not help — "
+                        "support form-mode MCP elicitation on this connection. Nothing was written. Retrying will not help — "
                         "either get the user's go-ahead and ingest from a client that supports elicitation, "
                         "or don't call this tool for this file."
                     ),
@@ -742,9 +750,9 @@ def _format_deletion(response: dict[str, Any]) -> str:
         "Identify the paper by its id — get it from list_private_knowledge_base_papers or from a "
         "search_private_knowledge_base result's metadata, never guess or construct one.\n\n"
         "Before deleting, this tool asks through MCP elicitation for confirmation of the paper. A "
-        "decline, a cancel, or a client that does not support elicitation at all deletes nothing and "
+        "decline, a cancel, or a client that does not support form-mode elicitation deletes nothing and "
         "comes back as a plain non-error result — do not retry any of these without a genuinely fresh "
-        "reason to think the answer would differ; a client that lacks elicitation support will fail the "
+        "reason to think the answer would differ; a client that lacks form-mode elicitation will fail the "
         "same way every time."
     ),
     tags=["knowledge-base", "private", "papers", "delete", "write"],
@@ -761,7 +769,7 @@ async def delete_private_knowledge_base_paper(
                     type="text",
                     text=(
                         f"Could not ask for confirmation before deleting paper {doc_id!r}: this client does not "
-                        "support MCP elicitation on this connection. Nothing was deleted. Retrying will not help — "
+                        "support form-mode MCP elicitation on this connection. Nothing was deleted. Retrying will not help — "
                         "either get the user's go-ahead and delete from a client that supports elicitation, "
                         "or don't call this tool for this paper."
                     ),

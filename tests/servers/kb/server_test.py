@@ -8,7 +8,8 @@ import pytest
 import pytest_asyncio
 from fastmcp.client import Client
 from fastmcp.client.elicitation import ElicitResult
-from mcp.types import ImageContent
+from mcp.client.session import ClientSession
+from mcp.types import ClientCapabilities, ElicitationCapability, FormElicitationCapability, ImageContent, UrlElicitationCapability
 
 from axiomatic_mcp.servers.kb.server import mcp
 from axiomatic_mcp.servers.kb.services.knowledge_base_asset_service import KnowledgeBaseAssetService
@@ -46,6 +47,24 @@ def _legacy_client(**kwargs) -> Client:
     the write tools use a multi-round-trip input request there (covered by the modern-protocol tests).
     """
     return Client(transport=mcp, mode="legacy", **kwargs)
+
+
+def _modern_client(**kwargs) -> Client:
+    """A client pinned to the 2026-07-28 protocol, where confirmations are an ``InputRequiredResult`` round trip."""
+    return Client(transport=mcp, mode="2026-07-28", **kwargs)
+
+
+_CLIENTS = {"legacy": _legacy_client, "modern": _modern_client}
+
+
+def _declaring_elicitation(elicitation: ElicitationCapability):
+    """Make every client declare exactly ``elicitation`` (a client with a handler declares form + url)."""
+    build = ClientSession._build_capabilities
+
+    def build_with(self, version):
+        return build(self, version).model_copy(update={"elicitation": elicitation})
+
+    return patch.object(ClientSession, "_build_capabilities", build_with)
 
 
 @pytest_asyncio.fixture
@@ -531,9 +550,60 @@ async def test_ingest_reports_unsupported_elicitation_without_raising(tmp_path):
     spy.assert_not_called()
     assert response.is_error is False
     text = _texts(response)
-    assert "support mcp elicitation" in text.lower()
+    assert "support form-mode mcp elicitation" in text.lower()
     assert "nothing was written" in text.lower()
     assert response.structured_content == {"ingested": False, "action": "unsupported"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mode", ["legacy", "2026-07-28"])
+@pytest.mark.parametrize("operation", ["ingest", "delete"])
+async def test_private_write_with_url_only_elicitation_returns_unsupported(tmp_path, mode, operation):
+    """URL support must not authorize a form confirmation request."""
+    capabilities = ClientCapabilities(elicitation=ElicitationCapability(url=UrlElicitationCapability()))
+    path = _pdf(tmp_path)
+    tool, arguments, service_method, outcome = (
+        ("ingest_pdf_to_private_knowledge_base", {"file_path": str(path)}, "private_ingest", "ingested")
+        if operation == "ingest"
+        else ("delete_private_knowledge_base_paper", {"doc_id": "hash-abc"}, "private_delete_paper", "deleted")
+    )
+
+    confirmations = []
+
+    async def unexpected_form(message, response_type, params, context):
+        confirmations.append(message)
+        return ElicitResult(action="decline")
+
+    with (
+        patch.object(ClientSession, "_build_capabilities", return_value=capabilities),
+        patch.object(KnowledgeBaseService, service_method) as spy,
+    ):
+        async with Client(transport=mcp, mode=mode, elicitation_handler=unexpected_form) as client:
+            response = await client.call_tool(tool, arguments, raise_on_error=False)
+
+    spy.assert_not_called()
+    assert confirmations == []
+    assert response.is_error is False
+    assert response.structured_content == {outcome: False, "action": "unsupported"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mode", ["legacy", "2026-07-28"])
+async def test_ingest_accepts_legacy_bare_elicitation_capability(tmp_path, mode):
+    """Before elicitation modes existed, an empty capability advertised form support."""
+    path = _pdf(tmp_path)
+    capabilities = ClientCapabilities(elicitation=ElicitationCapability())
+    mock_response = {"paper_id": "hash-abc", "title": "Mine", "already_present": False, "pdf_and_figures_stored": True}
+
+    with (
+        patch.object(ClientSession, "_build_capabilities", return_value=capabilities),
+        patch.object(KnowledgeBaseService, "private_ingest", return_value=mock_response) as spy,
+    ):
+        async with Client(transport=mcp, mode=mode, elicitation_handler=_auto_accept_elicitation) as client:
+            response = await client.call_tool("ingest_pdf_to_private_knowledge_base", {"file_path": str(path)})
+
+    spy.assert_called_once_with("paper.pdf", PDF_BYTES, "")
+    assert response.structured_content == mock_response
 
 
 @pytest.mark.asyncio
@@ -1080,9 +1150,55 @@ async def test_delete_paper_reports_unsupported_elicitation_without_raising(tmp_
     spy.assert_not_called()
     assert response.is_error is False
     text = _texts(response)
-    assert "support mcp elicitation" in text.lower()
+    assert "support form-mode mcp elicitation" in text.lower()
     assert "nothing was deleted" in text.lower()
     assert response.structured_content == {"deleted": False, "action": "unsupported"}
+
+
+_ELICITATION_DECLARATIONS = {
+    "url-only": (ElicitationCapability(url=UrlElicitationCapability()), False),
+    "bare": (ElicitationCapability(), True),
+    "form-only": (ElicitationCapability(form=FormElicitationCapability()), True),
+    "form-and-url": (ElicitationCapability(form=FormElicitationCapability(), url=UrlElicitationCapability()), True),
+}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mode", _CLIENTS)
+@pytest.mark.parametrize("declared", _ELICITATION_DECLARATIONS, ids=list(_ELICITATION_DECLARATIONS))
+async def test_write_tools_confirm_only_with_clients_that_support_form_elicitation(tmp_path, mode, declared):
+    """The confirmation is a form; a client that declared only URL-mode elicitation can't answer it
+    and must get the documented non-error "unsupported" result without being prompted. A bare
+    ``elicitation: {}`` predates elicitation modes and means form support."""
+    capability, supports_form = _ELICITATION_DECLARATIONS[declared]
+    prompted = []
+
+    async def accept(message, response_type, params, context):
+        prompted.append(message)
+        return True
+
+    path = _pdf(tmp_path)
+    with (
+        _declaring_elicitation(capability),
+        patch.object(KnowledgeBaseService, "private_ingest", return_value={"paper_id": "hash-abc"}) as ingest,
+        patch.object(KnowledgeBaseService, "private_delete_paper", return_value={"paper_id": "hash-abc"}) as delete,
+    ):
+        async with _CLIENTS[mode](elicitation_handler=accept) as client:
+            ingested = await client.call_tool("ingest_pdf_to_private_knowledge_base", {"file_path": str(path)})
+            deleted = await client.call_tool("delete_private_knowledge_base_paper", {"doc_id": "hash-abc"})
+
+    assert ingested.is_error is False
+    assert deleted.is_error is False
+    if supports_form:
+        assert len(prompted) == 2
+        ingest.assert_called_once()
+        delete.assert_called_once()
+    else:
+        assert prompted == []
+        ingest.assert_not_called()
+        delete.assert_not_called()
+        assert ingested.structured_content == {"ingested": False, "action": "unsupported"}
+        assert deleted.structured_content == {"deleted": False, "action": "unsupported"}
 
 
 @pytest.mark.asyncio
