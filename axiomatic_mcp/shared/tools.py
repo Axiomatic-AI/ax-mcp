@@ -1,7 +1,7 @@
 from textwrap import dedent
 from typing import Annotated
 
-from fastmcp.tools.tool import Tool, ToolResult
+from fastmcp.tools import Tool, ToolResult
 from mcp.types import TextContent
 
 from ..shared import AxiomaticAPIClient

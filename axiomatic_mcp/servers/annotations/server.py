@@ -10,7 +10,7 @@ from typing import Annotated
 import filetype
 from fastmcp import FastMCP
 from fastmcp.exceptions import NotFoundError, ToolError, ValidationError
-from fastmcp.tools.tool import ToolResult
+from fastmcp.tools import ToolResult
 from mcp.types import TextContent
 from pydantic import BaseModel, Field, field_validator
 

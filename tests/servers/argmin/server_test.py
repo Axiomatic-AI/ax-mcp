@@ -157,7 +157,7 @@ async def test_execute_declares_no_output_schema(mcp_client):
     rather than left to a comment because adding one back looks like an improvement.
     """
     tools = {t.name: t for t in await mcp_client.list_tools()}
-    assert tools["execute_code"].outputSchema is None
+    assert tools["execute_code"].output_schema is None
 
 
 @pytest.mark.asyncio

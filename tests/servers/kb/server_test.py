@@ -8,7 +8,8 @@ import pytest
 import pytest_asyncio
 from fastmcp.client import Client
 from fastmcp.client.elicitation import ElicitResult
-from mcp.types import ImageContent
+from mcp.client.session import ClientSession
+from mcp.types import ClientCapabilities, ElicitationCapability, FormElicitationCapability, ImageContent, UrlElicitationCapability
 
 from axiomatic_mcp.servers.kb.server import mcp
 from axiomatic_mcp.servers.kb.services.knowledge_base_asset_service import KnowledgeBaseAssetService
@@ -36,12 +37,39 @@ def _pdf(tmp_path, name: str = "paper.pdf", content: bytes = PDF_BYTES):
 
 async def _auto_accept_elicitation(message, response_type, params, context):
     """Default handler for tests that aren't exercising the confirmation gate itself."""
-    return None
+    return True
+
+
+def _legacy_client(**kwargs) -> Client:
+    """A client on the handshake-era protocol, where confirmations use ``ctx.elicit()``.
+
+    The 2026-07-28 protocol that Client negotiates by default has no server-initiated requests, so
+    the write tools use a multi-round-trip input request there (covered by the modern-protocol tests).
+    """
+    return Client(transport=mcp, mode="legacy", **kwargs)
+
+
+def _modern_client(**kwargs) -> Client:
+    """A client pinned to the 2026-07-28 protocol, where confirmations are an ``InputRequiredResult`` round trip."""
+    return Client(transport=mcp, mode="2026-07-28", **kwargs)
+
+
+_CLIENTS = {"legacy": _legacy_client, "modern": _modern_client}
+
+
+def _declaring_elicitation(elicitation: ElicitationCapability):
+    """Make every client declare exactly ``elicitation`` (a client with a handler declares form + url)."""
+    build = ClientSession._build_capabilities
+
+    def build_with(self, version):
+        return build(self, version).model_copy(update={"elicitation": elicitation})
+
+    return patch.object(ClientSession, "_build_capabilities", build_with)
 
 
 @pytest_asyncio.fixture
 async def mcp_client():
-    async with Client(transport=mcp, elicitation_handler=_auto_accept_elicitation) as client:
+    async with _legacy_client(elicitation_handler=_auto_accept_elicitation) as client:
         yield client
 
 
@@ -384,7 +412,7 @@ async def test_get_paper_asset_figure_returns_an_inline_image(mcp_client):
     assert len(response.content) == 1
     block = response.content[0]
     assert isinstance(block, ImageContent)
-    assert block.mimeType == "image/png"
+    assert block.mime_type == "image/png"
     assert base64.b64decode(block.data) == image_bytes
     assert response.structured_content == {
         "doc_id": "2301.07041",
@@ -455,10 +483,10 @@ async def test_ingest_elicits_confirmation_naming_file_and_destination(tmp_path)
 
     async def accept(message, response_type, params, context):
         captured["message"] = message
-        return None
+        return True
 
     with patch.object(KnowledgeBaseService, "private_ingest", return_value=mock_response) as spy:
-        async with Client(transport=mcp, elicitation_handler=accept) as client:
+        async with _legacy_client(elicitation_handler=accept) as client:
             response = await client.call_tool("ingest_pdf_to_private_knowledge_base", {"file_path": str(path)})
 
     spy.assert_called_once_with("paper.pdf", PDF_BYTES, "")
@@ -476,7 +504,7 @@ async def test_ingest_decline_writes_nothing(tmp_path):
         return ElicitResult(action="decline")
 
     with patch.object(KnowledgeBaseService, "private_ingest") as spy:
-        async with Client(transport=mcp, elicitation_handler=decline) as client:
+        async with _legacy_client(elicitation_handler=decline) as client:
             response = await client.call_tool("ingest_pdf_to_private_knowledge_base", {"file_path": str(path)})
 
     spy.assert_not_called()
@@ -496,7 +524,7 @@ async def test_ingest_cancel_also_writes_nothing(tmp_path):
         return ElicitResult(action="cancel")
 
     with patch.object(KnowledgeBaseService, "private_ingest") as spy:
-        async with Client(transport=mcp, elicitation_handler=cancel) as client:
+        async with _legacy_client(elicitation_handler=cancel) as client:
             response = await client.call_tool("ingest_pdf_to_private_knowledge_base", {"file_path": str(path)})
 
     spy.assert_not_called()
@@ -512,7 +540,7 @@ async def test_ingest_reports_unsupported_elicitation_without_raising(tmp_path):
     path = _pdf(tmp_path)
 
     with patch.object(KnowledgeBaseService, "private_ingest") as spy:
-        async with Client(transport=mcp) as client:  # no elicitation_handler configured
+        async with _legacy_client() as client:  # no elicitation_handler configured
             response = await client.call_tool(
                 "ingest_pdf_to_private_knowledge_base",
                 {"file_path": str(path)},
@@ -522,9 +550,142 @@ async def test_ingest_reports_unsupported_elicitation_without_raising(tmp_path):
     spy.assert_not_called()
     assert response.is_error is False
     text = _texts(response)
-    assert "declare support" in text.lower() or "unsupported" in text.lower()
+    assert "support form-mode mcp elicitation" in text.lower()
     assert "nothing was written" in text.lower()
     assert response.structured_content == {"ingested": False, "action": "unsupported"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mode", ["legacy", "2026-07-28"])
+@pytest.mark.parametrize("operation", ["ingest", "delete"])
+async def test_private_write_with_url_only_elicitation_returns_unsupported(tmp_path, mode, operation):
+    """URL support must not authorize a form confirmation request."""
+    capabilities = ClientCapabilities(elicitation=ElicitationCapability(url=UrlElicitationCapability()))
+    path = _pdf(tmp_path)
+    tool, arguments, service_method, outcome = (
+        ("ingest_pdf_to_private_knowledge_base", {"file_path": str(path)}, "private_ingest", "ingested")
+        if operation == "ingest"
+        else ("delete_private_knowledge_base_paper", {"doc_id": "hash-abc"}, "private_delete_paper", "deleted")
+    )
+
+    confirmations = []
+
+    async def unexpected_form(message, response_type, params, context):
+        confirmations.append(message)
+        return ElicitResult(action="decline")
+
+    with (
+        patch.object(ClientSession, "_build_capabilities", return_value=capabilities),
+        patch.object(KnowledgeBaseService, service_method) as spy,
+    ):
+        async with Client(transport=mcp, mode=mode, elicitation_handler=unexpected_form) as client:
+            response = await client.call_tool(tool, arguments, raise_on_error=False)
+
+    spy.assert_not_called()
+    assert confirmations == []
+    assert response.is_error is False
+    assert response.structured_content == {outcome: False, "action": "unsupported"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mode", ["legacy", "2026-07-28"])
+async def test_ingest_accepts_legacy_bare_elicitation_capability(tmp_path, mode):
+    """Before elicitation modes existed, an empty capability advertised form support."""
+    path = _pdf(tmp_path)
+    capabilities = ClientCapabilities(elicitation=ElicitationCapability())
+    mock_response = {"paper_id": "hash-abc", "title": "Mine", "already_present": False, "pdf_and_figures_stored": True}
+
+    with (
+        patch.object(ClientSession, "_build_capabilities", return_value=capabilities),
+        patch.object(KnowledgeBaseService, "private_ingest", return_value=mock_response) as spy,
+    ):
+        async with Client(transport=mcp, mode=mode, elicitation_handler=_auto_accept_elicitation) as client:
+            response = await client.call_tool("ingest_pdf_to_private_knowledge_base", {"file_path": str(path)})
+
+    spy.assert_called_once_with("paper.pdf", PDF_BYTES, "")
+    assert response.structured_content == mock_response
+
+
+@pytest.mark.asyncio
+async def test_ingest_accepts_confirmation_on_modern_protocol(tmp_path):
+    """The modern multi-round-trip confirmation must finish the original write call."""
+    path = _pdf(tmp_path)
+    mock_response = {
+        "paper_id": "hash-abc",
+        "title": "Low-loss ring resonators",
+        "already_present": False,
+        "pdf_and_figures_stored": True,
+    }
+
+    with patch.object(KnowledgeBaseService, "private_ingest", return_value=mock_response) as spy:
+        async with Client(transport=mcp, elicitation_handler=_auto_accept_elicitation) as client:
+            response = await client.call_tool(
+                "ingest_pdf_to_private_knowledge_base",
+                {"file_path": str(path)},
+                raise_on_error=False,
+            )
+
+    spy.assert_called_once_with("paper.pdf", PDF_BYTES, "")
+    assert response.is_error is False
+    assert response.structured_content == mock_response
+
+
+@pytest.mark.asyncio
+async def test_ingest_modern_confirmation_rejects_changed_pdf_contents(tmp_path):
+    """Consent for one PDF must not authorize different bytes at the same path."""
+    path = _pdf(tmp_path)
+
+    async def replace_pdf_before_accepting(message, response_type, params, context):
+        path.write_bytes(PDF_BYTES.replace(b"trailer", b"changed\ntrailer"))
+        return True
+
+    with patch.object(KnowledgeBaseService, "private_ingest") as spy:
+        async with Client(transport=mcp, elicitation_handler=replace_pdf_before_accepting) as client:
+            response = await client.call_tool(
+                "ingest_pdf_to_private_knowledge_base",
+                {"file_path": str(path)},
+                raise_on_error=False,
+            )
+
+    spy.assert_not_called()
+    assert response.is_error is True
+    assert "different operation" in _texts(response).lower()
+
+
+@pytest.mark.asyncio
+async def test_ingest_modern_accept_without_ticking_confirmation_writes_nothing(tmp_path):
+    """The modern retry must preserve the rule that an unchecked box is not consent."""
+    path = _pdf(tmp_path)
+
+    async def accept_unticked(message, response_type, params, context):
+        return False
+
+    with patch.object(KnowledgeBaseService, "private_ingest") as spy:
+        async with Client(transport=mcp, elicitation_handler=accept_unticked) as client:
+            response = await client.call_tool("ingest_pdf_to_private_knowledge_base", {"file_path": str(path)})
+
+    spy.assert_not_called()
+    assert response.is_error is False
+    assert "declined" in _texts(response).lower()
+    assert response.structured_content == {"ingested": False, "action": "decline"}
+
+
+@pytest.mark.asyncio
+async def test_ingest_accept_without_ticking_the_confirmation_writes_nothing(tmp_path):
+    """Accepting the form with the confirmation box left unticked is not a go-ahead."""
+    path = _pdf(tmp_path)
+
+    async def accept_unticked(message, response_type, params, context):
+        return False
+
+    with patch.object(KnowledgeBaseService, "private_ingest") as spy:
+        async with _legacy_client(elicitation_handler=accept_unticked) as client:
+            response = await client.call_tool("ingest_pdf_to_private_knowledge_base", {"file_path": str(path)})
+
+    spy.assert_not_called()
+    assert response.is_error is False
+    assert "declined" in _texts(response).lower()
+    assert response.structured_content == {"ingested": False, "action": "decline"}
 
 
 @pytest.mark.asyncio
@@ -538,7 +699,7 @@ async def test_ingest_does_not_mislabel_a_genuine_elicitation_error_as_unsupport
         raise RuntimeError("simulated transient failure in the client's own handler")
 
     with patch.object(KnowledgeBaseService, "private_ingest") as spy:
-        async with Client(transport=mcp, elicitation_handler=broken_handler) as client:
+        async with _legacy_client(elicitation_handler=broken_handler) as client:
             response = await client.call_tool(
                 "ingest_pdf_to_private_knowledge_base",
                 {"file_path": str(path)},
@@ -927,10 +1088,10 @@ async def test_delete_paper_elicits_confirmation_naming_the_paper(tmp_path):
 
     async def accept(message, response_type, params, context):
         captured["message"] = message
-        return None
+        return True
 
     with patch.object(KnowledgeBaseService, "private_delete_paper", return_value=mock_response) as spy:
-        async with Client(transport=mcp, elicitation_handler=accept) as client:
+        async with _legacy_client(elicitation_handler=accept) as client:
             response = await client.call_tool("delete_private_knowledge_base_paper", {"doc_id": "hash-abc"})
 
     spy.assert_called_once_with("hash-abc")
@@ -947,7 +1108,7 @@ async def test_delete_paper_decline_deletes_nothing(tmp_path):
         return ElicitResult(action="decline")
 
     with patch.object(KnowledgeBaseService, "private_delete_paper") as spy:
-        async with Client(transport=mcp, elicitation_handler=decline) as client:
+        async with _legacy_client(elicitation_handler=decline) as client:
             response = await client.call_tool("delete_private_knowledge_base_paper", {"doc_id": "hash-abc"})
 
     spy.assert_not_called()
@@ -966,7 +1127,7 @@ async def test_delete_paper_cancel_also_deletes_nothing(tmp_path):
         return ElicitResult(action="cancel")
 
     with patch.object(KnowledgeBaseService, "private_delete_paper") as spy:
-        async with Client(transport=mcp, elicitation_handler=cancel) as client:
+        async with _legacy_client(elicitation_handler=cancel) as client:
             response = await client.call_tool("delete_private_knowledge_base_paper", {"doc_id": "hash-abc"})
 
     spy.assert_not_called()
@@ -979,7 +1140,7 @@ async def test_delete_paper_reports_unsupported_elicitation_without_raising(tmp_
     initialize time. The tool checks that capability proactively, so this must read as a clean,
     non-retryable non-delete without ever attempting the round trip."""
     with patch.object(KnowledgeBaseService, "private_delete_paper") as spy:
-        async with Client(transport=mcp) as client:  # no elicitation_handler configured
+        async with _legacy_client() as client:  # no elicitation_handler configured
             response = await client.call_tool(
                 "delete_private_knowledge_base_paper",
                 {"doc_id": "hash-abc"},
@@ -989,9 +1150,107 @@ async def test_delete_paper_reports_unsupported_elicitation_without_raising(tmp_
     spy.assert_not_called()
     assert response.is_error is False
     text = _texts(response)
-    assert "declare support" in text.lower() or "unsupported" in text.lower()
+    assert "support form-mode mcp elicitation" in text.lower()
     assert "nothing was deleted" in text.lower()
     assert response.structured_content == {"deleted": False, "action": "unsupported"}
+
+
+_ELICITATION_DECLARATIONS = {
+    "url-only": (ElicitationCapability(url=UrlElicitationCapability()), False),
+    "bare": (ElicitationCapability(), True),
+    "form-only": (ElicitationCapability(form=FormElicitationCapability()), True),
+    "form-and-url": (ElicitationCapability(form=FormElicitationCapability(), url=UrlElicitationCapability()), True),
+}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mode", _CLIENTS)
+@pytest.mark.parametrize("declared", _ELICITATION_DECLARATIONS, ids=list(_ELICITATION_DECLARATIONS))
+async def test_write_tools_confirm_only_with_clients_that_support_form_elicitation(tmp_path, mode, declared):
+    """The confirmation is a form; a client that declared only URL-mode elicitation can't answer it
+    and must get the documented non-error "unsupported" result without being prompted. A bare
+    ``elicitation: {}`` predates elicitation modes and means form support."""
+    capability, supports_form = _ELICITATION_DECLARATIONS[declared]
+    prompted = []
+
+    async def accept(message, response_type, params, context):
+        prompted.append(message)
+        return True
+
+    path = _pdf(tmp_path)
+    with (
+        _declaring_elicitation(capability),
+        patch.object(KnowledgeBaseService, "private_ingest", return_value={"paper_id": "hash-abc"}) as ingest,
+        patch.object(KnowledgeBaseService, "private_delete_paper", return_value={"paper_id": "hash-abc"}) as delete,
+    ):
+        async with _CLIENTS[mode](elicitation_handler=accept) as client:
+            ingested = await client.call_tool("ingest_pdf_to_private_knowledge_base", {"file_path": str(path)})
+            deleted = await client.call_tool("delete_private_knowledge_base_paper", {"doc_id": "hash-abc"})
+
+    assert ingested.is_error is False
+    assert deleted.is_error is False
+    if supports_form:
+        assert len(prompted) == 2
+        ingest.assert_called_once()
+        delete.assert_called_once()
+    else:
+        assert prompted == []
+        ingest.assert_not_called()
+        delete.assert_not_called()
+        assert ingested.structured_content == {"ingested": False, "action": "unsupported"}
+        assert deleted.structured_content == {"deleted": False, "action": "unsupported"}
+
+
+@pytest.mark.asyncio
+async def test_delete_paper_accepts_confirmation_on_modern_protocol(tmp_path):
+    """The modern multi-round-trip confirmation must finish the original delete call."""
+    mock_response = {"paper_id": "hash-abc", "fully_deleted": True, "pdf_and_figures_removed": True}
+
+    with patch.object(KnowledgeBaseService, "private_delete_paper", return_value=mock_response) as spy:
+        async with Client(transport=mcp, elicitation_handler=_auto_accept_elicitation) as client:
+            response = await client.call_tool(
+                "delete_private_knowledge_base_paper",
+                {"doc_id": "hash-abc"},
+                raise_on_error=False,
+            )
+
+    spy.assert_called_once_with("hash-abc")
+    assert response.is_error is False
+    assert response.structured_content == mock_response
+
+
+@pytest.mark.asyncio
+async def test_delete_paper_modern_decline_deletes_nothing(tmp_path):
+    """A decline returned through the modern guard flow must remain a safe non-delete."""
+
+    async def decline(message, response_type, params, context):
+        return ElicitResult(action="decline")
+
+    with patch.object(KnowledgeBaseService, "private_delete_paper") as spy:
+        async with Client(transport=mcp, elicitation_handler=decline) as client:
+            response = await client.call_tool("delete_private_knowledge_base_paper", {"doc_id": "hash-abc"})
+
+    spy.assert_not_called()
+    assert response.is_error is False
+    assert "declined" in _texts(response).lower()
+    assert response.structured_content == {"deleted": False, "action": "decline"}
+
+
+@pytest.mark.asyncio
+async def test_delete_paper_accept_without_ticking_the_confirmation_deletes_nothing(tmp_path):
+    """Accepting the form with the confirmation box left unticked is not a go-ahead."""
+
+    async def accept_unticked(message, response_type, params, context):
+        return False
+
+    with patch.object(KnowledgeBaseService, "private_delete_paper") as spy:
+        async with _legacy_client(elicitation_handler=accept_unticked) as client:
+            response = await client.call_tool("delete_private_knowledge_base_paper", {"doc_id": "hash-abc"})
+
+    spy.assert_not_called()
+    assert response.is_error is False
+    assert "declined" in _texts(response).lower()
+    assert response.structured_content == {"deleted": False, "action": "decline"}
 
 
 @pytest.mark.asyncio
@@ -1003,7 +1262,7 @@ async def test_delete_paper_does_not_mislabel_a_genuine_elicitation_error_as_uns
         raise RuntimeError("simulated transient failure in the client's own handler")
 
     with patch.object(KnowledgeBaseService, "private_delete_paper") as spy:
-        async with Client(transport=mcp, elicitation_handler=broken_handler) as client:
+        async with _legacy_client(elicitation_handler=broken_handler) as client:
             response = await client.call_tool(
                 "delete_private_knowledge_base_paper",
                 {"doc_id": "hash-abc"},
@@ -1122,7 +1381,7 @@ async def test_get_private_paper_asset_figure_returns_an_inline_image(mcp_client
     spy.assert_called_once_with("hash-abc", 3)
     block = response.content[0]
     assert isinstance(block, ImageContent)
-    assert block.mimeType == "image/png"
+    assert block.mime_type == "image/png"
     assert base64.b64decode(block.data) == image_bytes
 
 

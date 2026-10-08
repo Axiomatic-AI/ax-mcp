@@ -2,15 +2,18 @@
 
 import asyncio
 import base64
+from hashlib import sha256
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
 import filetype
 from fastmcp import Context, FastMCP
 from fastmcp.exceptions import ToolError
-from fastmcp.tools.tool import ToolResult
-from mcp.shared.exceptions import McpError
-from mcp.types import ClientCapabilities, ElicitationCapability, ImageContent, TextContent
+from fastmcp.tools import ToolResult
+from mcp.shared.exceptions import MCPError
+from mcp.types import ImageContent, TextContent
+from mcp_types import ElicitRequest, ElicitRequestFormParams, ElicitResult, InputRequiredResult
+from mcp_types.version import MODERN_PROTOCOL_VERSIONS
 
 from ...providers.middleware_provider import get_mcp_middleware
 from ...providers.toolset_provider import get_mcp_tools
@@ -444,6 +447,65 @@ async def get_paper_asset(
 # --- Private graph ----------------------------------------------------------------------------
 
 _PDF_CONTENT_TYPE = "application/pdf"
+_CONFIRMATION_INPUT_KEY = "confirmation"
+_ConfirmationAction = Literal["accept", "decline", "cancel"]
+
+
+def _can_elicit(ctx: Context) -> bool:
+    """Whether the client declared support for form elicitation.
+
+    A bare ``elicitation: {}`` (the only shape before modes existed) counts as form support; a client
+    that declared only URL mode does not. This is the SDK's own rule; ``check_client_capability``
+    only checks that ``elicitation`` is present.
+    """
+    capabilities = ctx.session.client_capabilities
+    elicitation = capabilities.elicitation if capabilities is not None else None
+    # Before modes existed, bare `elicitation: {}` advertised form support.
+    return elicitation is not None and (elicitation.form is not None or elicitation.url is None)
+
+
+def _is_modern_protocol(ctx: Context) -> bool:
+    request_context = ctx.request_context
+    return request_context is not None and request_context.protocol_version in MODERN_PROTOCOL_VERSIONS
+
+
+def _confirmation_action(action: str, value: Any) -> _ConfirmationAction:
+    """Normalize an unchecked accepted form to a safe decline."""
+    if action == "accept":
+        return "accept" if value is True else "decline"
+    if action == "decline":
+        return "decline"
+    if action == "cancel":
+        return "cancel"
+    raise ToolError(f"Client returned an invalid confirmation action: {action!r}")
+
+
+def _modern_confirmation(ctx: Context, message: str, request_state: str) -> _ConfirmationAction | InputRequiredResult:
+    """Ask for or consume a confirmation on a stateless 2026-07-28 connection."""
+    if ctx.input_responses is None:
+        return InputRequiredResult(
+            input_requests={
+                _CONFIRMATION_INPUT_KEY: ElicitRequest(
+                    params=ElicitRequestFormParams(
+                        message=message,
+                        requested_schema={
+                            "type": "object",
+                            "properties": {"value": {"type": "boolean", "title": "Confirm"}},
+                            "required": ["value"],
+                        },
+                    )
+                )
+            },
+            request_state=request_state,
+        )
+
+    if ctx.request_state != request_state:
+        raise ToolError("Client returned confirmation for a different operation.")
+    response = ctx.input_responses.get(_CONFIRMATION_INPUT_KEY)
+    if not isinstance(response, ElicitResult):
+        raise ToolError("Client returned an invalid confirmation response.")
+    value = response.content.get("value") if response.content is not None else None
+    return _confirmation_action(response.action, value)
 
 
 def _format_ingest(response: dict[str, Any]) -> str:
@@ -476,10 +538,10 @@ def _format_ingest(response: dict[str, Any]) -> str:
         "Synchronous and slow: it returns when ingestion has finished, which takes minutes for a full paper. "
         "Re-sending the same PDF is safe — it is reported as already present rather than ingested twice — so "
         "on a timeout or an unclear failure, retrying is the correct move.\n\n"
-        "Before writing, this tool raises an MCP elicitation asking the user to confirm the file name and "
-        "the destination graph. A decline, a cancel, or a client that does not support elicitation at all "
+        "Before writing, this tool asks through MCP elicitation for confirmation of the file name and "
+        "the destination graph. A decline, a cancel, or a client that does not support form-mode elicitation "
         "writes nothing and comes back as a plain non-error result — do not retry any of these without a "
-        "genuinely fresh reason to think the answer would differ; a client that lacks elicitation support "
+        "genuinely fresh reason to think the answer would differ; a client that lacks form-mode elicitation "
         "will fail the same way every time."
     ),
     tags=["knowledge-base", "private", "ingest", "write"],
@@ -488,7 +550,7 @@ async def ingest_pdf_to_private_knowledge_base(
     ctx: Context,
     file_path: Annotated[Path, "The absolute path to the PDF file to ingest"],
     doi: Annotated[str, "The paper's DOI, if known. Leave empty if unknown."] = "",
-) -> ToolResult:
+) -> ToolResult | InputRequiredResult:
     """Ingest one PDF into the organization's private knowledge graph."""
     path = Path(file_path)
     if not path.is_file():
@@ -502,14 +564,14 @@ async def ingest_pdf_to_private_knowledge_base(
         found = guessed.mime if guessed else "an unrecognized type"
         raise ToolError(f"Only PDFs can be ingested, but {path.name} is {found}.")
 
-    if not ctx.session.check_client_capability(ClientCapabilities(elicitation=ElicitationCapability())):
+    if not _can_elicit(ctx):
         return ToolResult(
             content=[
                 TextContent(
                     type="text",
                     text=(
-                        f"Could not ask for confirmation before ingesting {path.name!r}: this client did not "
-                        "declare support for MCP elicitation. Nothing was written. Retrying will not help — "
+                        f"Could not ask for confirmation before ingesting {path.name!r}: this client does not "
+                        "support form-mode MCP elicitation on this connection. Nothing was written. Retrying will not help — "
                         "either get the user's go-ahead and ingest from a client that supports elicitation, "
                         "or don't call this tool for this file."
                     ),
@@ -518,17 +580,26 @@ async def ingest_pdf_to_private_knowledge_base(
             structured_content={"ingested": False, "action": "unsupported"},
         )
 
-    try:
-        confirmation = await ctx.elicit(
-            message=f"Ingest {path.name!r} into your organization's private knowledge graph?",
-            response_type=None,
-        )
-    except McpError as e:
-        raise ToolError(f"Failed to get the user's confirmation before ingesting {path.name!r}: {e.error.message}") from e
-    if confirmation.action != "accept":
+    confirmation_message = f"Ingest {path.name!r} into your organization's private knowledge graph?"
+    if _is_modern_protocol(ctx):
+        action = _modern_confirmation(ctx, confirmation_message, f"ingest:{path}:{sha256(pdf_bytes).hexdigest()}")
+        if isinstance(action, InputRequiredResult):
+            return action
+    else:
+        try:
+            confirmation = await ctx.elicit(
+                message=confirmation_message,
+                response_type=bool,
+                response_title="Confirm",
+            )
+        except MCPError as e:
+            raise ToolError(f"Failed to get the user's confirmation before ingesting {path.name!r}: {e.error.message}") from e
+        value = confirmation.data if confirmation.action == "accept" else None
+        action = _confirmation_action(confirmation.action, value)
+    if action != "accept":
         return ToolResult(
             content=[TextContent(type="text", text=f"Ingestion of {path.name!r} was declined; nothing was written.")],
-            structured_content={"ingested": False, "action": confirmation.action},
+            structured_content={"ingested": False, "action": action},
         )
 
     try:
@@ -678,10 +749,10 @@ def _format_deletion(response: dict[str, Any]) -> str:
         "is removed and the paper remains for its other owners.\n\n"
         "Identify the paper by its id — get it from list_private_knowledge_base_papers or from a "
         "search_private_knowledge_base result's metadata, never guess or construct one.\n\n"
-        "Before deleting, this tool raises an MCP elicitation asking the user to confirm the paper. A "
-        "decline, a cancel, or a client that does not support elicitation at all deletes nothing and "
+        "Before deleting, this tool asks through MCP elicitation for confirmation of the paper. A "
+        "decline, a cancel, or a client that does not support form-mode elicitation deletes nothing and "
         "comes back as a plain non-error result — do not retry any of these without a genuinely fresh "
-        "reason to think the answer would differ; a client that lacks elicitation support will fail the "
+        "reason to think the answer would differ; a client that lacks form-mode elicitation will fail the "
         "same way every time."
     ),
     tags=["knowledge-base", "private", "papers", "delete", "write"],
@@ -689,16 +760,16 @@ def _format_deletion(response: dict[str, Any]) -> str:
 async def delete_private_knowledge_base_paper(
     ctx: Context,
     doc_id: Annotated[str, "The paper's id, as returned by list_private_knowledge_base_papers or search_private_knowledge_base"],
-) -> ToolResult:
+) -> ToolResult | InputRequiredResult:
     """Remove the caller's ownership of one paper in the private knowledge graph, by id."""
-    if not ctx.session.check_client_capability(ClientCapabilities(elicitation=ElicitationCapability())):
+    if not _can_elicit(ctx):
         return ToolResult(
             content=[
                 TextContent(
                     type="text",
                     text=(
-                        f"Could not ask for confirmation before deleting paper {doc_id!r}: this client did not "
-                        "declare support for MCP elicitation. Nothing was deleted. Retrying will not help — "
+                        f"Could not ask for confirmation before deleting paper {doc_id!r}: this client does not "
+                        "support form-mode MCP elicitation on this connection. Nothing was deleted. Retrying will not help — "
                         "either get the user's go-ahead and delete from a client that supports elicitation, "
                         "or don't call this tool for this paper."
                     ),
@@ -707,21 +778,30 @@ async def delete_private_knowledge_base_paper(
             structured_content={"deleted": False, "action": "unsupported"},
         )
 
-    try:
-        confirmation = await ctx.elicit(
-            message=(
-                f"Remove your ownership of paper {doc_id!r} in your organization's private knowledge graph? "
-                "If you are its last owner, this also deletes the paper and everything under it (passages, "
-                "figures, tables, references, the stored PDF)."
-            ),
-            response_type=None,
-        )
-    except McpError as e:
-        raise ToolError(f"Failed to get the user's confirmation before deleting paper {doc_id!r}: {e.error.message}") from e
-    if confirmation.action != "accept":
+    confirmation_message = (
+        f"Remove your ownership of paper {doc_id!r} in your organization's private knowledge graph? "
+        "If you are its last owner, this also deletes the paper and everything under it (passages, "
+        "figures, tables, references, the stored PDF)."
+    )
+    if _is_modern_protocol(ctx):
+        action = _modern_confirmation(ctx, confirmation_message, f"delete:{doc_id}")
+        if isinstance(action, InputRequiredResult):
+            return action
+    else:
+        try:
+            confirmation = await ctx.elicit(
+                message=confirmation_message,
+                response_type=bool,
+                response_title="Confirm",
+            )
+        except MCPError as e:
+            raise ToolError(f"Failed to get the user's confirmation before deleting paper {doc_id!r}: {e.error.message}") from e
+        value = confirmation.data if confirmation.action == "accept" else None
+        action = _confirmation_action(confirmation.action, value)
+    if action != "accept":
         return ToolResult(
             content=[TextContent(type="text", text=f"Deletion of paper {doc_id!r} was declined; nothing was deleted.")],
-            structured_content={"deleted": False, "action": confirmation.action},
+            structured_content={"deleted": False, "action": action},
         )
 
     try:
