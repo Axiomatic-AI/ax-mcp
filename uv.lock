@@ -67,7 +67,7 @@ wheels = [
 
 [[package]]
 name = "axiomatic-mcp"
-version = "0.1.22"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "fastmcp" },
