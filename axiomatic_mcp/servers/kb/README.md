@@ -42,12 +42,12 @@ Run one read-only Cypher query against the knowledge graph and get the rows back
 - `query` (str, required): a read-only Cypher MATCH/RETURN query, aliasing individual properties (`RETURN n.name AS name`, never a bare `RETURN n`)
 - `params` (dict, optional): query parameters, for safe value injection
 
-**Provenance is the query's job.** Rows carry only what the RETURN clause names, so every query should also return the paper each row came from. `Entity`, `Statement` and `Passage` all carry `doc_id`, so the source is one index seek away — no need to walk `HAS_PASSAGE`/`HAS_STATEMENT`/`HAS_ENTITY`:
+**Provenance is the query's job.** Rows carry only what the RETURN clause names, so every query should also return the paper each row came from. Every node hanging off a paper (`Passage`, `Section`, `Figure`, `Table`, `Equation`, `Reference`) carries `doc_id`, so the source is one index seek away — no need to walk `HAS_PASSAGE`/`HAS_TABLE`/...:
 
 ```cypher
-MATCH (e:Entity) WHERE e.name CONTAINS $term
-MATCH (p:Document {id: e.doc_id})
-RETURN e.name AS name, p.id AS paper_id, p.title AS title
+MATCH (t:Table) WHERE t.caption CONTAINS $term
+MATCH (p:Paper {id: t.doc_id})
+RETURN t.caption AS caption, p.id AS paper_id, p.title AS title
 ```
 
 ### `get_knowledge_base_paper_markdown`
@@ -200,7 +200,7 @@ Compare the grating couplers in our private graph against the ones in Axiomatic'
 - `search_paper_assets`/`search_private_paper_assets` take Lucene query syntax for `query`, not a plain string — the same convention the underlying API uses for figure/table/reference caption search
 - `get_paper_asset`/`get_private_paper_asset` return a figure's raw image bytes with no size cap, same reasoning as the markdown tools — a large scientific figure can be a large response, and unlike an image a caller fetches for display, this one is meant to be read by the model, so it comes back as inline content rather than a link
 - Ingestion is synchronous and takes minutes for a full paper; there is no job id to poll and no progress reporting, so a client with a short tool timeout may give up before the server answers. Re-sending the same PDF is safe, so the recovery is simply to call it again
-- Browsing the curated corpus paper by paper is still a Cypher query rather than its own tool (`/neo4j/papers` is deprecated on the API): `MATCH (p:Document) RETURN p.id AS paper_id, p.title AS title ORDER BY p.title LIMIT 50`, paginating with `SKIP`. `list_private_knowledge_base_papers` covers only the private graph
+- Browsing the curated corpus paper by paper is still a Cypher query rather than its own tool (`/neo4j/papers` is deprecated on the API): `MATCH (p:Paper) RETURN p.id AS paper_id, p.title AS title ORDER BY p.title LIMIT 50`, paginating with `SKIP`. `list_private_knowledge_base_papers` covers only the private graph
 - `knowledge_graph_read` enforces provenance only by convention: the response flags rows whose columns don't look like a paper id, but an unusual alias can slip past the check either way. ax-stack traces provenance cell by cell for its own agent tools, but the `/neo4j/execute-read` endpoint doesn't return that trace, so it can't be enforced here
 - The rendered table is bounded — cells over 200 characters are elided and the table stops at 10,000 characters, both stated in the output. The structured result still carries every row in full, so a query selecting long text properties can still produce a large response; keep a `LIMIT` on it
 - `get_knowledge_base_paper_markdown`/`get_private_knowledge_base_paper_markdown` return a paper's full reconstructed text with no size cap — unlike every other tool here, this is meant to return the whole document, so a long paper can still be a large response

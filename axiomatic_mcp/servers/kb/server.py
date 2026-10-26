@@ -26,8 +26,9 @@ mcp = FastMCP(
     instructions="""This server provides access to two separate knowledge graphs, and the first
     thing to get right is which one a question is about.
 
-    The CURATED knowledge base is Axiomatic's own: scientific papers, extracted entities (devices,
-    materials, performance metrics), and passages retrieved via semantic search. It is read-only.
+    The CURATED knowledge base is Axiomatic's own: scientific papers with their sections,
+    passages, figures, tables and equations, and passages retrieved via semantic search. It is
+    read-only.
     Reach it with search_knowledge_base for semantic/citation lookups, get_knowledge_base_overview
     for what the corpus holds, knowledge_graph_read when the answer has to be a table,
     get_knowledge_base_paper_markdown to read one paper's full text, and
@@ -68,7 +69,7 @@ mcp = FastMCP(
     carry only what the query asks for, so every query must also return the source paper it came
     from; never present graph values as sourced unless their provenance columns are in the result.
     Cypher is also how you browse a corpus paper by paper, e.g.
-    MATCH (p:Document) RETURN p.id AS paper_id, p.title AS title ORDER BY p.title LIMIT 50.
+    MATCH (p:Paper) RETURN p.id AS paper_id, p.title AS title ORDER BY p.title LIMIT 50.
     """
     + get_feedback_prompt(
         [
@@ -307,11 +308,12 @@ async def get_knowledge_base_overview() -> ToolResult:
         "relationship queries, alias the source and target as `from` and `to` so the result "
         "renders as a graph.\n\n"
         "Rows carry no provenance of their own, so every query must also return the paper each "
-        "row came from. Entity, Statement and Passage nodes all carry `doc_id`, so the source is "
-        "one index seek away — no need to walk the HAS_PASSAGE/HAS_STATEMENT/HAS_ENTITY chain:\n"
-        "  MATCH (e:Entity) WHERE e.name CONTAINS $term\n"
-        "  MATCH (p:Document {id: e.doc_id})\n"
-        "  RETURN e.name AS name, p.id AS paper_id, p.title AS title\n"
+        "row came from. Every node hanging off a paper (Passage, Section, Figure, Table, Equation, "
+        "Reference) carries `doc_id`, so the source is one index seek away — no need to walk the "
+        "HAS_PASSAGE/HAS_TABLE/... relationships:\n"
+        "  MATCH (t:Table) WHERE t.caption CONTAINS $term\n"
+        "  MATCH (p:Paper {id: t.doc_id})\n"
+        "  RETURN t.caption AS caption, p.id AS paper_id, p.title AS title\n"
         "Values returned without a paper_id (or doc_id) column are uncited and must not be "
         "presented as sourced results.\n\n"
         "The whole result comes back in one response, so keep it small: return only the "
